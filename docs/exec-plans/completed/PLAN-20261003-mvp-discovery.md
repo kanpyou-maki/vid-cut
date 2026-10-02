@@ -1,8 +1,8 @@
 # PLAN-20261003-mvp-discovery
 
-**ステータス:** active
+**ステータス:** completed
 **作成日:** 2026-10-03
-**完了日:** —
+**完了日:** 2026-10-03
 
 ## 目標
 
@@ -19,21 +19,23 @@
 - [x] Design Doc 草案（`docs/design.md`）: データモデル（レクチャー = 順序付きの録画ファイル群、ファイルごとの時間軸）、一括解析のジョブキュー、パイプラインの各段、API、Premiere XML と可変フレームレート素材の扱い
 - [x] ADR 草案: ADR-002（可変フレームレート → 中間素材）、ADR-003（文字起こし）、ADR-004（実行形態）— 提案中
 - [x] Design Doc の承認 — 2026-10-03（D-1 は暫定値で進め、S-1 で確認）
-- [ ] スパイク S-1〜S-3 を実施し、ADR-002・ADR-003 を確定（S-4 は完了）
+- [x] スパイク S-1〜S-4 を実施 — 2026-10-03
+- [x] ADR-002・ADR-003 の承認（中間素材は 60fps）
 - [x] 環境準備: uv の導入、`claude` CLI の再ログイン（`/login`）
-- [ ] `backend/` と `frontend/` のスキャフォールド作成、`.claude/harness.json` のコマンドが通ることの確認
+- [→] `backend/` と `frontend/` のスキャフォールド作成 → [PLAN-20261003-mvp-implementation](../active/PLAN-20261003-mvp-implementation.md) の M0 に移管
 
 ## 完了条件
 
-- [ ] PRD・Design Doc・必要な ADR がレビュー済みで承認されている
-- [ ] `.claude/harness.json` の全コマンドが（空のテストで）通過する
-- [ ] `QUALITY_SCORE.md` が更新されている
+- [x] PRD・Design Doc・必要な ADR がレビュー済みで承認されている
+- [→] `.claude/harness.json` の全コマンドが（空のテストで）通過する（M0 に移管）
+- [x] `QUALITY_SCORE.md` が更新されている
 
 ## 進捗メモ
 
 - 2026-10-03: bootstrap 完了。言語は Python + TypeScript を据え置く（ADR-001 承認済み）。
 - 2026-10-03: `claude` CLI 再ログイン済み。スパイク S-4 実施 → 正解データと 3 回とも完全一致（指示文の過学習の可能性あり。Design Doc 参照）。
-- ローカル環境: arm64、Python 3.13（ML 互換のため uv で 3.12 を使う予定）、Node 24、ffmpeg あり、**uv 未導入**。
+- 2026-10-03: S-2・S-3 実施（ADR-003 に結果）。S-1 は素材と XML を `~/VidCut/spikes/s1/` に生成済みで、ユーザーの Premiere 確認待ち。中間素材の作成が遅い問題を ADR-002 に記録。
+- ローカル環境: arm64、Python 3.13（ML 互換のため uv で 3.12 を使う予定）、Node 24、ffmpeg あり、uv 0.12.22 導入済み。
 
 ## 完了後の手順
 

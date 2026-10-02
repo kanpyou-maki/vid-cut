@@ -5,8 +5,8 @@
 
 ## 進行中
 
-- [PLAN-20261003-mvp-discovery](./exec-plans/active/PLAN-20261003-mvp-discovery.md) — MVP の要件・設計を確定し、実装を始められる状態にする
+- [PLAN-20261003-mvp-implementation](./exec-plans/active/PLAN-20261003-mvp-implementation.md) — MVP（US-01〜US-11）を M0〜M8 で TDD 実装し、受け入れチェックに合格する
 
 ## 完了済み
 
-_（なし）_
+- [PLAN-20261003-mvp-discovery](./exec-plans/completed/PLAN-20261003-mvp-discovery.md) — MVP の要件・設計・スパイク（2026-10-03 完了）
