@@ -27,4 +27,23 @@
 
 ## エントリ
 
-_（まだなし）_
+### FRIC-001: settings.json の `Write(~/.ssh/*)` 等の deny ルールが効いていない
+
+- **日付:** 2026-10-03
+- **状況:** `claude -p` の動作確認時に、Claude Code が「`Write(path)` はファイル権限の検査に使われない。`Edit(path)` を使うこと」と警告した。
+  `~/.ssh`・`~/.aws`・`~/.gnupg` への書き込み禁止が実際には効いていない
+- **根本原因の仮説:** ガードレール不足。master（claude-config-master）の settings.json テンプレートが古い記法のまま配布されている。
+  arch-lint にも deny ルールの記法を検査する規則がない
+- **改善候補:** `.claude/settings.json` の 3 行を `Edit(~/.ssh/*)` 等に変更（Claude の自己改変にあたるため人が行う）→ sync-upstream で master に還元。
+  `.claude/rules/common/security.md` の記述も合わせて確認する
+- **Status:** resolved（vid-cut: ユーザーが settings.json を修正 / master: [claude-config-master#2](https://github.com/kanpyou-maki/claude-config-master/pull/2)）
+
+### FRIC-002: プロジェクト内で `claude -p` を呼ぶと、ハーネスの設定と CLAUDE.md が読み込まれる
+
+- **日付:** 2026-10-03
+- **状況:** リポジトリ直下で `claude -p` を実行すると、プロジェクトの settings.json（と CLAUDE.md）が読み込まれた。
+  vid-cut は言い直しの判定に `claude -p` を使うため、判定の入力に開発用の指示が混ざり、トークンも余計に消費する
+- **根本原因の仮説:** ドキュメント不足（`claude -p` をアプリの部品として使う場合の注意点がない）
+- **改善候補:** Design Doc 3-3 に「作業ディレクトリをワークスペースの中立なディレクトリにし、ツールを使わせない」と記載した（対応済み）。
+  実装時に adapter のテストで、作業ディレクトリの指定を検証する
+- **Status:** open

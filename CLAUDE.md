@@ -9,7 +9,7 @@ Claude Code の作業指示。**常に日本語で応答すること。**
 
 **vid-cut**: Udemy 用に録画した mov（画面録画 + 日本語ナレーション）から、無音・フィラー・言い直しを
 自動検出してカットし、Premiere XML（FCP7 xmeml）として書き出すローカルアプリ。
-独自の強みは `claude -p` による**言い直しの自動検出**。経緯と要件の入力は [kickoff](./docs/references/kickoff.md)。
+独自の強みは `claude -p` による**言い直しの自動検出**。要件は [PRD](./docs/prd.md)、設計は [Design Doc](./docs/design.md)、経緯は [kickoff](./docs/references/kickoff.md)。
 
 - **技術スタック:** Python 3.12（uv / FastAPI / mlx-whisper・WhisperX・Silero VAD / ffmpeg）+ TypeScript（React / Vite）— [ADR-001](./docs/adr/ADR-001-language-and-stack.md)
 - **構成（予定）:** `backend/`（解析パイプライン + API）、`frontend/`（編集 UI）。実装開始時に作成する
