@@ -12,11 +12,11 @@
 ## タスク一覧
 
 - [x] bootstrap（ハーネスのカスタマイズ、言語選定 [ADR-001](../../adr/ADR-001-language-and-stack.md) の起草）
-- [ ] 議論: ADR-001（Python + TypeScript）の承認
-- [ ] 議論: MVP のスコープ（UI 込みか、CLI + Premiere XML を先に出すか）
-- [ ] 議論: 成功指標（例: 正解データ `sample-judge-ground-truth.json` に対する言い直し判定の一致率、処理時間）
-- [ ] PRD 作成（`docs/prd.md`）
-- [ ] Design Doc 作成（`docs/design.md`）: データモデル、パイプラインの各段、API、Premiere XML と可変フレームレート素材の扱い
+- [x] 議論: ADR-001（Python + TypeScript）の承認
+- [x] 議論: MVP のスコープ → 編集画面まで含める
+- [x] 議論: 成功指標 → 正解データとの一致率は暫定指標、合格判定は実素材で人が行う
+- [x] PRD 作成（`docs/prd.md`）— 2026-10-03 承認
+- [ ] Design Doc 作成（`docs/design.md`）: データモデル（レクチャー = 順序付きの録画ファイル群、ファイルごとの時間軸）、一括解析のジョブキュー、パイプラインの各段、API、Premiere XML と可変フレームレート素材の扱い
 - [ ] ADR: 文字起こしエンジン（mlx-whisper / faster-whisper / whisper.cpp）
 - [ ] ADR: Premiere XML（xmeml）での可変フレームレート素材の扱い（事前に固定フレームレート化するか）
 - [ ] 環境準備: uv の導入、`claude` CLI の再ログイン（`/login`）
@@ -30,7 +30,7 @@
 
 ## 進捗メモ
 
-- 2026-10-03: bootstrap 完了。言語は Python + TypeScript を据え置く案（ADR-001 は提案中）。
+- 2026-10-03: bootstrap 完了。言語は Python + TypeScript を据え置く（ADR-001 承認済み）。
 - ローカル環境: arm64、Python 3.13（ML 互換のため uv で 3.12 を使う予定）、Node 24、ffmpeg あり、**uv 未導入**。
 
 ## 完了後の手順
