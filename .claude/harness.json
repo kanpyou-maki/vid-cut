@@ -1,0 +1,12 @@
+{
+  "$comment": "このプロジェクトのハーネスコマンド定義。エージェント・スキルはテスト等のコマンドをハードコードせず、このファイルから読むこと。backend/ と frontend/ は実装開始時（PLAN-20261003-mvp-discovery の最終タスク）に作成する。それまで test/typecheck/lint は失敗する。",
+  "language": "both",
+  "commands": {
+    "test": "uv run --directory backend pytest && npm --prefix frontend test",
+    "coverage": "uv run --directory backend pytest --cov=vidcut --cov-fail-under=80 && npm --prefix frontend run coverage",
+    "typecheck": "uv run --directory backend mypy src && npm --prefix frontend run typecheck",
+    "lint": "uv run --directory backend ruff check . && npm --prefix frontend run lint",
+    "structure": "node .claude/hooks/structure-test.js",
+    "archLint": "echo '{}' | node .claude/hooks/arch-lint.js"
+  }
+}

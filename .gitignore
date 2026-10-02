@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# 素材・生成物（動画は大きいのでコミットしない）
+*.mov
+*.mp4
+*.wav
+*_work/
+/workspace/
+
+# ML モデルキャッシュ
+models/
+
+# OS / エディタ
+.DS_Store
+.idea/
+.vscode/
+
+# 秘密情報
+.env
+.env.*

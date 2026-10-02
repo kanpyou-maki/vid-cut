@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(~/.ssh/*)",
+      "Read(~/.aws/*)",
+      "Read(~/.gnupg/*)",
+      "Read(**/.env*)",
+      "Read(**/credentials*)",
+      "Write(~/.ssh/*)",
+      "Write(~/.aws/*)",
+      "Write(~/.gnupg/*)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | bash)",
+      "Bash(rm -rf /*)",
+      "Bash(ssh *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/pre-bash-git-push-reminder.js"
+          }
+        ],
+        "description": "git push 前に確認メッセージを表示"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/quality-gate.js",
+            "async": true,
+            "timeout": 30
+          }
+        ],
+        "description": "ファイル編集後にフォーマット・Lint を自動実行（TypeScript: Biome/Prettier、Python: ruff）"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/arch-lint.js"
+          }
+        ],
+        "description": "ファイル編集後にアーキテクチャ規則違反を検出（ARCH-001〜005）"
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-edit-typecheck.js"
+          }
+        ],
+        "description": ".ts/.tsx 編集後に TypeScript 型チェックを実行"
+      }
+    ]
+  }
+}
