@@ -159,7 +159,7 @@ export function usePlayer(
 
   const toggle = useCallback(() => {
     const element = video.current;
-    const { timeline: now, current: at } = latest.current;
+    const { timeline: now, current: at, skipCuts: skip } = latest.current;
     if (element === null || at === null) {
       return;
     }
@@ -168,8 +168,12 @@ export function usePlayer(
       return;
     }
     const first = positionAt(now, 0);
-    // 最後まで再生したあとは、最初から
-    if (first !== null && nextStep(now, at).type === "end") {
+    // 最後まで再生したあとは、最初から。削除した部分も再生しているときは、最後の残す区間のあとにも
+    // 再生するものがあるので、最後の録画ファイルの終わりまで行ったときだけ
+    const finished = skip
+      ? nextStep(now, at).type === "end"
+      : element.ended && at.recordingId === now.recordingIds.at(-1);
+    if (first !== null && finished) {
       moveTo(first, true);
     } else {
       start(element);
@@ -224,7 +228,9 @@ export function usePlayer(
         }
       },
       onError: () => {
+        // 読み込めなかったときは、pause の通知が来ない
         pending.current = null;
+        setPlaying(false);
         setFailed(true);
       },
     }),

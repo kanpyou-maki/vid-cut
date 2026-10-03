@@ -110,6 +110,54 @@ describe("useEditorKeys", () => {
     expect(keys.onNextReview).not.toHaveBeenCalled();
   });
 
+  it("Space で、プレビューの再生と一時停止を切り替える（ページのスクロールは止める）", () => {
+    const keys = handlers();
+    render(<Keys enabled {...keys} />);
+
+    const prevented = fireEvent.keyDown(document.body, {
+      key: " ",
+      code: "Space",
+    });
+
+    expect(keys.onTogglePlay).toHaveBeenCalledTimes(1);
+    expect(prevented).toBe(false);
+  });
+
+  it("Space を押し続けても、切り替えは 1 回だけ（スクロールは止めたまま）", () => {
+    const keys = handlers();
+    render(<Keys enabled {...keys} />);
+
+    fireEvent.keyDown(document.body, { key: " ", code: "Space" });
+    const repeated = fireEvent.keyDown(document.body, {
+      key: " ",
+      code: "Space",
+      repeat: true,
+    });
+
+    expect(keys.onTogglePlay).toHaveBeenCalledTimes(1);
+    expect(repeated).toBe(false);
+  });
+
+  it("ボタンやリンクの上での Space は、その部品の操作にする", () => {
+    const keys = handlers();
+    const { container } = render(
+      <>
+        <Keys enabled {...keys} />
+        <button type="button">ボタン</button>
+        <a href="/">リンク</a>
+      </>,
+    );
+
+    for (const element of container.querySelectorAll("button, a")) {
+      const notPrevented = fireEvent.keyDown(element, {
+        key: " ",
+        code: "Space",
+      });
+      expect(notPrevented).toBe(true);
+    }
+    expect(keys.onTogglePlay).not.toHaveBeenCalled();
+  });
+
   it("enabled が false の間は、キーを受けない", () => {
     const keys = handlers();
     render(<Keys enabled={false} {...keys} />);

@@ -224,6 +224,31 @@ describe("EditorPage: プレビュー", () => {
     );
   });
 
+  it("再生中に動画を読み込めなくなったら、再生中の表示をやめる", async () => {
+    const { user, video } = await openEditor();
+    await user.click(playButton());
+
+    fireEvent.error(video);
+
+    expect(playButton()).toHaveTextContent("再生");
+  });
+
+  it("削除した部分も再生しているときは、最後の残す区間のあとからでも、その位置から再生する", async () => {
+    const { user, video } = await openEditor();
+    await user.click(
+      screen.getByRole("checkbox", { name: "削除した部分も再生する" }),
+    );
+    await user.click(screen.getByText("ち"));
+    fireEvent.loadedMetadata(video);
+    playTo(video, 3990);
+
+    await user.click(playButton());
+
+    expect(video).toHaveAttribute("src", "/proxy/r2");
+    expect(video.currentTime).toBe(3.99);
+    expect(video.paused).toBe(false);
+  });
+
   it("残す区間が 1 つもなければ、再生できないことを表示する", async () => {
     await openEditor({
       ...PREVIEW,

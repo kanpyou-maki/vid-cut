@@ -70,9 +70,11 @@ export function useEditorKeys(
         }
       } else if (event.code === PLAY_KEY_CODE) {
         if (!isInteractive(event.target)) {
-          // 既定の動作（ページのスクロール）を止める
+          // 既定の動作（ページのスクロール）を止める。押し続けている間は、切り替えを繰り返さない
           event.preventDefault();
-          onTogglePlay();
+          if (!event.repeat) {
+            onTogglePlay();
+          }
         }
       } else if ((key === "delete" || key === "backspace") && onDelete()) {
         event.preventDefault();
