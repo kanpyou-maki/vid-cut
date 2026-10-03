@@ -26,7 +26,7 @@ def keep_ranges(
     if pad_before_ms < 0 or pad_after_ms < 0:
         raise ValueError(f"余白は 0 以上である必要があります: {pad_before_ms}, {pad_after_ms}")
 
-    silence_spans = tuple(silences)
+    silence_spans = merge(silences)  # 接する無音を 1 つにまとめ、余白が境目で止まらないようにする
     kept = subtract(Interval(0, duration_ms), cuts)
     return merge(
         Interval(

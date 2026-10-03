@@ -50,6 +50,21 @@ class TestKeepRanges:
             Interval(2000, DURATION),
         )
 
+    def test_pads_across_touching_silences(self) -> None:
+        silences = [Interval(0, 1000), Interval(1000, 2000)]
+        cuts = [Interval(0, 1050), Interval(2000, 3000)]
+        assert keep_ranges(DURATION, cuts=cuts, silences=silences) == (
+            Interval(900, 2000),
+            Interval(3000, DURATION),
+        )
+
+    def test_manual_cut_starting_inside_silence_keeps_padding_within_silence(self) -> None:
+        silences = [Interval(1000, 2000)]
+        assert keep_ranges(DURATION, cuts=[Interval(1500, 3000)], silences=silences) == (
+            Interval(0, 1750),
+            Interval(3000, DURATION),
+        )
+
     def test_returns_empty_when_everything_is_cut(self) -> None:
         assert keep_ranges(DURATION, cuts=[Interval(0, DURATION)], silences=[]) == ()
 
