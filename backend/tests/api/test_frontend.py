@@ -167,15 +167,29 @@ class TestWithoutBuild:
         response = client.get("/")
         assert response.status_code == 503
         assert "npm" in response.text
-        assert TOKEN not in response.text
         # API は frontend がなくても使える
         assert client.get("/api/lectures", headers={"X-VidCut-Token": TOKEN}).status_code == 200
 
-    def test_page_without_a_head_cannot_carry_the_token(self, tmp_path: Path, dist: Path) -> None:
+    def test_build_guide_carries_the_token_for_the_dev_server(self, tmp_path: Path) -> None:
+        # 開発中は Vite のプラグインが、このページからトークンを読む（ADR-006）
+        response = make_client(tmp_path, None).get("/")
+        assert response.text.count(TOKEN_TAG) == 1
+        assert response.text.index(TOKEN_TAG) < response.text.index("</head>")
+        assert response.headers["cache-control"] == "no-store"
+
+    def test_build_guide_is_not_served_to_another_host(self, tmp_path: Path) -> None:
+        response = make_client(tmp_path, None).get("/", headers={"Host": "evil.example"})
+        assert response.status_code == 403
+        assert TOKEN not in response.text
+
+    def test_page_without_a_head_is_replaced_by_the_build_guide(
+        self, tmp_path: Path, dist: Path
+    ) -> None:
         (dist / "index.html").write_text("<html><body></body></html>", encoding="utf-8")
         response = make_client(tmp_path, dist).get("/")
         assert response.status_code == 503
-        assert TOKEN not in response.text
+        assert "npm" in response.text
+        assert response.text.count(TOKEN_TAG) == 1
 
 
 class TestSecurityHeaders:
