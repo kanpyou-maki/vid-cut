@@ -4,6 +4,7 @@
 要素の並びはスパイク S-1 で Premiere Pro に読み込ませて確かめた形のまま（ADR-002）。
 """
 
+import re
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from vidcut.pipeline.export import ExportClip, ExportPlan
 _HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE xmeml>\n'
 _AUDIO_TRACKS = (1, 2)
 _AUDIO_DEPTH = "16"
+# XML 1.0 に書けない文字（タブ・改行以外の制御文字など）。エスケープしても不正な XML になる
+_NOT_XML_CHARS = re.compile("[^\\t\\n\\r\\x20-\\ud7ff\\ue000-\\ufffd\\U00010000-\\U0010ffff]")
 
 
 @dataclass(frozen=True)
@@ -185,4 +188,4 @@ def _rate(parent: ET.Element, fps: int) -> None:
 
 
 def _text(parent: ET.Element, tag: str, value: str | int) -> None:
-    ET.SubElement(parent, tag).text = str(value)
+    ET.SubElement(parent, tag).text = _NOT_XML_CHARS.sub("_", str(value))

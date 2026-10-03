@@ -103,7 +103,8 @@ def _write_atomically(path: Path, write: Callable[[TextIO], object]) -> None:
 def _export_name(title: str) -> str:
     """レクチャー名をファイル名に使える形に直す。区切り文字は置き換え、先頭と末尾の「.」は落とす。"""
     cleaned = _UNSAFE_TITLE_CHARS.sub("_", title).strip().strip(" .")
-    return cleaned[:_MAX_TITLE_CHARS].strip() or _FALLBACK_TITLE
+    # 切り詰めた結果の末尾に「.」や空白が残らないよう、もう一度落とす
+    return cleaned[:_MAX_TITLE_CHARS].strip(" .") or _FALLBACK_TITLE
 
 
 def _safe(name: str) -> str:

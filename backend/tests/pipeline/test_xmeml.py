@@ -165,6 +165,14 @@ class TestEscaping:
         assert seq.findtext("name") == title
         assert seq.findtext("media/video/track/clipitem/name") == "a<b>&c.mov"
 
+    def test_characters_that_xml_cannot_hold_are_replaced(self) -> None:
+        # 制御文字はエスケープしても XML 1.0 に書けず、Premiere が読み込めなくなる
+        files = {"r1": source(name="a\x00b\x1fc.mov")}
+        xml = build_xmeml("題\x0b名\ttab", plan(("r1", 0, 60)), files)
+        seq = sequence(xml)
+        assert seq.findtext("name") == "題_名\ttab"
+        assert seq.findtext("media/video/track/clipitem/name") == "a_b_c.mov"
+
 
 class TestInvalidInput:
     def test_empty_plan_is_rejected(self) -> None:

@@ -97,6 +97,10 @@ class TestFileExportStore:
         assert len(path.name.encode()) <= 200
         assert path.parent.is_dir()
 
+    def test_shortened_title_does_not_end_with_a_dot_or_space(self, tmp_path: Path) -> None:
+        path = FileExportStore(tmp_path).path("あ" * 59 + ". 続き", ".mp4")
+        assert path.parent.name == "あ" * 59
+
     @pytest.mark.parametrize("suffix", ["", "xml", ".x/y", "../.xml", ".mp4 "])
     def test_rejects_suffixes_that_are_not_a_plain_extension(
         self, tmp_path: Path, suffix: str
