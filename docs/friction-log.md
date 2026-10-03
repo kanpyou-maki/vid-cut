@@ -58,5 +58,5 @@
 - **改善候補:** quality-gate はファイルから上位へ辿って最寄りの `biome.json` を探し、そのディレクトリのローカル Biome で整形する。
   post-edit-typecheck は `references` を持つ tsconfig なら `tsc -b` を使う。いずれも汎用的なので sync-upstream で master に還元する。
   当面の回避策: Biome の整形設定を Prettier の既定に合わせ（2 スペース・80 桁・ダブルクォート・セミコロン）、CSS は両者で結果が同じになる書き方にする
-- **Status:** open
+- **Status:** resolved（フックを修正しテスト 14 件を追加。master: [claude-config-master#3](https://github.com/kanpyou-maki/claude-config-master/pull/3)。vid-cut には同じフックを取り込み済み）
 

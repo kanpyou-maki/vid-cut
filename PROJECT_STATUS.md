@@ -68,4 +68,4 @@ _なし_
 - スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
-- quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルも Biome ではなく prettier で整形する（FRIC-003）
+- quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）
