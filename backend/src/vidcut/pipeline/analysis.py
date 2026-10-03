@@ -34,6 +34,7 @@ PEAKS_FILE = "peaks.json"
 # 段の作り方を変えたら上げる（キーが変わり、その段から作り直す）
 _FORMAT_VERSION = 1  # ffmpeg の引数・生成物の形
 _SEGMENT_VERSION = 2  # 無音と発話チャンクの決め方（2: 端にかかる VAD の区間を使わない）
+_TOKEN_VERSION = 2  # 文字のトークンの作り方（2: 位置合わせが空でも文字起こしの文字を残す）
 
 # 段ごとの進捗の重み（検証素材の実測: proxy 38 秒、文字起こし 99 秒、位置合わせ 21 秒）
 _WEIGHTS = {
@@ -243,7 +244,8 @@ class _Run:
         chunks: tuple[SpeechChunk, ...],
         transcripts: tuple[ChunkTranscript, ...],
     ) -> tuple[Token, ...]:
-        key = stage_key(transcribe_key, "align", [self.tools.aligner.model_id, _FORMAT_VERSION])
+        settings = [self.tools.aligner.model_id, _FORMAT_VERSION, _TOKEN_VERSION]
+        key = stage_key(transcribe_key, "align", settings)
         self.progress.start("align")
 
         def compute() -> ser.Json:
