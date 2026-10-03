@@ -10,8 +10,10 @@
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc -b",
-    "lint": "biome check .",
-    "format": "biome check --write ."
+    "lint": "biome check . && npm run check:api",
+    "format": "biome check --write .",
+    "gen:api": "uv run --directory ../backend vidcut openapi --output ../frontend/src/api/generated/openapi.json && openapi-typescript src/api/generated/openapi.json -o src/api/generated/schema.d.ts",
+    "check:api": "openapi-typescript src/api/generated/openapi.json -o src/api/generated/schema.d.ts --check"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -28,8 +30,14 @@
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "^5.0.3",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "^7.13.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

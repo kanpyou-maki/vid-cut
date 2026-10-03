@@ -1,18 +1,28 @@
-"""コマンドライン: vidcut analyze / worker / eval judge（Design Doc 2 章・6 章）。"""
+"""コマンドライン: vidcut serve / analyze / worker / openapi / eval judge。
+
+Design Doc 2 章（実行の形）・3-5（API）・6 章（精度評価）。
+"""
 
 import argparse
+import json
 import logging
-import signal
 import sys
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from types import FrameType
 
+from vidcut.api.app import openapi_schema
 from vidcut.bootstrap import App, build_app, workspace_from_env
 from vidcut.domain.models import JobStatus
 from vidcut.pipeline.judge import JudgeEntry
 from vidcut.pipeline.ports import ExternalToolError
+from vidcut.serve import (
+    DEFAULT_PORT,
+    ServeOptions,
+    default_frontend_dist,
+    interrupt_on_sigterm,
+)
+from vidcut.serve import serve as run_serve
 from vidcut.services.imports import ImportResult
 from vidcut.services.judge_eval import (
     PRECISION_TARGET,
@@ -23,6 +33,10 @@ from vidcut.services.judge_eval import (
 )
 
 AppFactory = Callable[[], App]
+ServeFunction = Callable[[ServeOptions], int]
+
+_MIN_PORT = 1024  # これより小さいポートは、管理者の権限が要る
+_MAX_PORT = 65535
 
 
 def main(
@@ -30,10 +44,16 @@ def main(
     *,
     build: AppFactory | None = None,
     stop: threading.Event | None = None,
+    serve: ServeFunction | None = None,
 ) -> int:
     """終了コードを返す（0: 成功、1: 失敗したファイルやジョブがある）。"""
     args = _parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # serve と openapi は、worker 用の組み立て（ML・claude）を使わない
+    if args.command == "serve":
+        return (serve or run_serve)(_serve_options(args))
+    if args.command == "openapi":
+        return _openapi(args.output)
     app = (build or (lambda: build_app(workspace_from_env())))()
     try:
         if args.command == "analyze":
@@ -52,6 +72,16 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("paths", nargs="+", help="録画ファイルまたはフォルダ")
     analyze.add_argument("--wait", action="store_true", help="この場で解析が終わるまで処理する")
     commands.add_parser("worker", help="ジョブを待って処理し続ける")
+    serve = commands.add_parser("serve", help="画面と API のサーバー、worker を起動する")
+    serve.add_argument("--port", type=_port, default=DEFAULT_PORT, help="待ち受けるポート")
+    serve.add_argument(
+        "--dev", action="store_true", help="Vite の開発サーバーからの要求を受け付ける"
+    )
+    serve.add_argument(
+        "--no-worker", action="store_true", help="worker を起動しない（別に動かすとき）"
+    )
+    openapi = commands.add_parser("openapi", help="API の OpenAPI スキーマを出力する")
+    openapi.add_argument("--output", type=Path, help="出力先のファイル（省くと標準出力）")
     evaluations = commands.add_parser("eval", help="精度を評価する").add_subparsers(
         dest="target", required=True
     )
@@ -71,6 +101,39 @@ def _positive_int(value: str) -> int:
     if number < 1:
         raise argparse.ArgumentTypeError("1 以上を指定してください")
     return number
+
+
+def _port(value: str) -> int:
+    number = int(value)
+    if not _MIN_PORT <= number <= _MAX_PORT:
+        raise argparse.ArgumentTypeError(f"{_MIN_PORT}〜{_MAX_PORT} を指定してください")
+    return number
+
+
+def _serve_options(args: argparse.Namespace) -> ServeOptions:
+    return ServeOptions(
+        workspace=workspace_from_env(),
+        home=Path.home(),
+        frontend_dist=default_frontend_dist(),
+        port=args.port,
+        dev=args.dev,
+        with_worker=not args.no_worker,
+    )
+
+
+def openapi_text() -> str:
+    """OpenAPI スキーマの JSON。何度出しても同じになるよう、キーを並べ替える。"""
+    return json.dumps(openapi_schema(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def _openapi(output: Path | None) -> int:
+    if output is None:
+        sys.stdout.write(openapi_text())
+        return 0
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(openapi_text(), encoding="utf-8")
+    print(f"OpenAPI スキーマを書き出しました: {output}")
+    return 0
 
 
 def _analyze(app: App, paths: list[Path], *, wait: bool) -> int:
@@ -145,12 +208,9 @@ def _print_eval_run(index: int, run: EvalRun, entries: Sequence[JudgeEntry]) -> 
 
 
 def _worker(app: App, stop: threading.Event) -> int:
-    def interrupt(signum: int, frame: FrameType | None) -> None:
-        raise KeyboardInterrupt
-
     # SIGTERM でも Ctrl+C と同じく止める。処理中のジョブは次の起動時に待機中へ戻る
     if threading.current_thread() is threading.main_thread():
-        signal.signal(signal.SIGTERM, interrupt)
+        interrupt_on_sigterm()
     print(f"ジョブを待っています（ワークスペース: {app.workspace}）。Ctrl+C で止めます")
     try:
         app.worker().run_forever(stop)

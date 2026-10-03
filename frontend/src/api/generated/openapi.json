@@ -1,0 +1,2620 @@
+{
+  "components": {
+    "schemas": {
+      "ChunkOut": {
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms",
+          "id"
+        ],
+        "title": "ChunkOut",
+        "type": "object"
+      },
+      "CutKind": {
+        "enum": [
+          "silence",
+          "filler",
+          "retake",
+          "misspeak",
+          "noise"
+        ],
+        "title": "CutKind",
+        "type": "string"
+      },
+      "EditStateOut": {
+        "properties": {
+          "manual_cuts": {
+            "items": {
+              "$ref": "#/components/schemas/ManualCutOut"
+            },
+            "title": "Manual Cuts",
+            "type": "array"
+          },
+          "restored_suggestion_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Restored Suggestion Ids",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "restored_suggestion_ids",
+          "manual_cuts"
+        ],
+        "title": "EditStateOut",
+        "type": "object"
+      },
+      "EditsIn": {
+        "additionalProperties": false,
+        "properties": {
+          "manual_cuts": {
+            "items": {
+              "$ref": "#/components/schemas/ManualCutIn"
+            },
+            "maxItems": 2000,
+            "title": "Manual Cuts",
+            "type": "array"
+          },
+          "restored_suggestion_ids": {
+            "items": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "title": "Restored Suggestion Ids",
+            "type": "array"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "restored_suggestion_ids",
+          "manual_cuts"
+        ],
+        "title": "EditsIn",
+        "type": "object"
+      },
+      "Envelope_EditStateOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditStateOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[EditStateOut]",
+        "type": "object"
+      },
+      "Envelope_FsListingOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FsListingOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[FsListingOut]",
+        "type": "object"
+      },
+      "Envelope_ImportResultOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[ImportResultOut]",
+        "type": "object"
+      },
+      "Envelope_JobListItemOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobListItemOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[JobListItemOut]",
+        "type": "object"
+      },
+      "Envelope_JobOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[JobOut]",
+        "type": "object"
+      },
+      "Envelope_LectureDetailOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LectureDetailOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[LectureDetailOut]",
+        "type": "object"
+      },
+      "Envelope_LectureRefOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LectureRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[LectureRefOut]",
+        "type": "object"
+      },
+      "Envelope_PeaksOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeaksOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[PeaksOut]",
+        "type": "object"
+      },
+      "Envelope_list_JobListItemOut__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobListItemOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[list[JobListItemOut]]",
+        "type": "object"
+      },
+      "Envelope_list_JobOut__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JobOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[list[JobOut]]",
+        "type": "object"
+      },
+      "Envelope_list_LectureRefOut__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LectureRefOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[list[LectureRefOut]]",
+        "type": "object"
+      },
+      "Envelope_list_LectureSummaryOut__": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LectureSummaryOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[list[LectureSummaryOut]]",
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "失敗の種別（Design Doc 3-5-2）。画面にはこれと定型文だけを出す。",
+        "enum": [
+          "login_required",
+          "tool_failed",
+          "unsupported_media",
+          "source_missing",
+          "not_found",
+          "conflict",
+          "invalid_output",
+          "nothing_to_export",
+          "internal"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
+      "ErrorOut": {
+        "description": "失敗の応答の形（OpenAPI に載せる。frontend の型はここから作る）。",
+        "properties": {
+          "data": {
+            "title": "Data",
+            "type": "null"
+          },
+          "error": {
+            "title": "Error",
+            "type": "string"
+          },
+          "success": {
+            "const": false,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "data",
+          "error"
+        ],
+        "title": "ErrorOut",
+        "type": "object"
+      },
+      "ExportIn": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "enum": [
+              "premiere_xml",
+              "mp4"
+            ],
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "format"
+        ],
+        "title": "ExportIn",
+        "type": "object"
+      },
+      "FsEntryOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "directory",
+              "video"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "kind"
+        ],
+        "title": "FsEntryOut",
+        "type": "object"
+      },
+      "FsListingOut": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/FsEntryOut"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "parent",
+          "entries",
+          "truncated"
+        ],
+        "title": "FsListingOut",
+        "type": "object"
+      },
+      "ImportFailureOut": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "code",
+          "message"
+        ],
+        "title": "ImportFailureOut",
+        "type": "object"
+      },
+      "ImportIn": {
+        "additionalProperties": false,
+        "properties": {
+          "paths": {
+            "items": {
+              "maxLength": 4096,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "ImportIn",
+        "type": "object"
+      },
+      "ImportResultOut": {
+        "properties": {
+          "added": {
+            "items": {
+              "$ref": "#/components/schemas/RecordingOut"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "existing": {
+            "items": {
+              "$ref": "#/components/schemas/RecordingOut"
+            },
+            "title": "Existing",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/ImportFailureOut"
+            },
+            "title": "Failed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "added",
+          "existing",
+          "failed"
+        ],
+        "title": "ImportResultOut",
+        "type": "object"
+      },
+      "JobKind": {
+        "enum": [
+          "analyze_recording",
+          "make_mezzanine",
+          "judge_lecture",
+          "export_premiere",
+          "export_mp4"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "JobListItemOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "target_id",
+          "status",
+          "stage",
+          "progress",
+          "error_code",
+          "error_message",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JobListItemOut",
+        "type": "object"
+      },
+      "JobOut": {
+        "description": "error_message は種別ごとの定型文。生のエラー文は載せない。",
+        "properties": {
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "target_id": {
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "target_id",
+          "status",
+          "stage",
+          "progress",
+          "error_code",
+          "error_message"
+        ],
+        "title": "JobOut",
+        "type": "object"
+      },
+      "JobStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "LectureDetailOut": {
+        "description": "編集画面に必要なもの一式。\n\n実際に削除される区間は、recordings[].suggestions と judged_suggestions から\n戻したものを除き、manual_cuts を足したもの。\njudged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。\ndropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。",
+        "properties": {
+          "dropped_restored_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dropped Restored Ids",
+            "type": "array"
+          },
+          "edit_state": {
+            "$ref": "#/components/schemas/EditStateOut"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobOut"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "boolean"
+          },
+          "judged_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Judged Suggestions",
+            "type": "array"
+          },
+          "recordings": {
+            "items": {
+              "$ref": "#/components/schemas/RecordingDetailOut"
+            },
+            "title": "Recordings",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LectureStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "jobs",
+          "recordings",
+          "judged",
+          "judged_suggestions",
+          "dropped_restored_ids",
+          "edit_state"
+        ],
+        "title": "LectureDetailOut",
+        "type": "object"
+      },
+      "LectureRefOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recording_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recording Ids",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "recording_ids"
+        ],
+        "title": "LectureRefOut",
+        "type": "object"
+      },
+      "LectureStatus": {
+        "description": "素材一覧に出す状態（Design Doc 3-6）。",
+        "enum": [
+          "queued",
+          "analyzing",
+          "judging",
+          "ready",
+          "failed"
+        ],
+        "title": "LectureStatus",
+        "type": "string"
+      },
+      "LectureSummaryOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobOut"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "recordings": {
+            "items": {
+              "$ref": "#/components/schemas/RecordingOut"
+            },
+            "title": "Recordings",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LectureStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "status",
+          "recordings",
+          "jobs"
+        ],
+        "title": "LectureSummaryOut",
+        "type": "object"
+      },
+      "ManualCutIn": {
+        "additionalProperties": false,
+        "properties": {
+          "end_ms": {
+            "maximum": 86400000.0,
+            "minimum": 0.0,
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "id": {
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "recording_id": {
+            "pattern": "^[A-Za-z0-9_-]{1,64}$",
+            "title": "Recording Id",
+            "type": "string"
+          },
+          "start_ms": {
+            "maximum": 86400000.0,
+            "minimum": 0.0,
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "recording_id",
+          "start_ms",
+          "end_ms"
+        ],
+        "title": "ManualCutIn",
+        "type": "object"
+      },
+      "ManualCutOut": {
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recording_id": {
+            "title": "Recording Id",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms",
+          "id",
+          "recording_id"
+        ],
+        "title": "ManualCutOut",
+        "type": "object"
+      },
+      "MergeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "lecture_ids": {
+            "items": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 2,
+            "title": "Lecture Ids",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "lecture_ids"
+        ],
+        "title": "MergeIn",
+        "type": "object"
+      },
+      "OrderIn": {
+        "additionalProperties": false,
+        "properties": {
+          "recording_ids": {
+            "items": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Recording Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recording_ids"
+        ],
+        "title": "OrderIn",
+        "type": "object"
+      },
+      "PeaksOut": {
+        "description": "波形のピーク値。1 秒あたり per_second 個の 0〜1 の値。",
+        "properties": {
+          "per_second": {
+            "title": "Per Second",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "per_second",
+          "values"
+        ],
+        "title": "PeaksOut",
+        "type": "object"
+      },
+      "RecordingDetailOut": {
+        "description": "解析結果つきの録画ファイル。解析がまだなら analyzed が false で、各一覧は空。\n\nanalysis_unreadable が true のものは、解析結果が読めない（古い形・壊れている）。\n解析し直せば直る。",
+        "properties": {
+          "analysis_unreadable": {
+            "title": "Analysis Unreadable",
+            "type": "boolean"
+          },
+          "analyzed": {
+            "title": "Analyzed",
+            "type": "boolean"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "review_marks": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewMarkOut"
+            },
+            "title": "Review Marks",
+            "type": "array"
+          },
+          "silences": {
+            "items": {
+              "$ref": "#/components/schemas/SpanOut"
+            },
+            "title": "Silences",
+            "type": "array"
+          },
+          "source_path": {
+            "title": "Source Path",
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenOut"
+            },
+            "title": "Tokens",
+            "type": "array"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source_path",
+          "duration_ms",
+          "width",
+          "height",
+          "recorded_at",
+          "analyzed",
+          "analysis_unreadable",
+          "chunks",
+          "tokens",
+          "silences",
+          "suggestions",
+          "review_marks"
+        ],
+        "title": "RecordingDetailOut",
+        "type": "object"
+      },
+      "RecordingOut": {
+        "properties": {
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "source_path": {
+            "title": "Source Path",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "source_path",
+          "duration_ms",
+          "width",
+          "height",
+          "recorded_at"
+        ],
+        "title": "RecordingOut",
+        "type": "object"
+      },
+      "ReviewMarkKind": {
+        "enum": [
+          "low_confidence",
+          "unrecognized_speech"
+        ],
+        "title": "ReviewMarkKind",
+        "type": "string"
+      },
+      "ReviewMarkOut": {
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReviewMarkKind"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms",
+          "kind"
+        ],
+        "title": "ReviewMarkOut",
+        "type": "object"
+      },
+      "SpanOut": {
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms"
+        ],
+        "title": "SpanOut",
+        "type": "object"
+      },
+      "SuggestionOut": {
+        "description": "reason は言語モデルや規則が書いた文。画面でエスケープして表示すること。",
+        "properties": {
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CutKind"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recording_id": {
+            "title": "Recording Id",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms",
+          "id",
+          "recording_id",
+          "kind",
+          "reason",
+          "superseded_by"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
+      "TokenOut": {
+        "properties": {
+          "align_score": {
+            "title": "Align Score",
+            "type": "number"
+          },
+          "asr_confidence": {
+            "title": "Asr Confidence",
+            "type": "number"
+          },
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "end_ms": {
+            "title": "End Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "start_ms": {
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_ms",
+          "end_ms",
+          "id",
+          "chunk_id",
+          "text",
+          "asr_confidence",
+          "align_score"
+        ],
+        "title": "TokenOut",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "vid-cut API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/fs": {
+      "get": {
+        "operationId": "list_directory_api_fs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FsListingOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "List Directory"
+      }
+    },
+    "/api/imports": {
+      "post": {
+        "description": "選べないパスが 1 つでもあれば、何も取り込まずに 422 を返す。\n\n選べないパス: ホームの外、隠しフォルダ、動画以外のファイル、ファイルシステムが扱えないパス。\nこれらは指定の誤りなので、全体を止めて知らせる。\n見つからないパスは（移動や削除で起こりうるので）failed に入れ、ほかの取り込みは続ける。\nフォルダは、その直下の動画ファイルに展開する。",
+        "operationId": "import_paths_api_imports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ImportResultOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Import Paths"
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "operationId": "list_jobs_api_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_JobListItemOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "List Jobs"
+      }
+    },
+    "/api/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_job_api_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobListItemOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Retry Job"
+      }
+    },
+    "/api/lectures": {
+      "get": {
+        "operationId": "list_lectures_api_lectures_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LectureSummaryOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "List Lectures"
+      }
+    },
+    "/api/lectures/merge": {
+      "post": {
+        "description": "渡した順に 1 つにまとめる（US-11）。判定ジョブを積む。",
+        "operationId": "merge_lectures_api_lectures_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LectureRefOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Merge Lectures"
+      }
+    },
+    "/api/lectures/{lecture_id}": {
+      "get": {
+        "operationId": "get_lecture_api_lectures__lecture_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LectureDetailOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Get Lecture"
+      }
+    },
+    "/api/lectures/{lecture_id}/edits": {
+      "put": {
+        "description": "version が保存済みの版と違えば 409（読み込み直してからやり直す）。",
+        "operationId": "save_edits_api_lectures__lecture_id__edits_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_EditStateOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "編集状態の版が古い"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Save Edits"
+      }
+    },
+    "/api/lectures/{lecture_id}/exports": {
+      "post": {
+        "description": "書き出しジョブを積む。同じ書き出しが待機中なら、そのジョブを返す。",
+        "operationId": "request_export_api_lectures__lecture_id__exports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Request Export"
+      }
+    },
+    "/api/lectures/{lecture_id}/order": {
+      "put": {
+        "operationId": "reorder_lecture_api_lectures__lecture_id__order_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LectureRefOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Reorder Lecture"
+      }
+    },
+    "/api/lectures/{lecture_id}/reanalyze": {
+      "post": {
+        "description": "解析ロジックを更新したあとに、録画ファイルを解析し直す。終わると判定も積まれる。",
+        "operationId": "reanalyze_lecture_api_lectures__lecture_id__reanalyze_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_JobOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Reanalyze Lecture"
+      }
+    },
+    "/api/lectures/{lecture_id}/split": {
+      "post": {
+        "operationId": "split_lecture_api_lectures__lecture_id__split_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LectureRefOut__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Split Lecture"
+      }
+    },
+    "/api/recordings/{recording_id}/peaks": {
+      "get": {
+        "operationId": "get_peaks_api_recordings__recording_id__peaks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recording_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Recording Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PeaksOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Get Peaks"
+      }
+    },
+    "/api/recordings/{recording_id}/proxy": {
+      "get": {
+        "description": "<video> が読む。トークンは ?token= でも受け付ける（Design Doc 3-5-1）。",
+        "operationId": "get_proxy_api_recordings__recording_id__proxy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recording_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Recording Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {}
+            },
+            "description": "動画の全体"
+          },
+          "206": {
+            "content": {
+              "video/mp4": {}
+            },
+            "description": "Range で指定した部分"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Get Proxy"
+      }
+    }
+  }
+}
