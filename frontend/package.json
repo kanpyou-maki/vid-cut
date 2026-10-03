@@ -16,6 +16,7 @@
     "check:api": "openapi-typescript src/api/generated/openapi.json -o src/api/generated/schema.d.ts --check"
   },
   "dependencies": {
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
