@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 は main にマージ済み。M3（解析パイプライン）は review-loop を通過し、PR のマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 は main にマージ済み（PR #1〜#5）。次は M4（言い直しの判定）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -29,13 +29,13 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 
 - [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 80 件 / カバレッジ 100%）— 2026-10-03
 - [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 226 件 / カバレッジ 99%。review-loop 全通過）— 2026-10-03
 - [x] M3: 解析パイプライン（無音・VAD・mlx-whisper・WhisperX・フィラー・要確認の印・段のキャッシュ・CLI）。検証素材の解析 2 分 29 秒、正解の 69 チャンクと一致 — 2026-10-03
+- [x] FRIC-004: 整形・lint は `harness.json` の `commands.lint` を正とする（ルール文書・style-reviewer・python-patterns を修正。`lint` に `ruff format --check` を追加）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
 - [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
-- [ ] M3 の PR（`feat/m3-analysis`）のマージ待ち（マージはユーザー）
-- [ ] FRIC-004（Python のルール文書が black / isort を指定）を improve-harness で解消し、sync-upstream で master へ還元する（ユーザーの判断待ち）
+- [ ] FRIC-004 の PR（`chore/fric-004-formatter-rule`）と master への PR のマージ待ち（マージはユーザー）
 
 ## 次にやること
 

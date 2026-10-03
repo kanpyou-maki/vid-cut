@@ -69,4 +69,6 @@
 - **根本原因の仮説:** ドキュメント不足。master から配布されるルール文書が特定の整形ツールを名指ししており、プロジェクトの選択（ADR-001: ruff）と `harness.json` の `lint` コマンドを参照していない
 - **改善候補:** `.claude/rules/python/coding-style.md` の「Formatting Tools」を「整形と lint は `.claude/harness.json` の `lint` コマンド（このプロジェクトは ruff format / ruff check）に従う」に書き換える。
   汎用的な改善なので sync-upstream で master に還元し、style-reviewer の確認項目も同じ表現にそろえる
-- **Status:** open
+- **対応:** ルール文書はツールを名指しせず `commands.lint` を正とした。style-reviewer に「整形・lint は `commands.lint` の結果で判定し、ツールの種類は問わない」を追加。
+  python-patterns スキルの早見表も同じ方針に直した。vid-cut の `commands.lint` には `ruff format --check` を加え、整形の崩れを機械的に検出する
+- **Status:** resolved（vid-cut: `chore/fric-004-formatter-rule` の PR。master: sync-upstream の PR）
