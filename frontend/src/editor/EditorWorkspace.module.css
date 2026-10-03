@@ -1,0 +1,14 @@
+.status {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.failure {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}
+
+.line {
+  margin: 0;
+}

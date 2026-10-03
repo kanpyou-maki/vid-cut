@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { fakeApi, lectureSummary } from "../test/fakeApi";
+import { navigate } from "../shared/navigation";
+import { fakeApi, lectureDetail, lectureSummary } from "../test/fakeApi";
 import { App } from "./App";
 
 function open(path: string): void {
@@ -70,6 +71,35 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "素材一覧" }),
     ).toBeInTheDocument();
+  });
+
+  it("別のレクチャーの編集画面に移ったら、そのレクチャーを読んで開き直す", async () => {
+    open("/lectures/lec1");
+    const api = fakeApi({
+      getLecture: async (lectureId) =>
+        lectureDetail({ id: lectureId, title: `題名 ${lectureId}` }),
+    });
+    render(<App api={api} />);
+    await screen.findByRole("heading", { level: 2, name: "題名 lec1" });
+
+    act(() => navigate("/lectures/lec2"));
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "題名 lec2" }),
+    ).toBeInTheDocument();
+  });
+
+  it("編集画面だけ、画面の高さに収める枠にする", () => {
+    const { container, unmount } = render(<App api={fakeApi()} />);
+    const libraryClass = (container.firstChild as HTMLElement).className;
+    unmount();
+
+    open("/lectures/lec1");
+    const editor = render(<App api={fakeApi()} />);
+    const editorClass = (editor.container.firstChild as HTMLElement).className;
+
+    expect(libraryClass).not.toMatch(/fill/);
+    expect(editorClass).toMatch(/fill/);
   });
 
   it("トークンを読めなかったときは、API を呼ばずに案内を表示する", () => {
