@@ -160,6 +160,10 @@ class TestImportTargets:
         with pytest.raises(NotFoundError):
             browser.import_targets(home / "Movies" / "nope.mov")
 
+    def test_path_below_a_file_is_missing(self, browser: FileBrowser, home: Path) -> None:
+        with pytest.raises(NotFoundError):
+            browser.import_targets(home / "Movies" / "a.mp4" / "b.mov")
+
     def test_file_that_is_not_a_video_is_refused(self, browser: FileBrowser, home: Path) -> None:
         # 一覧に出ないファイルは、直接指定しても取り込めない
         with pytest.raises(InvalidInputError, match="動画ファイル"):

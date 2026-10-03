@@ -17,9 +17,11 @@ router = APIRouter()
 
 @router.post("/api/imports")
 def import_paths(body: ImportIn, services: Services, browser: Browser) -> Envelope[ImportResultOut]:
-    """ホームの外や隠しフォルダのパスが 1 つでもあれば、何も取り込まずに 422 を返す。
+    """選べないパスが 1 つでもあれば、何も取り込まずに 422 を返す。
 
-    見つからないパスは failed に入れ、ほかのパスの取り込みは続ける。
+    選べないパス: ホームの外、隠しフォルダ、動画以外のファイル、ファイルシステムが扱えないパス。
+    これらは指定の誤りなので、全体を止めて知らせる。
+    見つからないパスは（移動や削除で起こりうるので）failed に入れ、ほかの取り込みは続ける。
     フォルダは、その直下の動画ファイルに展開する。
     """
     targets: list[Path] = []
