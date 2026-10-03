@@ -138,7 +138,7 @@ PR 2（`feat/m7-library`）:
 - [x] API クライアントに `listDirectory`・`importPaths`・`mergeLectures`・`reorderLecture`・`splitLecture`・`retryJob` を足す（backend の変更なし）
 - [x] 素材一覧: レクチャーの一覧と状態、投入ダイアログ（フォルダブラウザ）、まとめる・並べ替え・解除、失敗の再実行
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（投入 → 失敗と再実行 → まとめる → 並べ替え → 解除。コンソールの失敗なし）
-- [x] review-loop（Stage 0〜2 すべて PASS）
+- [x] review-loop（Stage 0〜2 すべて PASS）→ PR #13
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 2: 素材一覧）」
 
 PR 3（`feat/m7-editor-state`）:
