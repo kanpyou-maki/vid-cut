@@ -58,12 +58,14 @@ backend/src/vidcut/
   adapters/    ports の実装（media/: ffmpeg、sqlite/: リポジトリとジョブ表、ML、claude CLI）
   services/    ユースケース（取り込み、まとめる、編集の保存、書き出しの依頼）
   jobs/        worker のループ（ジョブ表には JobQueue の port を通して触れる）
-  api/         FastAPI のルーティングと入出力スキーマ
+  api/         FastAPI のルーティング、入出力スキーマ（inputs / outputs / presenters）、ローカル API の防御、例外を定型文の応答に直す処理
   cli.py       コマンドライン（serve / analyze / worker / eval）
   bootstrap.py 依存の組み立て（ports に具象 adapters を注入する唯一の場所）
 ```
 
 依存方向は `api / cli / jobs → services → pipeline → domain`、`adapters → pipeline.ports / domain`。
+api と cli は、`bootstrap.py` が組み立てた束の型（`App`・`Api`・`ApiServices`）を import してよい（adapters は直接 import しない）。
+api のルートは HTTP の入出力だけを扱い、処理は services に任せる（ジョブの再実行は `JobControl`、録画ファイルの生成物の読み取りは `RecordingArtifacts`）。
 pipeline と services は adapters を import しない（テストでは偽の実装を注入する）。
 
 ### 3-2. 録画ファイルの解析パイプライン（ジョブ `analyze_recording`）

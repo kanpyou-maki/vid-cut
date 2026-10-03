@@ -1,9 +1,7 @@
 from pathlib import Path
-from types import SimpleNamespace
 
 from tests.api.conftest import ApiEnv, build_env
 from tests.pipeline.fakes import FakeMediaTool
-from vidcut.api.deps import get_services
 from vidcut.pipeline.ports import ExternalToolError
 
 
@@ -72,14 +70,16 @@ class TestJobs:
     def test_unknown_job(self, env: ApiEnv) -> None:
         env.error(404, "POST", "/api/jobs/nope/retry")
 
-    def test_job_that_disappears_during_the_retry(self, env: ApiEnv) -> None:
-        class VanishingQueue:
-            def retry(self, job_id: str) -> None:
-                pass
-
-            def get(self, job_id: str) -> None:
-                return None
-
-        app = env.client.app
-        app.dependency_overrides[get_services] = lambda: SimpleNamespace(queue=VanishingQueue())  # type: ignore[attr-defined]
-        env.error(404, "POST", "/api/jobs/gone/retry")
+    def test_failed_export_shows_no_raw_error_either(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        recording_id = lecture["recordings"][0]["id"]
+        analysis = env.workspace / "recordings" / recording_id / "analysis.json"
+        analysis.write_text('{"CORRUPT-MARKER": 1}')
+        env.data("POST", f"/api/lectures/{lecture['id']}/exports", json={"format": "mp4"})
+        env.run_worker()
+        response = env.client.get("/api/jobs")
+        export = response.json()["data"][-1]
+        assert (export["kind"], export["status"]) == ("export_mp4", "failed")
+        assert export["error_code"] == "internal"
+        assert "CORRUPT-MARKER" not in response.text
+        assert str(env.workspace) not in response.text

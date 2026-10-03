@@ -27,14 +27,12 @@ from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.judge import JudgeSettings
 from vidcut.pipeline.ports import (
     Aligner,
-    ArtifactStore,
     JobQueue,
     JudgementRepository,
     LanguageModel,
     LectureRepository,
     MediaTool,
     ProgressReporter,
-    RecordingRepository,
     Transcriber,
     VoiceActivityDetector,
 )
@@ -42,10 +40,12 @@ from vidcut.services.analysis import AnalysisService
 from vidcut.services.edits import EditService
 from vidcut.services.export import ExportService
 from vidcut.services.imports import ImportService
+from vidcut.services.job_control import JobControl
 from vidcut.services.judge import JudgeRequests, JudgeService
 from vidcut.services.judge_eval import JudgeEvalService
 from vidcut.services.lecture_views import LectureQuery
 from vidcut.services.lectures import LectureService
+from vidcut.services.recording_artifacts import RecordingArtifacts
 
 DATABASE_FILE = "vidcut.sqlite3"
 JUDGE_DIRECTORY = "judge"
@@ -117,14 +117,13 @@ class ApiServices:
     """
 
     conn: sqlite3.Connection
-    queue: JobQueue
-    recordings: RecordingRepository
-    store: ArtifactStore
     imports: ImportService
     lecture_service: LectureService
     lecture_views: LectureQuery
     edits: EditService
     exports: ExportService
+    jobs: JobControl
+    artifacts: RecordingArtifacts
 
 
 def _api_services(
@@ -133,9 +132,8 @@ def _api_services(
     judge_requests = JudgeRequests(lectures=stores.lectures, store=stores.store, queue=stores.queue)
     return ApiServices(
         conn=stores.conn,
-        queue=stores.queue,
-        recordings=stores.recordings,
-        store=stores.store,
+        jobs=JobControl(stores.queue),
+        artifacts=RecordingArtifacts(recordings=stores.recordings, store=stores.store),
         imports=ImportService(
             recordings=stores.recordings,
             lectures=stores.lectures,
@@ -260,36 +258,10 @@ def build_app(
     stores = _stores(open_database(workspace / DATABASE_FILE), workspace)
     resolved_export_settings = export_settings or ExportSettings()
     media_tool = media or FfmpegMediaTool(settings=media_settings_for(resolved_export_settings))
-    ml_tools = ml or default_ml_tools()
-    language_model = model or ClaudeCli(judge_workdir(workspace))
-    resolved_judge_settings = judge_settings or JudgeSettings()
     shared = _api_services(stores, workspace, media_tool, resolved_export_settings)
-    analysis = AnalysisService(
-        stores.recordings,
-        AnalysisTools(
-            media=media_tool,
-            vad=ml_tools.vad,
-            transcriber=ml_tools.transcriber,
-            aligner=ml_tools.aligner,
-            store=stores.store,
-        ),
-        settings or AnalysisSettings(),
-    )
-    judge = JudgeService(
-        lectures=stores.lectures,
-        store=stores.store,
-        judgements=stores.judgements,
-        edit_states=stores.edit_states,
-        atomic=stores.atomic,
-        queue=stores.queue,
-        model=language_model,
-        settings=resolved_judge_settings,
-    )
-    judge_eval = JudgeEvalService(
-        lectures=stores.lectures,
-        store=stores.store,
-        model=language_model,
-        settings=resolved_judge_settings,
+    analysis = _analysis_service(stores, media_tool, ml or default_ml_tools(), settings)
+    judge, judge_eval = _judge_services(
+        stores, model or ClaudeCli(judge_workdir(workspace)), judge_settings or JudgeSettings()
     )
     return App(
         workspace=workspace,
@@ -307,6 +279,39 @@ def build_app(
         exports=shared.exports,
         handlers=_job_handlers(analysis, judge, shared.exports),
     )
+
+
+def _analysis_service(
+    stores: _Stores, media: MediaTool, ml: MlTools, settings: AnalysisSettings | None
+) -> AnalysisService:
+    tools = AnalysisTools(
+        media=media,
+        vad=ml.vad,
+        transcriber=ml.transcriber,
+        aligner=ml.aligner,
+        store=stores.store,
+    )
+    return AnalysisService(stores.recordings, tools, settings or AnalysisSettings())
+
+
+def _judge_services(
+    stores: _Stores, model: LanguageModel, settings: JudgeSettings
+) -> tuple[JudgeService, JudgeEvalService]:
+    """判定の本体と、その精度評価。どちらも言語モデルを使う（worker と CLI だけが持つ）。"""
+    judge = JudgeService(
+        lectures=stores.lectures,
+        store=stores.store,
+        judgements=stores.judgements,
+        edit_states=stores.edit_states,
+        atomic=stores.atomic,
+        queue=stores.queue,
+        model=model,
+        settings=settings,
+    )
+    judge_eval = JudgeEvalService(
+        lectures=stores.lectures, store=stores.store, model=model, settings=settings
+    )
+    return judge, judge_eval
 
 
 def _job_handlers(

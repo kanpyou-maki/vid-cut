@@ -85,9 +85,12 @@ class TestDetail:
     def test_unreadable_analysis_is_flagged(self, env: ApiEnv) -> None:
         (lecture,) = env.imported("a.mov")
         recording_id = lecture["recordings"][0]["id"]
-        (env.workspace / "recordings" / recording_id / "analysis.json").write_text("{}")
-        (recording,) = env.data("GET", f"/api/lectures/{lecture['id']}")["recordings"]
+        analysis = env.workspace / "recordings" / recording_id / "analysis.json"
+        analysis.write_text('{"CORRUPT-MARKER": 1}')
+        response = env.client.get(f"/api/lectures/{lecture['id']}")
+        (recording,) = response.json()["data"]["recordings"]
         assert (recording["analyzed"], recording["analysis_unreadable"]) == (False, True)
+        assert "CORRUPT-MARKER" not in response.text  # 読めなかった中身は応答に出さない
 
     def test_unknown_lecture(self, env: ApiEnv) -> None:
         env.error(404, "GET", "/api/lectures/" + "0" * 32)

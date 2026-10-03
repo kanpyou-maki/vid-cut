@@ -12,6 +12,7 @@ from urllib.parse import parse_qs
 
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from vidcut.api import messages
 from vidcut.api.envelope import failure
 
 TOKEN_HEADER = "X-VidCut-Token"
@@ -81,15 +82,15 @@ class ApiGuard:
         headers = {name.decode("latin-1"): value for name, value in scope["headers"]}
         # DNS rebinding: 攻撃者の名前が 127.0.0.1 を指しても、Host は攻撃者の名前のまま届く
         if _text(headers, "host") not in self._settings.hosts:
-            return 403, "この Host からは利用できません"
+            return 403, messages.REFUSED_HOST
         # Origin が付くのは別のページからの要求か、書き込みの要求。CORS は許可しない
         if "origin" in headers and _text(headers, "origin") not in self._settings.origins:
-            return 403, "このページからは利用できません"
+            return 403, messages.REFUSED_ORIGIN
         path: str = scope["path"]
         if not path.startswith(API_PREFIX):
             return None
         if not self._has_token(path, headers, scope["query_string"]):
-            return 401, "トークンが正しくありません。ページを読み込み直してください"
+            return 401, messages.REFUSED_TOKEN
         if scope["method"] in _WRITING_METHODS:
             return self._check_body(headers)
         return None
@@ -106,20 +107,18 @@ class ApiGuard:
     def _check_body(self, headers: Mapping[str, bytes]) -> tuple[int, str] | None:
         """本文は JSON だけ、長さが分かるものだけ、上限までを受け付ける。"""
         if "transfer-encoding" in headers:
-            return 411, "本文の長さ（Content-Length）が必要です"
-        try:
-            length = int(_text(headers, "content-length") or "0")
-        except ValueError:
-            return 400, "Content-Length が正しくありません"
-        if length < 0:
-            return 400, "Content-Length が正しくありません"
+            return 411, messages.BODY_LENGTH_REQUIRED
+        declared = _text(headers, "content-length") or "0"
+        if not declared.isascii() or not declared.isdigit():
+            return 400, messages.BODY_LENGTH_INVALID
+        length = int(declared)
         if length > self._settings.max_body_bytes:
-            return 413, "本文が大きすぎます"
+            return 413, messages.BODY_TOO_LARGE
         # フォームから送れる形式（text/plain など）を受け付けない。JSON は別のページからは
         # 事前確認（preflight）なしに送れず、CORS を許可していないので届かない
         media_type = _text(headers, "content-type").split(";")[0].strip().lower()
         if length > 0 and media_type != _JSON:
-            return 415, "本文は application/json で送ってください"
+            return 415, messages.BODY_NOT_JSON
         return None
 
 

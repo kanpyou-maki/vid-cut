@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.pipeline.fakes import FakeAligner, FakeMediaTool, FakeTranscriber, FakeVad
@@ -13,10 +14,15 @@ from vidcut.bootstrap import Api, MlTools, build_api, build_app
 
 TOKEN = "test-token-" + "x" * 32
 BASE_URL = "http://127.0.0.1:8765"
+NOTHING_TO_DELETE = '{"delete": []}'
+"""偽の言語モデルの既定の応答（言い直しなし）。"""
+MAX_JUDGEMENTS_PER_RUN = 20
+"""run_worker 1 回で偽の言語モデルが答えられる判定の回数（超えるとテストが失敗する）。"""
 
 
-@dataclass
+@dataclass(frozen=True)
 class ApiEnv:
+    app: FastAPI
     client: TestClient
     api: Api
     workspace: Path
@@ -32,7 +38,7 @@ class ApiEnv:
 
     def run_worker(self, *judge_outputs: str | Exception) -> None:
         """worker プロセスの代わりに、積まれたジョブをすべて処理する（ML と判定は偽の実装）。"""
-        outputs = judge_outputs or ('{"delete": []}',) * 20
+        outputs = judge_outputs or (NOTHING_TO_DELETE,) * MAX_JUDGEMENTS_PER_RUN
         app = build_app(
             self.workspace,
             media=self.media,
@@ -81,7 +87,7 @@ def build_env(tmp_path: Path, media: FakeMediaTool | None = None) -> ApiEnv:
     client = TestClient(
         app, base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN}, raise_server_exceptions=False
     )
-    return ApiEnv(client=client, api=api, workspace=workspace, home=home, media=media_tool)
+    return ApiEnv(app=app, client=client, api=api, workspace=workspace, home=home, media=media_tool)
 
 
 @pytest.fixture

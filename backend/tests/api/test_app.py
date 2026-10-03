@@ -46,7 +46,7 @@ class TestOpenApi:
     """frontend の型は OpenAPI から作る（M6 の PR 3）。スキーマが実際の応答と合っていること。"""
 
     def test_failures_are_described_as_the_envelope(self, env: ApiEnv) -> None:
-        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        schema = env.app.openapi()
         assert "HTTPValidationError" not in schema["components"]["schemas"]
         operations = [op for path in schema["paths"].values() for op in path.values()]
         assert len(operations) == 14
@@ -58,12 +58,12 @@ class TestOpenApi:
         assert set(error["required"]) == {"success", "data", "error"}
 
     def test_conflict_is_described_where_it_can_happen(self, env: ApiEnv) -> None:
-        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        schema = env.app.openapi()
         edits = schema["paths"]["/api/lectures/{lecture_id}/edits"]["put"]
         assert "409" in edits["responses"]
 
     def test_proxy_is_described_as_a_video(self, env: ApiEnv) -> None:
-        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        schema = env.app.openapi()
         proxy = schema["paths"]["/api/recordings/{recording_id}/proxy"]["get"]
         assert list(proxy["responses"]["200"]["content"]) == ["video/mp4"]
         assert "206" in proxy["responses"]

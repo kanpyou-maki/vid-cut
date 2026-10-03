@@ -40,6 +40,15 @@ HTTP_ERRORS: dict[int, str] = {
 }
 HTTP_ERROR_FALLBACK = "要求を処理できません"
 
+# ローカル API の防御（security.py）が要求を断るときの文
+REFUSED_HOST = "この Host からは利用できません"
+REFUSED_ORIGIN = "このページからは利用できません"
+REFUSED_TOKEN = "トークンが正しくありません。ページを読み込み直してください"
+BODY_LENGTH_REQUIRED = "本文の長さ（Content-Length）が必要です"
+BODY_LENGTH_INVALID = "Content-Length が正しくありません"
+BODY_TOO_LARGE = "本文が大きすぎます"
+BODY_NOT_JSON = "本文は application/json で送ってください"
+
 
 def error_message(code: ErrorCode | None, *, failed: bool) -> str | None:
     """失敗したジョブに出す文。種別が記録される前（古い版）の失敗は internal として扱う。"""

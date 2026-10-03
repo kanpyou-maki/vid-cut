@@ -1,5 +1,13 @@
+"""ローカル API の防御のミドルウェア単体のテスト（Design Doc 3-5-1）。
+
+TestClient は ASGI のアプリを直接呼ぶので、HTTP のパーサ（uvicorn）は通らない。
+Content-Length と実際の本文の食い違いなど、パーサが関わる点は、実物のサーバーで確かめる
+（M6 の PR 3 の `vidcut serve`）。
+"""
+
 from collections.abc import Iterator
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -47,9 +55,9 @@ def client() -> TestClient:
     return TestClient(make_app(), base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN})
 
 
-def assert_refused(response: object, status: int) -> None:
-    assert response.status_code == status  # type: ignore[attr-defined]
-    body = response.json()  # type: ignore[attr-defined]
+def assert_refused(response: httpx.Response, status: int) -> None:
+    assert response.status_code == status
+    body = response.json()
     assert (body["success"], body["data"]) == (False, None)
     assert isinstance(body["error"], str) and body["error"]
 

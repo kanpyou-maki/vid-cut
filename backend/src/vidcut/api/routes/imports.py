@@ -7,8 +7,8 @@ from fastapi import APIRouter
 from vidcut.api.deps import Browser, Services
 from vidcut.api.envelope import Envelope, ok
 from vidcut.api.inputs import ImportIn
-from vidcut.api.messages import ERROR_MESSAGES
 from vidcut.api.outputs import ImportFailureOut, ImportResultOut
+from vidcut.api.presenters import to_import_failure, to_import_result
 from vidcut.domain.models import ErrorCode
 from vidcut.pipeline.ports import NotFoundError
 
@@ -30,7 +30,5 @@ def import_paths(body: ImportIn, services: Services, browser: Browser) -> Envelo
         try:
             targets.extend(browser.import_targets(Path(text)))
         except NotFoundError:
-            code = ErrorCode.SOURCE_MISSING
-            missing.append(ImportFailureOut(path=text, code=code, message=ERROR_MESSAGES[code]))
-    result = services.imports.import_paths(targets)
-    return ok(ImportResultOut.of(result, missing))
+            missing.append(to_import_failure(text, ErrorCode.SOURCE_MISSING))
+    return ok(to_import_result(services.imports.import_paths(targets), missing))
