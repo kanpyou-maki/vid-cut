@@ -139,7 +139,12 @@ class DirectoryStore:
 
     def read_json(self, recording_id: str, name: str) -> object | None:
         file = self.root / recording_id / name
-        return json.loads(file.read_text()) if file.exists() else None
+        if not file.exists():
+            return None
+        try:
+            return json.loads(file.read_text())
+        except json.JSONDecodeError as e:
+            raise ValueError(str(e)) from e
 
     def write_json(self, recording_id: str, name: str, data: object) -> None:
         self.path(recording_id, name).write_text(json.dumps(data, ensure_ascii=False))

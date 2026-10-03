@@ -41,7 +41,10 @@ class StageCache:
         self._store.write_json(self._recording_id, _MANIFEST, {**self._manifest(), name: key})
 
     def _manifest(self) -> dict[str, str]:
-        data = self._store.read_json(self._recording_id, _MANIFEST)
+        try:
+            data = self._store.read_json(self._recording_id, _MANIFEST)
+        except ValueError:
+            return {}  # 壊れていれば、すべての段を作り直す
         if not isinstance(data, dict):
             return {}
         return {str(k): str(v) for k, v in data.items()}

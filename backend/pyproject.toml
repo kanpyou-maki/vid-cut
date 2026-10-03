@@ -9,6 +9,9 @@ authors = [
 requires-python = ">=3.12,<3.13"
 dependencies = []
 
+[project.scripts]
+vidcut = "vidcut.cli:main"
+
 [project.optional-dependencies]
 # 実物の ML モデル（ADR-003）。unit テストでは使わない。`uv sync --extra ml` で導入する
 ml = [
@@ -58,3 +61,8 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+# 型情報を持たない ML ライブラリ（adapters/ml/ の中でだけ使う）
+module = ["mlx_whisper.*", "mlx_whisper", "whisperx.*", "whisperx", "silero_vad.*", "silero_vad"]
+ignore_missing_imports = true

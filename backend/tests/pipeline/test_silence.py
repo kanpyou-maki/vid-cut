@@ -17,6 +17,15 @@ class TestFindSilences:
         )
         assert silences == (Interval(1_000, 1_400), Interval(1_600, 2_000))
 
+    def test_vad_speech_crossing_the_edges_does_not_shrink_silence(self) -> None:
+        # VAD の発話区間は前後に余韻を含み、短い無音もまたぐ。音量の無音の端は動かさない
+        silences = find_silences(
+            [Interval(1_000, 2_000), Interval(3_000, 3_400)],
+            speech=[Interval(0, 1_250), Interval(2_900, 4_000)],
+            min_ms=300,
+        )
+        assert silences == (Interval(1_000, 2_000), Interval(3_000, 3_400))
+
     def test_pieces_shorter_than_minimum_are_dropped(self) -> None:
         silences = find_silences(
             [Interval(1_000, 2_000)], speech=[Interval(1_200, 1_900)], min_ms=300

@@ -31,8 +31,9 @@ _logger = logging.getLogger(__name__)
 AUDIO_FILE = "audio16k.wav"
 PROXY_FILE = "proxy.mp4"
 PEAKS_FILE = "peaks.json"
-# ffmpeg の引数やモデルを変えたら上げる（キーが変わり、その段から作り直す）
-_FORMAT_VERSION = 1
+# 段の作り方を変えたら上げる（キーが変わり、その段から作り直す）
+_FORMAT_VERSION = 1  # ffmpeg の引数・モデル
+_SEGMENT_VERSION = 2  # 無音と発話チャンクの決め方（2: 端にかかる VAD の区間を使わない）
 
 # 段ごとの進捗の重み（検証素材の実測: proxy 38 秒、文字起こし 99 秒、位置合わせ 21 秒）
 _WEIGHTS = {
@@ -158,7 +159,7 @@ class _Run:
 
     def segment(self, audio_key: str) -> tuple[_Segmentation, str]:
         s = self.settings
-        settings = [s.silence_threshold_db, s.silence_min_ms, s.min_chunk_ms, _FORMAT_VERSION]
+        settings = [s.silence_threshold_db, s.silence_min_ms, s.min_chunk_ms, _SEGMENT_VERSION]
         key = stage_key(audio_key, "silence", settings)
         self.progress.start("silence")
         return self._json_stage(

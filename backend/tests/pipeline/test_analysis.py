@@ -192,3 +192,12 @@ def test_broken_result_file_is_an_error(recording: Recording, tools: AnalysisToo
     tools.store.write_json(recording.id, "analysis.json", {"chunks": "x"})
     with pytest.raises(ValueError, match="形が不正"):
         load_analysis(tools.store, recording.id)
+
+
+def test_broken_stage_manifest_redoes_everything(
+    recording: Recording, tools: AnalysisTools
+) -> None:
+    run(recording, tools)
+    tools.store.path(recording.id, "stages.json").write_text("{broken")
+    run(recording, tools)
+    assert counts(tools)["transcribe"] == 2
