@@ -105,12 +105,15 @@ PR 2（`feat/m6-api-http`。fastapi・uvicorn・pydantic、dev に httpx を追�
 
 PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 
-- [ ] `vidcut serve`（API サーバー + worker の起動、127.0.0.1 のみ、起動ごとのトークン、アクセスログにクエリを出さない、ビルド済み frontend の配信）
-- [ ] OpenAPI → `openapi-typescript` で frontend の型を生成
+- [x] `vidcut serve`（API サーバー + worker の起動、127.0.0.1 のみ、起動ごとのトークン、アクセスログを出さない、ビルド済み frontend の配信と応答のヘッダー）
+- [x] OpenAPI → `openapi-typescript` で frontend の型を生成（`vidcut openapi` と `npm run gen:api`。ずれはテストと lint で検出）
+- [x] 実物のサーバーでの結合テスト（本文の長さの食い違い・重複したヘッダー・アクセスログ・止め方）、ADR-005
 - [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
 
 M6 で分かった制限（PR 1）:
 
+- `vidcut serve` を SIGKILL で止めると worker が残る（`pkill -f "vidcut.cli worker"` で止める）。SIGTERM と Ctrl+C では一緒に止まる
+- 開発中（Vite の開発サーバー）のトークンの渡し方は未決（Design Doc D-6。M7 の最初に決める）
 - まとめる・解除のとき、元のレクチャーを処理中のジョブ（判定・書き出し）は、レクチャーがなくなったことで失敗として残る（待機中のものは消す）
 - 引き継げなかった戻し候補の記録（`dropped_restored_ids`）は、次に判定をやり直すまで残る。画面で通知を閉じる仕組みは M7 で決める
 - ffmpeg の一時ファイル（`.<名前>.<8 桁>.partial.<拡張子>`）は、強制終了されると残る。1 日以上前のものは、次に同じ生成物を作るときに消す
