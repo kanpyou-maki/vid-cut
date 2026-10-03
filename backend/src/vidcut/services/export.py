@@ -1,7 +1,7 @@
 """書き出しのジョブの本体（ジョブ export_premiere / export_mp4。Design Doc 3-4）。"""
 
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,8 +39,8 @@ class _Prepared:
 
     lecture: Lecture
     plan: ExportPlan
-    recordings: dict[str, Recording]
-    mezzanines: dict[str, Path]
+    recordings: Mapping[str, Recording]
+    mezzanines: Mapping[str, Path]
 
 
 class ExportService:
@@ -125,7 +125,9 @@ class ExportService:
             clips,
             path,
             fps=prepared.plan.fps,
-            on_progress=lambda f: report(STAGE, _MEZZANINE_SHARE_MP4 + f * encode_share),
+            on_progress=lambda fraction: report(
+                STAGE, _MEZZANINE_SHARE_MP4 + fraction * encode_share
+            ),
         )
         report(STAGE, 1.0)
         return path

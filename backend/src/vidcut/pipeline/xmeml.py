@@ -52,6 +52,15 @@ def build_xmeml(title: str, plan: ExportPlan, files: Mapping[str, XmemlFile]) ->
     return _HEADER + ET.tostring(root, encoding="unicode")
 
 
+@dataclass(frozen=True)
+class _Placed:
+    index: int  # トラック内の番号（1 始まり）
+    clip: ExportClip
+    start: int  # シーケンス上の開始フレーム
+    source: XmemlFile
+    file_id: str
+
+
 class _Layout:
     """クリップの並び: シーケンス上の開始フレームと、参照する中間素材・file 要素の id。"""
 
@@ -68,15 +77,6 @@ class _Layout:
             placed.append(_Placed(index, clip, offset, files[rid], file_ids[rid]))
             offset += clip.frames.duration_frames
         self.clips = tuple(placed)
-
-
-@dataclass(frozen=True)
-class _Placed:
-    index: int  # トラック内の番号（1 始まり）
-    clip: ExportClip
-    start: int  # シーケンス上の開始フレーム
-    source: XmemlFile
-    file_id: str
 
 
 def _video_section(video: ET.Element, layout: _Layout) -> None:
@@ -122,7 +122,7 @@ def _validate(plan: ExportPlan, files: Mapping[str, XmemlFile]) -> None:
             )
 
 
-def _clip_item(track: ET.Element, clip_id: str, placed: "_Placed", fps: int) -> ET.Element:
+def _clip_item(track: ET.Element, clip_id: str, placed: _Placed, fps: int) -> ET.Element:
     frames = placed.clip.frames
     item = ET.SubElement(track, "clipitem", id=clip_id)
     _text(item, "name", placed.source.name)
