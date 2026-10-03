@@ -12,6 +12,7 @@ CONTENT_SECURITY_POLICY = "; ".join(
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "media-src 'self' blob:",
+        "object-src 'none'",
         "frame-ancestors 'none'",
         "base-uri 'none'",
         "form-action 'none'",

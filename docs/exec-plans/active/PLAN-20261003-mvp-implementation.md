@@ -110,7 +110,7 @@ PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 - [x] 実物のサーバーでの結合テスト（本文の長さの食い違い・重複したヘッダー・アクセスログ・止め方）、ADR-005
 - [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
 
-M6 で分かった制限（PR 1）:
+M6 で分かった制限:
 
 - `vidcut serve` を SIGKILL で止めた場合、worker は親がいなくなったことに気づいて自分で止まる（処理中のジョブがあれば、それが終わってから）。SIGTERM と Ctrl+C では一緒に止まる
 - 開発中（Vite の開発サーバー）のトークンの渡し方は未決（Design Doc D-6。M7 の最初に決める）

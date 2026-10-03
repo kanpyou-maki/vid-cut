@@ -14,6 +14,7 @@ from starlette.responses import JSONResponse, Response
 from vidcut.api import messages
 from vidcut.api.envelope import failure
 from vidcut.api.frontend import PageFallback
+from vidcut.api.headers import SECURITY_HEADERS
 from vidcut.api.security import route_path
 from vidcut.pipeline.ports import InvalidInputError, NotFoundError, VersionConflictError
 
@@ -62,4 +63,7 @@ def install_error_handlers(app: FastAPI, page_fallback: PageFallback | None = No
             request.url.path,
             exc_info=error,
         )
-        return failure(500, messages.SERVER_ERROR)
+        response = failure(500, messages.SERVER_ERROR)
+        # この応答は、ほかのミドルウェアの外側で作られる。ヘッダーをここで付ける
+        response.headers.update(SECURITY_HEADERS)
+        return response

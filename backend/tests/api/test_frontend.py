@@ -190,6 +190,7 @@ class TestSecurityHeaders:
         policy = headers["content-security-policy"]
         assert "default-src 'self'" in policy
         assert "frame-ancestors 'none'" in policy
+        assert "object-src 'none'" in policy  # <object> や <embed> で何も読み込ませない
         assert "script-src" not in policy or "'unsafe-inline'" not in policy.split("script-src")[1]
 
     def test_startup_and_shutdown_pass_through(self, tmp_path: Path, dist: Path) -> None:

@@ -36,6 +36,14 @@ class TestErrors:
         assert "database" not in message
         assert "not a database" in caplog.text
 
+    def test_unexpected_error_carries_the_security_headers_too(self, env: ApiEnv) -> None:
+        # 想定していない例外の応答は、いちばん外側（ほかのミドルウェアの外）で作られる
+        (env.workspace / "vidcut.sqlite3").write_bytes(b"not a database")
+        response = env.client.get("/api/lectures")
+        assert response.status_code == 500
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
     def test_no_interactive_docs_are_served(self, env: ApiEnv) -> None:
         # 画面の JS を外部の CDN から読むページを、ローカルアプリには置かない。
         # これらのパスは、ほかの知らないパスと同じ扱い
