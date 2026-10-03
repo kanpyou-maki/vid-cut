@@ -64,6 +64,12 @@ class ManualCutIn(_Input):
         )
 
 
+class DismissDroppedIn(_Input):
+    """閉じる通知に出ていた id（画面が表示したものだけ）。"""
+
+    ids: Annotated[list[SuggestionId], Field(min_length=1, max_length=MAX_RESTORED_SUGGESTIONS)]
+
+
 class EditsIn(_Input):
     version: Annotated[StrictInt, Field(ge=0)]
     restored_suggestion_ids: Annotated[

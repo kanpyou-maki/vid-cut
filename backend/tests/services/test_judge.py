@@ -303,6 +303,9 @@ class _UnwritableJudgements:
     def save(self, judgement: Judgement) -> None:
         raise sqlite3.OperationalError("database or disk is full")
 
+    def dismiss_dropped(self, lecture_id: str, ids: frozenset[str]) -> tuple[str, ...]:
+        return self._inner.dismiss_dropped(lecture_id, ids)
+
 
 class TestJudgeRequests:
     def test_enqueues_without_a_language_model(self, env: Env) -> None:

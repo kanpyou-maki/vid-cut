@@ -4,6 +4,8 @@ import pytest
 
 from tests.api.conftest import ApiEnv
 from tests.pipeline.judge_fakes import delete_output
+from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
+from vidcut.pipeline.ports import Judgement
 
 RETAKE = delete_output({"id": 0, "kind": "retake", "reason": "<b>言い直し</b>", "superseded_by": 1})
 
@@ -237,6 +239,51 @@ class TestEdits:
     def test_unknown_lecture(self, env: ApiEnv) -> None:
         body = {"version": 0, "restored_suggestion_ids": [], "manual_cuts": []}
         env.error(404, "PUT", "/api/lectures/nope/edits", json=body)
+
+
+class TestDroppedRestorations:
+    def url(self, lecture_id: str) -> str:
+        return f"/api/lectures/{lecture_id}/dropped-restorations/dismiss"
+
+    def drop(self, env: ApiEnv, lecture_id: str, *ids: str) -> None:
+        """判定のやり直しで、戻した候補を引き継げなかった状態にする。"""
+        with env.api.services() as services:
+            judgements = SqliteJudgementRepository(services.conn)
+            judgements.save(Judgement(lecture_id, "k", (), dropped_restored_ids=ids))
+
+    def test_removes_the_shown_ids_and_returns_the_rest(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        self.drop(env, lecture["id"], "a", "b", "c")
+        remaining = env.data("POST", self.url(lecture["id"]), json={"ids": ["a", "c"]})
+        assert remaining == {"dropped_restored_ids": ["b"]}
+        detail = env.data("GET", f"/api/lectures/{lecture['id']}")
+        assert detail["dropped_restored_ids"] == ["b"]
+
+    def test_ids_that_are_not_recorded_are_ignored(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        self.drop(env, lecture["id"], "a")
+        remaining = env.data("POST", self.url(lecture["id"]), json={"ids": ["zzz"]})
+        assert remaining == {"dropped_restored_ids": ["a"]}
+
+    def test_input_limits(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        self.drop(env, lecture["id"], "a")
+        for body in (
+            {},
+            {"ids": []},
+            {"ids": "a"},
+            {"ids": [1]},
+            {"ids": [""]},
+            {"ids": ["x" * 101]},
+            {"ids": ["s"] * 20001},
+            {"ids": ["a"], "extra": 1},
+        ):
+            env.error(422, "POST", self.url(lecture["id"]), json=body)
+        detail = env.data("GET", f"/api/lectures/{lecture['id']}")
+        assert detail["dropped_restored_ids"] == ["a"]
+
+    def test_unknown_lecture(self, env: ApiEnv) -> None:
+        env.error(404, "POST", self.url("nope"), json={"ids": ["a"]})
 
 
 class TestExports:

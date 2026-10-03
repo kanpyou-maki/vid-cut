@@ -35,6 +35,45 @@
         "title": "CutKind",
         "type": "string"
       },
+      "DismissDroppedIn": {
+        "additionalProperties": false,
+        "description": "閉じる通知に出ていた id（画面が表示したものだけ）。",
+        "properties": {
+          "ids": {
+            "items": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20000,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "title": "DismissDroppedIn",
+        "type": "object"
+      },
+      "DroppedRestoredOut": {
+        "description": "通知を閉じたあとに残っている、引き継げなかった「戻した候補」。",
+        "properties": {
+          "dropped_restored_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Dropped Restored Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dropped_restored_ids"
+        ],
+        "title": "DroppedRestoredOut",
+        "type": "object"
+      },
       "EditStateOut": {
         "properties": {
           "manual_cuts": {
@@ -97,6 +136,40 @@
           "manual_cuts"
         ],
         "title": "EditsIn",
+        "type": "object"
+      },
+      "Envelope_DroppedRestoredOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DroppedRestoredOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[DroppedRestoredOut]",
         "type": "object"
       },
       "Envelope_EditStateOut_": {
@@ -2008,6 +2081,97 @@
           }
         },
         "summary": "Get Lecture"
+      }
+    },
+    "/api/lectures/{lecture_id}/dropped-restorations/dismiss": {
+      "post": {
+        "description": "引き継げなかった「戻した候補」の通知を閉じる。消すのは、画面が表示した id だけ。",
+        "operationId": "dismiss_dropped_restorations_api_lectures__lecture_id__dropped_restorations_dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DismissDroppedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DroppedRestoredOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Dismiss Dropped Restorations"
       }
     },
     "/api/lectures/{lecture_id}/edits": {

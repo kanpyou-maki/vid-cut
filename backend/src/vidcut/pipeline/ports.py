@@ -275,6 +275,14 @@ class JudgementRepository(Protocol):
         """レクチャーの判定結果を置き換える。"""
         ...
 
+    def dismiss_dropped(self, lecture_id: str, ids: frozenset[str]) -> tuple[str, ...]:
+        """引き継げなかった「戻した候補」の記録から ids だけを消し、残りを返す。
+
+        読み取りと書き込みを 1 つにまとめて行う（途中で判定がやり直されても、その結果を古い内容で
+        上書きしない）。判定結果がなければ、何もせずに空を返す。
+        """
+        ...
+
 
 @dataclass(frozen=True)
 class StoredJob:

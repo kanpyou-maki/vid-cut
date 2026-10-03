@@ -163,6 +163,7 @@ def _api_services(
             lectures=stores.lectures,
             recordings=stores.recordings,
             edit_states=stores.edit_states,
+            judgements=stores.judgements,
         ),
         exports=ExportService(
             lectures=stores.lectures,

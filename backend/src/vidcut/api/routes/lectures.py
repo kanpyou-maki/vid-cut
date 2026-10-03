@@ -1,11 +1,15 @@
-"""/api/lectures: 一覧・詳細・まとめる・並べ替え・解除・再解析・編集の保存・書き出しの依頼。"""
+"""/api/lectures: 一覧・詳細・まとめる・並べ替え・解除・再解析・編集の保存・書き出しの依頼。
+
+引き継げなかった「戻した候補」の通知を閉じるのも、ここで受ける。
+"""
 
 from fastapi import APIRouter
 
 from vidcut.api.deps import PathId, Services
 from vidcut.api.envelope import Envelope, ErrorOut, ok
-from vidcut.api.inputs import EditsIn, ExportIn, MergeIn, OrderIn
+from vidcut.api.inputs import DismissDroppedIn, EditsIn, ExportIn, MergeIn, OrderIn
 from vidcut.api.outputs import (
+    DroppedRestoredOut,
     EditStateOut,
     JobOut,
     LectureDetailOut,
@@ -67,6 +71,15 @@ def reanalyze_lecture(lecture_id: PathId, services: Services) -> Envelope[list[J
 def save_edits(lecture_id: PathId, body: EditsIn, services: Services) -> Envelope[EditStateOut]:
     """version が保存済みの版と違えば 409（読み込み直してからやり直す）。"""
     return ok(to_edit_state(services.edits.save(body.to_domain(lecture_id))))
+
+
+@router.post("/api/lectures/{lecture_id}/dropped-restorations/dismiss")
+def dismiss_dropped_restorations(
+    lecture_id: PathId, body: DismissDroppedIn, services: Services
+) -> Envelope[DroppedRestoredOut]:
+    """引き継げなかった「戻した候補」の通知を閉じる。消すのは、画面が表示した id だけ。"""
+    remaining = services.edits.dismiss_dropped_restorations(lecture_id, body.ids)
+    return ok(DroppedRestoredOut(dropped_restored_ids=list(remaining)))
 
 
 @router.post("/api/lectures/{lecture_id}/exports")

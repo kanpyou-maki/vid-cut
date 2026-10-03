@@ -138,6 +138,12 @@ class EditStateOut(BaseModel):
     manual_cuts: list[ManualCutOut]
 
 
+class DroppedRestoredOut(BaseModel):
+    """通知を閉じたあとに残っている、引き継げなかった「戻した候補」。"""
+
+    dropped_restored_ids: list[str]
+
+
 class LectureDetailOut(BaseModel):
     """編集画面に必要なもの一式。
 
