@@ -1,5 +1,5 @@
 {
-  "$comment": "このプロジェクトのハーネスコマンド定義。エージェント・スキルはテスト等のコマンドをハードコードせず、このファイルから読むこと。backend/ と frontend/ は実装開始時（PLAN-20261003-mvp-discovery の最終タスク）に作成する。それまで test/typecheck/lint は失敗する。",
+  "$comment": "このプロジェクトのハーネスコマンド定義。エージェント・スキルはテスト等のコマンドをハードコードせず、このファイルから読むこと。コマンドはリポジトリのルートで実行する（backend/ は uv、frontend/ は npm）。",
   "language": "both",
   "commands": {
     "test": "uv run --directory backend pytest && npm --prefix frontend test",
