@@ -10,7 +10,8 @@ from vidcut.adapters.media.runner import (
     run_with_progress,
     write_atomically,
 )
-from vidcut.pipeline.ports import ExternalToolError
+from vidcut.adapters.media.tool import FfmpegMediaTool
+from vidcut.pipeline.ports import ExternalToolError, UnsupportedMediaError
 
 
 def python_args(code: str) -> list[str]:
@@ -132,3 +133,12 @@ class TestWriteAtomically:
     def test_fails_when_nothing_was_written(self, tmp_path: Path) -> None:
         with pytest.raises(ExternalToolError):
             write_atomically(tmp_path / "x.wav", lambda partial: None)
+
+
+def test_tool_rejects_unreadable_ffprobe_output(tmp_path: Path) -> None:
+    fake_ffprobe = tmp_path / "ffprobe"
+    fake_ffprobe.write_text(f"#!{sys.executable}\nprint('not json')\n")
+    fake_ffprobe.chmod(0o755)
+    tool = FfmpegMediaTool(ffprobe=str(fake_ffprobe))
+    with pytest.raises(UnsupportedMediaError):
+        tool.probe(tmp_path / "rec.mov")
