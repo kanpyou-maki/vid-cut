@@ -1,23 +1,13 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiProvider } from "../api/ApiContext";
-import type { Api } from "../api/client";
 import { ApiError } from "../api/errors";
-import type { LectureSummary } from "../api/types";
-import { fakeApi, lectureSummary } from "../test/fakeApi";
-import { LibraryPage } from "./LibraryPage";
-
-function renderPage(api: Api) {
-  return render(
-    <ApiProvider api={api}>
-      <LibraryPage />
-    </ApiProvider>,
-  );
-}
-
-function apiReturning(lectures: LectureSummary[]): Api {
-  return fakeApi({ listLectures: async () => lectures });
-}
+import { fakeApi, job, lectureSummary, recording } from "../test/fakeApi";
+import {
+  apiReturning,
+  MERGED,
+  recordingNames,
+  renderPage,
+} from "../test/libraryPage";
 
 describe("LibraryPage", () => {
   afterEach(() => {
@@ -168,5 +158,55 @@ describe("LibraryPage", () => {
     expect(
       screen.getByRole("link", { name: "s05-12sample" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("LibraryPage: 一覧の中身", () => {
+  it("録画ファイルの本数と合計時間を表示する", async () => {
+    renderPage(apiReturning([MERGED]));
+
+    expect(await screen.findByText("3 本・12:40")).toBeInTheDocument();
+  });
+
+  it("解析中は、動いている解析ジョブの進捗を表示する", async () => {
+    const lecture = lectureSummary({
+      status: "analyzing",
+      jobs: [job({ status: "running", progress: 0.42 })],
+    });
+    renderPage(apiReturning([lecture]));
+
+    expect(await screen.findByText("解析中 42%")).toBeInTheDocument();
+  });
+
+  it("まとめたレクチャーは、録画ファイルを順番に表示する", async () => {
+    renderPage(apiReturning([MERGED]));
+    await screen.findByRole("link", { name: "s05-14" });
+
+    expect(recordingNames("s05-14")).toEqual(["a.mov", "b.mov", "c.mov"]);
+    expect(screen.getByText("3:10")).toBeInTheDocument();
+  });
+
+  it("録画ファイルが 1 本のレクチャーには、並べ替えと解除を出さない", async () => {
+    const lecture = lectureSummary({ recordings: [recording()] });
+    renderPage(apiReturning([lecture]));
+    await screen.findByRole("link", { name: "s05-12sample" });
+
+    expect(screen.queryByRole("list", { name: /の録画ファイル$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /を上へ$/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /のまとめを解除$/ }),
+    ).toBeNull();
+  });
+
+  it("録画ファイルの名前に含まれる HTML は、文字として表示する", async () => {
+    const name = '<img src=x onerror="alert(1)">.mov';
+    const lecture = lectureSummary({
+      recordings: [recording({ id: "r1", name }), recording({ id: "r2" })],
+    });
+    renderPage(apiReturning([lecture]));
+    await screen.findByRole("link", { name: "s05-12sample" });
+
+    expect(recordingNames("s05-12sample")[0]).toBe(name);
+    expect(document.querySelector("img")).toBeNull();
   });
 });

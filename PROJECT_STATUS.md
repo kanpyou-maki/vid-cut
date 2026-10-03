@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消は main にマージ済み（PR #1〜#11）。M7（frontend）を 7 本の PR に分けて実装中。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）は main にマージ済み（PR #1〜#12）。M7（frontend）を 7 本の PR に分けて実装中。PR 2（素材一覧）は review-loop を通過し、ユーザーの手動確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,12 +37,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。`feat/m7-foundation`）が review-loop を通過し、PR [#12](https://github.com/kanpyou-maki/vid-cut/pull/12) のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。PR #12）までマージ済み。PR 2（素材一覧。`feat/m7-library`）は review-loop を通過し、PR [#13](https://github.com/kanpyou-maki/vid-cut/pull/13) のマージ待ち
 
 ## 次にやること
 
-- [ ] M7 の PR 1 の手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」。問題なければマージ
-- [ ] M7: frontend。次は PR 2（`feat/m7-library`: 素材一覧）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
+- [ ] M7 の PR 2 の手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 2: 素材一覧）」。問題なければマージ
+- [ ] M7: frontend。PR 2 のあとは PR 3（`feat/m7-editor-state`: 編集状態と文字起こしの基本）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
       波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -125,6 +125,15 @@ _なし_
 - 画面の作り方: 画面は `Api`（`src/api/client.ts`）のメソッドだけを使い、テストでは `src/test/fakeApi.ts` の偽物に差し替える。画面に出す失敗の文は `errorMessage` を通す。
   API クライアントのテストは Node の環境で動かす（jsdom の `AbortSignal` は Node の `Request` に渡せない）。`openapi-fetch` には `baseUrl` に画面のオリジンを渡す（相対パスだと Node で `Request` を作れない）
 - 手動確認の手順: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
+- PR 2（`feat/m7-library`）: 素材一覧。画面の構成はユーザー承認（2026-10-04。Design Doc 3-6 の「素材一覧」）。backend の変更なし。
+  `Api` に `listDirectory`・`importPaths`・`mergeLectures`・`reorderLecture`・`splitLecture`・`retryJob` を足した。`usePolling` は `refresh`（すぐに読み直す）を返す。
+  ダイアログは `src/shared/Modal.tsx`（`dialog` 要素の `showModal`）。jsdom は `showModal` を持たないので、`src/test/setup.ts` に代わりの実装がある。閉じるときは描くのをやめ、フォーカスを開く前の要素へ戻す。frontend のテスト 232 件 / カバレッジ 99%（分岐 96%）
+- PR 2 で確認済み（一時ワークスペース。実物の backend）: 足した `Api` のメソッドが通る（日本語と空白を含むパス、本文のない POST、422・404 の文）。
+  ヘッドレスの Chrome（CDP で操作）で、投入 → 失敗と再実行 → まとめる → 並べ替え → 解除が動き、コンソールの失敗と CSP の違反がない。
+  実物の解析で、元のファイルを消す → 失敗（`source_missing`）→ 作り直す → 再実行 → 編集待ち、まで進む
+- 画面を自分で確かめる方法: Chrome を `--headless=new --remote-debugging-port` で起動し、Node の `WebSocket` から CDP（`Runtime.evaluate`・`Page.captureScreenshot`）で操作する（依存は増えない）。
+  `/api/fs` は隠しフォルダを扱わないので、素材の一時フォルダはホームの直下に作って最後に消す。ビルドは `npx vite build --outDir <一時フォルダ>` と `VIDCUT_FRONTEND_DIST` で、`frontend/dist` を書き換えずに済む
+- 素材一覧の残り: 判定の進捗（%）は出していない（窓が 1 つだと 0% のまま）。処理中のボタンは `disabled` にするので、キーボードで ↑ ↓ を続けて押すとフォーカスが外れることがある
 
 ### 素材と解析・判定・書き出しの知見
 

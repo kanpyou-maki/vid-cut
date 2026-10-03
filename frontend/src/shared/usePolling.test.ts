@@ -46,7 +46,7 @@ describe("usePolling", () => {
 
     const { result } = renderHook(() => usePolling(load, INTERVAL_MS));
 
-    expect(result.current).toEqual({ data: null, error: null });
+    expect(result.current).toMatchObject({ data: null, error: null });
     expect(calls).toHaveLength(1);
   });
 
@@ -56,7 +56,7 @@ describe("usePolling", () => {
 
     await settle(() => calls[0].resolve("first"));
 
-    expect(result.current).toEqual({ data: "first", error: null });
+    expect(result.current).toMatchObject({ data: "first", error: null });
   });
 
   it("読み終えてから間隔をおいて、次を読む", async () => {
@@ -89,7 +89,7 @@ describe("usePolling", () => {
 
     await settle(() => calls[1].reject(failure));
 
-    expect(result.current).toEqual({ data: "first", error: failure });
+    expect(result.current).toMatchObject({ data: "first", error: failure });
     await advance(INTERVAL_MS);
     expect(calls).toHaveLength(3);
   });
@@ -102,7 +102,7 @@ describe("usePolling", () => {
 
     await settle(() => calls[1].resolve("second"));
 
-    expect(result.current).toEqual({ data: "second", error: null });
+    expect(result.current).toMatchObject({ data: "second", error: null });
   });
 
   it("トークンが正しくないと言われたら、読むのをやめる（読み込み直すまで直らない）", async () => {
@@ -160,5 +160,54 @@ describe("usePolling", () => {
     await settle(() => calls[0].reject("文字列の失敗"));
 
     expect(result.current.error).toBeInstanceOf(Error);
+  });
+
+  it("refresh を呼ぶと、間隔を待たずに読み直す", async () => {
+    const { calls, load } = controlledLoad<string>();
+    const { result } = renderHook(() => usePolling(load, INTERVAL_MS));
+    await settle(() => calls[0].resolve("first"));
+
+    await settle(() => result.current.refresh());
+
+    expect(calls).toHaveLength(2);
+    expect(result.current.data).toBe("first");
+    await settle(() => calls[1].resolve("second"));
+    expect(result.current.data).toBe("second");
+  });
+
+  it("refresh のあとも、読み終えてから間隔をおいて読み続ける（重ねて読まない）", async () => {
+    const { calls, load } = controlledLoad<string>();
+    const { result } = renderHook(() => usePolling(load, INTERVAL_MS));
+    await settle(() => calls[0].resolve("first"));
+    await settle(() => result.current.refresh());
+
+    await advance(INTERVAL_MS * 3);
+    expect(calls).toHaveLength(2);
+    await settle(() => calls[1].resolve("second"));
+    await advance(INTERVAL_MS);
+
+    expect(calls).toHaveLength(3);
+  });
+
+  it("読み取りの途中で refresh を呼ぶと、その読み取りを中断して読み直す", async () => {
+    const { calls, load } = controlledLoad<string>();
+    const { result } = renderHook(() => usePolling(load, INTERVAL_MS));
+
+    await settle(() => result.current.refresh());
+    await settle(() => calls[0].resolve("stale"));
+
+    expect(calls[0].signal.aborted).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(result.current.data).toBeNull();
+  });
+
+  it("refresh は、描き直しても同じ関数のまま", async () => {
+    const { calls, load } = controlledLoad<string>();
+    const { result } = renderHook(() => usePolling(load, INTERVAL_MS));
+    const first = result.current.refresh;
+
+    await settle(() => calls[0].resolve("first"));
+
+    expect(result.current.refresh).toBe(first);
   });
 });

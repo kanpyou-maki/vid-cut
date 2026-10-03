@@ -5,3 +5,17 @@ import { afterEach } from "vitest";
 afterEach(() => {
   cleanup();
 });
+
+// jsdom の dialog 要素は showModal と close を持たない。開く・閉じると close の通知だけをまねる
+// （Node の環境で動かすテストには dialog 要素がない）
+if (typeof HTMLDialogElement !== "undefined") {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close() {
+    if (this.open) {
+      this.open = false;
+      this.dispatchEvent(new Event("close"));
+    }
+  };
+}

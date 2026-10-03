@@ -130,11 +130,16 @@ PR 1（`feat/m7-foundation`。`openapi-fetch` を追加）:
 - [x] 開発中のトークン: Vite のプラグイン（`vite-plugins/devToken.ts`）、開発サーバーの CORS を無効にする
 - [x] API クライアント（トークンのヘッダー、`{success, data, error}` をほどく、失敗の種類）
 - [x] 画面の切り替え（素材一覧 `/` と編集画面 `/lectures/{id}`）、ポーリング、画面の枠（レクチャーの名前と状態の一覧まで）
-- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
+- [x] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」→ ユーザーがマージ（PR #12、2026-10-04）
 
 PR 2（`feat/m7-library`）:
 
-- [ ] 素材一覧: レクチャーの一覧と状態、投入ダイアログ（フォルダブラウザ）、まとめる・並べ替え・解除、失敗の再実行
+- [x] 画面の構成の提案と承認（一覧の見せ方、投入ダイアログ、まとめるときの題名、並べ替えと解除、失敗と再実行。Design Doc 3-6）
+- [x] API クライアントに `listDirectory`・`importPaths`・`mergeLectures`・`reorderLecture`・`splitLecture`・`retryJob` を足す（backend の変更なし）
+- [x] 素材一覧: レクチャーの一覧と状態、投入ダイアログ（フォルダブラウザ）、まとめる・並べ替え・解除、失敗の再実行
+- [x] 実物の backend と、ヘッドレスの Chrome での確認（投入 → 失敗と再実行 → まとめる → 並べ替え → 解除。コンソールの失敗なし）
+- [x] review-loop（Stage 0〜2 すべて PASS）→ PR #13
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 2: 素材一覧）」
 
 PR 3（`feat/m7-editor-state`）:
 

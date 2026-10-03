@@ -1,0 +1,23 @@
+.modal {
+  box-sizing: border-box;
+  width: min(40rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 0.5rem;
+}
+
+.modal[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+}

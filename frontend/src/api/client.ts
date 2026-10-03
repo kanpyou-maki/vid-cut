@@ -1,7 +1,13 @@
 import createClient from "openapi-fetch";
 import { ApiError, type ApiErrorKind } from "./errors";
 import type { paths } from "./generated/schema";
-import type { LectureSummary } from "./types";
+import type {
+  FsListing,
+  ImportResult,
+  JobListItem,
+  LectureRef,
+  LectureSummary,
+} from "./types";
 
 const TOKEN_HEADER = "X-VidCut-Token";
 
@@ -20,6 +26,21 @@ const KIND_BY_STATUS: Readonly<Record<number, ApiErrorKind>> = {
 /** 画面が使う API。画面はこのインターフェースだけに依存する（テストでは偽物に差し替える）。 */
 export interface Api {
   listLectures(signal?: AbortSignal): Promise<LectureSummary[]>;
+  /** 投入するファイルを選ぶための、フォルダの一覧。path が null ならホーム */
+  listDirectory(path: string | null, signal?: AbortSignal): Promise<FsListing>;
+  importPaths(paths: readonly string[]): Promise<ImportResult>;
+  /** lectureIds の順に 1 つにまとめる */
+  mergeLectures(
+    lectureIds: readonly string[],
+    title: string,
+  ): Promise<LectureRef>;
+  reorderLecture(
+    lectureId: string,
+    recordingIds: readonly string[],
+  ): Promise<LectureRef>;
+  /** まとめたレクチャーを、録画ファイルごとのレクチャーに戻す */
+  splitLecture(lectureId: string): Promise<LectureRef[]>;
+  retryJob(jobId: string): Promise<JobListItem>;
 }
 
 export interface ApiOptions {
@@ -38,6 +59,40 @@ export function createApi(options: ApiOptions): Api {
   });
   return {
     listLectures: (signal) => unwrap(client.GET("/api/lectures", { signal })),
+    listDirectory: (path, signal) =>
+      unwrap(
+        client.GET("/api/fs", {
+          params: { query: path === null ? {} : { path } },
+          signal,
+        }),
+      ),
+    importPaths: (paths) =>
+      unwrap(client.POST("/api/imports", { body: { paths: [...paths] } })),
+    mergeLectures: (lectureIds, title) =>
+      unwrap(
+        client.POST("/api/lectures/merge", {
+          body: { lecture_ids: [...lectureIds], title },
+        }),
+      ),
+    reorderLecture: (lectureId, recordingIds) =>
+      unwrap(
+        client.PUT("/api/lectures/{lecture_id}/order", {
+          params: { path: { lecture_id: lectureId } },
+          body: { recording_ids: [...recordingIds] },
+        }),
+      ),
+    splitLecture: (lectureId) =>
+      unwrap(
+        client.POST("/api/lectures/{lecture_id}/split", {
+          params: { path: { lecture_id: lectureId } },
+        }),
+      ),
+    retryJob: (jobId) =>
+      unwrap(
+        client.POST("/api/jobs/{job_id}/retry", {
+          params: { path: { job_id: jobId } },
+        }),
+      ),
   };
 }
 

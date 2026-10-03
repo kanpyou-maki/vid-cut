@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "../api/errors";
 
 export interface Polled<T> {
@@ -6,9 +6,13 @@ export interface Polled<T> {
   data: T | null;
   /** 最後の読み取りの失敗。読めていれば null */
   error: Error | null;
+  /** 間隔を待たずに読み直す（読み取りの途中なら、それを中断して読み直す）。内容は残す */
+  refresh: () => void;
 }
 
-const INITIAL: Polled<never> = { data: null, error: null };
+type Loaded<T> = Pick<Polled<T>, "data" | "error">;
+
+const INITIAL: Loaded<never> = { data: null, error: null };
 
 /**
  * load を一定の間隔で呼び続ける（Design Doc 3-6）。
@@ -20,8 +24,15 @@ export function usePolling<T>(
   load: (signal: AbortSignal) => Promise<T>,
   intervalMs: number,
 ): Polled<T> {
-  const [polled, setPolled] = useState<Polled<T>>(INITIAL);
+  const [polled, setPolled] = useState<Loaded<T>>(INITIAL);
+  // refresh のたびに増やして、読み取りを最初からやり直させる
+  const [generation, setGeneration] = useState(0);
+  const refresh = useCallback(
+    () => setGeneration((current) => current + 1),
+    [],
+  );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: generation は中で使わないが、変わったら読み直す
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -52,9 +63,9 @@ export function usePolling<T>(
       controller.abort();
       clearTimeout(timer);
     };
-  }, [load, intervalMs]);
+  }, [load, intervalMs, generation]);
 
-  return polled;
+  return { ...polled, refresh };
 }
 
 /** トークンは、ページを読み込み直すまで変わらない。読み続けても直らない。 */
