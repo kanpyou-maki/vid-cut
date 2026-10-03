@@ -51,6 +51,14 @@ export interface Api {
    * edits.version が保存済みの版と違えば、conflict の失敗になる
    */
   saveEdits(lectureId: string, edits: Edits): Promise<EditState>;
+  /**
+   * 引き継げなかった「戻した候補」の通知を閉じる。消すのは shownIds（画面が表示した id）だけで、
+   * 残っている id を返す
+   */
+  dismissDroppedRestorations(
+    lectureId: string,
+    shownIds: readonly string[],
+  ): Promise<string[]>;
 }
 
 export interface ApiOptions {
@@ -117,6 +125,15 @@ export function createApi(options: ApiOptions): Api {
           body: edits,
         }),
       ),
+    dismissDroppedRestorations: async (lectureId, shownIds) => {
+      const remaining = await unwrap(
+        client.POST("/api/lectures/{lecture_id}/dropped-restorations/dismiss", {
+          params: { path: { lecture_id: lectureId } },
+          body: { ids: [...shownIds] },
+        }),
+      );
+      return remaining.dropped_restored_ids;
+    },
   };
 }
 

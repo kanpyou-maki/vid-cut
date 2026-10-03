@@ -1,21 +1,16 @@
-import { type KeyboardEvent, memo, type Ref } from "react";
-import type { CutKind } from "../api/types";
+import { type KeyboardEvent, memo, type ReactNode, type Ref } from "react";
 import { formatDuration } from "../shared/lectureStatus";
-import type { TokenCut } from "./edits";
+import { KIND_LABELS, type Kind } from "./cutKinds";
+import type { RestoredSuggestion, TokenCut } from "./edits";
 import styles from "./TranscriptView.module.css";
 import { TOKEN_INDEX_ATTRIBUTE } from "./tokenSelection";
-import type { Transcript, TranscriptToken } from "./transcript";
-
-type Kind = CutKind | "manual";
-
-const KIND_LABELS: Readonly<Record<Kind, string>> = {
-  retake: "言い直し",
-  misspeak: "言い間違い",
-  noise: "雑音",
-  filler: "フィラー",
-  silence: "無音",
-  manual: "手動",
-};
+import type {
+  Transcript,
+  TranscriptChunk,
+  TranscriptRecording,
+  TranscriptToken,
+  UnrecognizedMark,
+} from "./transcript";
 
 // 無音の候補はトークンを持たないので、文字起こしには出ない（凡例に載せない）
 const LEGEND_KINDS: readonly Kind[] = [
@@ -29,13 +24,37 @@ const LEGEND_KINDS: readonly Kind[] = [
 // 録画ファイルが 2 本以上のときだけ、ファイル名の見出しを挟む
 const MIN_RECORDINGS_FOR_HEADINGS = 2;
 
-/** 同じ削除のまとまりに入る、続いたトークン（cut が null なら、残るトークン）。 */
+const LOW_CONFIDENCE_TITLE = "要確認（確信度が低い）";
+const RESTORED_LABEL = "戻し済み";
+const REVIEW_LABEL = "要確認";
+const MS_PER_SECOND = 1000;
+
+/** 判定の理由を出す対象（自動の削除候補）の id と、削除済みか戻し済みか。CutReason が読む。 */
+export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
+export const SUGGESTION_STATE_ATTRIBUTE = "data-suggestion-state";
+/** 段落のチャンクの id（言い直し先への移動に使う） */
+export const CHUNK_ID_ATTRIBUTE = "data-chunk-id";
+/** 未認識の発話の印の id（要確認の箇所への移動に使う） */
+export const REVIEW_MARKER_ATTRIBUTE = "data-review-marker";
+
+/** トークンの状態: 削除済み、戻し済み（自動の候補を戻した）、どちらでもない（null）。 */
+type RunMark =
+  | { state: "cut"; cut: TokenCut }
+  | { state: "restored"; suggestion: RestoredSuggestion }
+  | null;
+
+/** 同じ状態が続くトークンのまとまり。 */
 interface Run {
-  cut: TokenCut | null;
+  mark: RunMark;
   tokens: readonly TranscriptToken[];
 }
 
-/** 削除済みの部分の色と種類の対応。 */
+/** 段落（チャンク）か、未認識の発話の印。時刻の順に並べる。 */
+type Row =
+  | { startMs: number; chunk: TranscriptChunk }
+  | { startMs: number; unrecognized: UnrecognizedMark };
+
+/** 削除済みの部分の色と種類の対応、戻し済み・要確認の印の見本。 */
 export function CutLegend() {
   return (
     <ul className={styles.legend} aria-label="削除の種類">
@@ -44,27 +63,34 @@ export function CutLegend() {
           {KIND_LABELS[kind]}
         </li>
       ))}
+      <li className={styles.restored}>{RESTORED_LABEL}</li>
+      <li className={styles.lowConfidence}>{REVIEW_LABEL}</li>
     </ul>
   );
 }
 
 /**
  * 文字起こし（Design Doc 3-6）。1 チャンク = 1 段落、トークンは 1 つずつ span にした読み取り専用のテキスト。
- * 削除済みのトークンは、取り消し線と種類ごとの背景色で表す。
+ * 削除済みのトークンは取り消し線と種類ごとの背景色、戻した候補は破線の下線、確信度が低いトークンは波線で表す。
  *
- * onRestore を渡すと、削除済みの部分を押して戻せる（渡さなければ、表示だけ）。
- * 文字は React の通常の描画で出す（HTML として解釈しない）。
+ * onRestore・onReapply を渡すと、削除済みの部分と戻し済みの部分を押して、採否を切り替えられる
+ * （渡さなければ、表示だけ）。文字は React の通常の描画で出す（HTML として解釈しない）。
  */
 export const TranscriptView = memo(function TranscriptView({
   transcript,
   cuts,
+  restored,
   onRestore,
+  onReapply,
   rootRef,
 }: {
   transcript: Transcript;
   /** トークンごとの削除のまとまり（transcript.tokens と同じ並び） */
   cuts: readonly (TokenCut | null)[];
+  /** トークンごとの戻した候補（transcript.tokens と同じ並び） */
+  restored: readonly (RestoredSuggestion | null)[];
   onRestore?: (cut: TokenCut) => void;
+  onReapply?: (suggestionId: string) => void;
   rootRef?: Ref<HTMLDivElement>;
 }) {
   const showNames = transcript.recordings.length >= MIN_RECORDINGS_FOR_HEADINGS;
@@ -77,77 +103,211 @@ export const TranscriptView = memo(function TranscriptView({
               {position + 1}. {recording.name}
             </h3>
           )}
-          {recording.chunks.map((chunk) => (
-            <p key={chunk.id} className={styles.chunk}>
-              <span className={styles.time}>
-                {formatDuration(chunk.startMs)}
-              </span>
-              {runsOf(chunk.tokens, cuts).map((run) => (
-                <RunView
-                  key={run.tokens[0].index}
-                  run={run}
-                  onRestore={onRestore}
-                />
-              ))}
-            </p>
-          ))}
+          {rowsOf(recording).map((row) =>
+            "chunk" in row ? (
+              <p
+                key={row.chunk.id}
+                className={styles.chunk}
+                tabIndex={-1}
+                {...{ [CHUNK_ID_ATTRIBUTE]: row.chunk.id }}
+              >
+                <span className={styles.time}>
+                  {formatDuration(row.startMs)}
+                </span>
+                {runsOf(row.chunk.tokens, cuts, restored).map((run) => (
+                  <RunView
+                    key={run.tokens[0].index}
+                    run={run}
+                    onRestore={onRestore}
+                    onReapply={onReapply}
+                  />
+                ))}
+              </p>
+            ) : (
+              <UnrecognizedRow
+                key={row.unrecognized.id}
+                mark={row.unrecognized}
+              />
+            ),
+          )}
         </div>
       ))}
     </div>
   );
 });
 
+function rowsOf(recording: TranscriptRecording): Row[] {
+  return [
+    ...recording.chunks.map((chunk) => ({ startMs: chunk.startMs, chunk })),
+    ...recording.unrecognized.map((unrecognized) => ({
+      startMs: unrecognized.startMs,
+      unrecognized,
+    })),
+  ].toSorted((a, b) => a.startMs - b.startMs);
+}
+
+/** 未認識の発話: 声はあるが文字起こしがない。耳で確かめる箇所として、段落の間に出す。 */
+function UnrecognizedRow({ mark }: { mark: UnrecognizedMark }) {
+  const seconds = ((mark.endMs - mark.startMs) / MS_PER_SECOND).toFixed(1);
+  return (
+    <p
+      className={`${styles.chunk} ${styles.unrecognized}`}
+      tabIndex={-1}
+      {...{ [REVIEW_MARKER_ATTRIBUTE]: mark.id }}
+    >
+      <span className={styles.time}>{formatDuration(mark.startMs)}</span>
+      （未認識の発話 {seconds} 秒）
+    </p>
+  );
+}
+
 function runsOf(
   tokens: readonly TranscriptToken[],
   cuts: readonly (TokenCut | null)[],
+  restored: readonly (RestoredSuggestion | null)[],
 ): Run[] {
   const runs: Run[] = [];
   for (const token of tokens) {
-    const cut = cuts[token.index] ?? null;
+    const mark = markOf(token, cuts, restored);
     const last = runs.at(-1);
-    if (last !== undefined && sameCut(last.cut, cut)) {
-      runs[runs.length - 1] = { cut, tokens: [...last.tokens, token] };
+    if (last !== undefined && sameMark(last.mark, mark)) {
+      runs[runs.length - 1] = { mark, tokens: [...last.tokens, token] };
     } else {
-      runs.push({ cut, tokens: [token] });
+      runs.push({ mark, tokens: [token] });
     }
   }
   return runs;
 }
 
-function sameCut(a: TokenCut | null, b: TokenCut | null): boolean {
-  return a === b || (a?.source === b?.source && a?.id === b?.id);
+/** 削除済みが、戻し済みより優先（戻した候補と手動の区間が重なるところは、削除済み）。 */
+function markOf(
+  token: TranscriptToken,
+  cuts: readonly (TokenCut | null)[],
+  restored: readonly (RestoredSuggestion | null)[],
+): RunMark {
+  const cut = cuts[token.index] ?? null;
+  if (cut !== null) {
+    return { state: "cut", cut };
+  }
+  const suggestion = restored[token.index] ?? null;
+  return suggestion === null ? null : { state: "restored", suggestion };
+}
+
+function markKey(mark: RunMark): string {
+  if (mark === null) {
+    return "";
+  }
+  return mark.state === "cut"
+    ? `cut:${mark.cut.source}:${mark.cut.id}`
+    : `restored:${mark.suggestion.id}`;
+}
+
+function sameMark(a: RunMark, b: RunMark): boolean {
+  return markKey(a) === markKey(b);
 }
 
 function RunView({
   run,
   onRestore,
+  onReapply,
 }: {
   run: Run;
   onRestore?: (cut: TokenCut) => void;
+  onReapply?: (suggestionId: string) => void;
 }) {
-  const { cut } = run;
+  const { mark } = run;
+  // 削除済み・戻し済みの部分は、まとまりのほうに説明を付ける
   const tokens = run.tokens.map((token) => (
-    <span key={token.index} {...{ [TOKEN_INDEX_ATTRIBUTE]: token.index }}>
+    <span
+      key={token.index}
+      className={token.lowConfidence ? styles.lowConfidence : undefined}
+      title={
+        token.lowConfidence && mark === null ? LOW_CONFIDENCE_TITLE : undefined
+      }
+      {...{ [TOKEN_INDEX_ATTRIBUTE]: token.index }}
+    >
       {token.text}
     </span>
   ));
-  if (cut === null) {
+  if (mark === null) {
     return tokens;
   }
-  const label = KIND_LABELS[cut.kind];
-  const className = `${styles.cut} ${styles[cut.kind]}`;
-  if (onRestore === undefined) {
+  const text = run.tokens.map((token) => token.text).join("");
+  if (mark.state === "restored") {
+    const { suggestion } = mark;
+    const label = `${KIND_LABELS[suggestion.kind]}・${RESTORED_LABEL}`;
     return (
-      <del className={className} title={label}>
+      <Toggle
+        className={styles.restored}
+        label={label}
+        action={`「${text}」を削除に戻す（${label}）`}
+        suggestion={{ id: suggestion.id, state: "restored" }}
+        onActivate={onReapply && (() => onReapply(suggestion.id))}
+      >
         {tokens}
-      </del>
+      </Toggle>
     );
   }
-  const text = run.tokens.map((token) => token.text).join("");
+  const { cut } = mark;
+  const label = KIND_LABELS[cut.kind];
+  const isSuggestion = cut.source === "suggestion";
+  return (
+    <Toggle
+      className={`${styles.cut} ${styles[cut.kind]}`}
+      label={label}
+      // 自動の候補は、理由と一緒に操作の説明を出す（CutReason）。手動の削除は、ここで説明する
+      hint={isSuggestion ? undefined : `${label}（クリックで元に戻す）`}
+      action={`「${text}」を元に戻す（${label}）`}
+      suggestion={isSuggestion ? { id: cut.id, state: "cut" } : undefined}
+      onActivate={onRestore && (() => onRestore(cut))}
+      deleted
+    >
+      {tokens}
+    </Toggle>
+  );
+}
+
+/**
+ * 削除済み・戻し済みの部分。onActivate があれば、クリックか Enter / Space で採否を切り替えられる。
+ * なければ表示だけで、種類を title で説明する。
+ */
+function Toggle({
+  className,
+  label,
+  hint,
+  action,
+  suggestion,
+  onActivate,
+  deleted = false,
+  children,
+}: {
+  className: string;
+  /** 種類の名前（表示だけのときの説明） */
+  label: string;
+  /** 押せるときの説明（title）。理由の表示が説明を兼ねるときは、渡さない */
+  hint?: string;
+  /** 押したときに起きること（読み上げ用の名前） */
+  action: string;
+  suggestion?: { id: string; state: "cut" | "restored" };
+  onActivate?: () => void;
+  deleted?: boolean;
+  children: ReactNode;
+}) {
+  if (onActivate === undefined) {
+    return deleted ? (
+      <del className={className} title={label}>
+        {children}
+      </del>
+    ) : (
+      <span className={className} title={label}>
+        {children}
+      </span>
+    );
+  }
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      onRestore(cut);
+      onActivate();
     }
   };
   return (
@@ -155,18 +315,22 @@ function RunView({
     <span
       role="button"
       tabIndex={0}
-      className={`${className} ${styles.restorable}`}
-      title={`${label}（クリックで元に戻す）`}
-      aria-label={`「${text}」を元に戻す（${label}）`}
+      className={`${className} ${styles.toggle}`}
+      title={hint}
+      aria-label={action}
+      {...(suggestion && {
+        [SUGGESTION_ID_ATTRIBUTE]: suggestion.id,
+        [SUGGESTION_STATE_ATTRIBUTE]: suggestion.state,
+      })}
       onClick={() => {
-        // ドラッグで選んでいる途中のクリックでは戻さない
+        // ドラッグで選んでいる途中のクリックでは切り替えない
         if (window.getSelection()?.isCollapsed ?? true) {
-          onRestore(cut);
+          onActivate();
         }
       }}
       onKeyDown={onKeyDown}
     >
-      {tokens}
+      {children}
     </span>
   );
 }

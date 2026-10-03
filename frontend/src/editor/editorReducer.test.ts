@@ -72,4 +72,16 @@ describe("createEditorReducer", () => {
 
     expect(history).toBe(start);
   });
+
+  it("reapply は、戻した候補を削除に戻して、履歴に積む", () => {
+    const start = startHistory<EditDraft>({
+      restoredIds: ["j1"],
+      manualCuts: [],
+    });
+
+    const history = reducer(start, { type: "reapply", id: "j1" });
+
+    expect(history.present.restoredIds).toEqual([]);
+    expect(canUndo(history)).toBe(true);
+  });
 });

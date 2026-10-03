@@ -28,6 +28,7 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     retryJob: () => pending(),
     getLecture: () => pending(),
     saveEdits: () => pending(),
+    dismissDroppedRestorations: () => pending(),
     ...overrides,
   };
 }

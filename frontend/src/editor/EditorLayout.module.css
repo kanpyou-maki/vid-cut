@@ -57,6 +57,16 @@
   grid-area: waveform;
 }
 
+/* 凡例と、要確認の箇所への移動 */
+.transcriptHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
 .placeholder {
   margin: 0;
   color: color-mix(in srgb, currentColor 60%, transparent);

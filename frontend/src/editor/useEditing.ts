@@ -13,9 +13,12 @@ import { createEditorReducer, type EditorAction } from "./editorReducer";
 import {
   draftOf,
   type EditDraft,
+  pendingReviewTargets,
+  type RestoredSuggestion,
   type TokenCut,
   toEdits,
   tokenCuts,
+  tokenRestorations,
 } from "./edits";
 import { canRedo, canUndo, startHistory } from "./history";
 import { selectedTokenRange } from "./tokenSelection";
@@ -26,12 +29,18 @@ import {
   useHasTokenSelection,
   useUnloadWarning,
 } from "./useEditorKeys";
+import {
+  type ReviewNavigation,
+  useReviewNavigation,
+} from "./useReviewNavigation";
 
 export interface EditActions {
   /** 選んでいるトークンを削除して、選択を外す。トークンを選んでいたら true（すべて削除済みで、何も変わらなかったときも） */
   deleteSelection: () => boolean;
   /** 削除のまとまり（候補 1 件か、手動の区間 1 件）を戻す */
   restore: (cut: TokenCut) => void;
+  /** 戻した候補を、削除に戻す */
+  reapply: (suggestionId: string) => void;
   undo: () => void;
   redo: () => void;
 }
@@ -40,6 +49,10 @@ export interface Editing extends EditActions {
   transcript: Transcript;
   /** トークンごとの削除のまとまり（transcript.tokens と同じ並び） */
   cuts: readonly (TokenCut | null)[];
+  /** トークンごとの戻した候補（transcript.tokens と同じ並び） */
+  restored: readonly (RestoredSuggestion | null)[];
+  /** まだ確認が要る箇所の間の移動 */
+  review: ReviewNavigation;
   /** 文字起こしの要素に付ける（選択範囲をトークンの範囲に直すのに使う） */
   transcriptRoot: RefObject<HTMLDivElement | null>;
   hasSelection: boolean;
@@ -83,14 +96,25 @@ export function useEditing(detail: LectureDetail): Editing {
   const locked = status.name === "conflict" || status.name === "gone";
 
   const cuts = useMemo(() => tokenCuts(transcript, draft), [transcript, draft]);
+  const restored = useMemo(
+    () => tokenRestorations(transcript, draft),
+    [transcript, draft],
+  );
+  const reviewTargets = useMemo(
+    () => pendingReviewTargets(transcript, cuts),
+    [transcript, cuts],
+  );
   const transcriptRoot = useRef<HTMLDivElement>(null);
   const hasSelection = useHasTokenSelection(transcriptRoot);
   const actions = useEditActions(dispatch, transcriptRoot);
+  const review = useReviewNavigation(reviewTargets, transcriptRoot);
 
   useEditorKeys(!locked, {
     onDelete: actions.deleteSelection,
     onUndo: actions.undo,
     onRedo: actions.redo,
+    onNextReview: review.next,
+    onPreviousReview: review.previous,
   });
   useUnloadWarning(!locked && status.name !== "saved");
 
@@ -98,6 +122,8 @@ export function useEditing(detail: LectureDetail): Editing {
     ...actions,
     transcript,
     cuts,
+    restored,
+    review,
     transcriptRoot,
     hasSelection,
     canUndo: canUndo(history),
@@ -128,7 +154,11 @@ function useEditActions(
     (cut: TokenCut) => dispatch({ type: "restore", cut }),
     [dispatch],
   );
+  const reapply = useCallback(
+    (id: string) => dispatch({ type: "reapply", id }),
+    [dispatch],
+  );
   const undo = useCallback(() => dispatch({ type: "undo" }), [dispatch]);
   const redo = useCallback(() => dispatch({ type: "redo" }), [dispatch]);
-  return { deleteSelection, restore, undo, redo };
+  return { deleteSelection, restore, reapply, undo, redo };
 }

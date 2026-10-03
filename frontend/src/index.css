@@ -12,6 +12,9 @@
   --color-cut-filler: light-dark(#f9ec9f, #5a500f);
   --color-cut-silence: light-dark(#cde1f9, #24466d);
   --color-cut-manual: light-dark(#dadada, #4d4d4d);
+
+  /* 要確認の印と、移動先の目印の色 */
+  --color-review: light-dark(#8a5a00, #f0c060);
 }
 
 body {

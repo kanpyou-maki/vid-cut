@@ -29,7 +29,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 0 0 0.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
   font-size: 0.8125rem;
@@ -46,13 +46,45 @@
   border-radius: 0.125rem;
 }
 
-.restorable {
+/* 押して採否を切り替えられる部分（削除済み・戻し済み） */
+.toggle {
   cursor: pointer;
 }
 
-.restorable:hover,
-.restorable:focus-visible {
+.toggle:hover,
+.toggle:focus-visible {
   outline: 2px solid color-mix(in srgb, currentColor 50%, transparent);
+}
+
+/* 戻した候補（自動の削除候補を、削除しないと決めたもの） */
+.restored {
+  text-decoration: underline dashed
+    color-mix(in srgb, currentColor 60%, transparent);
+  text-underline-offset: 0.25em;
+}
+
+/* 要確認: 確信度が低い */
+.lowConfidence {
+  text-decoration: underline wavy var(--color-review);
+  text-underline-offset: 0.25em;
+}
+
+/* 削除済みの中の要確認は、取り消し線を残したまま波線を足す */
+.cut .lowConfidence {
+  text-decoration: line-through underline wavy var(--color-review);
+}
+
+/* 要確認: 未認識の発話（声はあるが、文字起こしがない） */
+.unrecognized {
+  font-size: 0.875rem;
+  color: var(--color-review);
+  user-select: none;
+}
+
+/* 言い直し先・要確認の箇所へ移動したときの目印 */
+.chunk:focus {
+  outline: 2px solid var(--color-review);
+  outline-offset: 2px;
 }
 
 .retake {

@@ -35,14 +35,24 @@ export function EditorLayout({
  * 3 つのペイン: 左がプレビュー、右が文字起こし、下が波形。
  * プレビューと波形は場所だけ（feat/m7-preview・feat/m7-waveform で作る）。
  */
-export function EditorPanes({ transcript }: { transcript: ReactNode }) {
+export function EditorPanes({
+  transcript,
+  transcriptTools,
+}: {
+  transcript: ReactNode;
+  /** 文字起こしの上（凡例の隣）に出す操作 */
+  transcriptTools?: ReactNode;
+}) {
   return (
     <div className={styles.panes}>
       <section className={styles.preview} aria-label="プレビュー">
         <p className={styles.placeholder}>プレビューは準備中です</p>
       </section>
       <section className={styles.transcript} aria-label="文字起こし">
-        <CutLegend />
+        <div className={styles.transcriptHeader}>
+          <CutLegend />
+          {transcriptTools}
+        </div>
         {transcript}
       </section>
       <section className={styles.waveform} aria-label="波形">
