@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装・review-loop・Premiere での音ズレ確認まで済み、PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ待ち。次は M6（API）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 と FRIC-004 の解消は main にマージ済み（PR #1〜#8）。次は M6（API）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -36,12 +36,11 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了（M5 は PR #8 のマージ待ち）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了
 
 ## 次にやること
 
-- [ ] M5 の PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ（ユーザー）
-- [ ] M6: API
+- [ ] M6: API（FastAPI・ローカル API の防御・入力の上限・各エンドポイント・`vidcut serve`・OpenAPI からの型生成）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
