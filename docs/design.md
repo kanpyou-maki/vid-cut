@@ -5,7 +5,8 @@
 **シーケンス設定:** 元素材の解像度・60fps（2026-10-03 決定）
 **関連 PRD:** [docs/prd.md](./prd.md)
 **関連 ADR:** [ADR-001](./adr/ADR-001-language-and-stack.md)（言語）、[ADR-002](./adr/ADR-002-vfr-mezzanine.md)（可変フレームレート）、
-[ADR-003](./adr/ADR-003-transcription-engine.md)（文字起こし）、[ADR-004](./adr/ADR-004-local-app-runtime.md)（実行形態と永続化）
+[ADR-003](./adr/ADR-003-transcription-engine.md)（文字起こし）、[ADR-004](./adr/ADR-004-local-app-runtime.md)（実行形態と永続化）、
+[ADR-005](./adr/ADR-005-local-api-runtime.md)（API の接続・まとめて確定する保存・トークン）
 
 ## 1. 概要
 
@@ -58,8 +59,10 @@ backend/src/vidcut/
   adapters/    ports の実装（media/: ffmpeg、sqlite/: リポジトリとジョブ表、ML、claude CLI）
   services/    ユースケース（取り込み、まとめる、編集の保存、書き出しの依頼）
   jobs/        worker のループ（ジョブ表には JobQueue の port を通して触れる）
-  api/         FastAPI のルーティング、入出力スキーマ（inputs / outputs / presenters）、ローカル API の防御、例外を定型文の応答に直す処理
-  cli.py       コマンドライン（serve / analyze / worker / eval）
+  api/         FastAPI のルーティング、入出力スキーマ（inputs / outputs / presenters）、ローカル API の防御、例外を定型文の応答に直す処理、ビルド済み frontend の配信
+  serve.py     `vidcut serve`（API サーバーと worker の子プロセスの起動と停止）
+  process.py   プロセスの止め方（SIGTERM の扱い、親プロセスの見張り）
+  cli.py       コマンドライン（serve / analyze / worker / openapi / eval）
   bootstrap.py 依存の組み立て（ports に具象 adapters を注入する唯一の場所）
 ```
 
@@ -174,7 +177,8 @@ pipeline と services は adapters を import しない（テストでは偽の�
 ### 3-5. API（FastAPI）
 
 待ち受けは `127.0.0.1:8765`（開発中は Vite の開発サーバーが `/api` をここへ転送する）。レスポンスはすべて `{success, data, error}` の形にそろえる（`.claude/rules/common/patterns.md`）。
-frontend の型は OpenAPI スキーマから `openapi-typescript` で生成する。
+frontend の型は OpenAPI スキーマから `openapi-typescript` で生成する（`npm --prefix frontend run gen:api`。
+`vidcut openapi` が `frontend/src/api/generated/openapi.json` を書き、そこから `schema.d.ts` を作る。どちらもコミットし、API とずれていればテストと lint が失敗する）。
 
 | メソッド | パス                                      | 用途                                                                                                                               |
 | -------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -215,20 +219,19 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
 127.0.0.1 で待ち受けるだけでは、ブラウザで開いた悪意あるページからの CSRF や DNS rebinding を防げない（2026-10-03 のセキュリティレビューの指摘）。
 特に `/api/fs` はホーム配下を列挙できるため、次をすべて満たす。
 
-- **Host の検証**: `Host` ヘッダーが `127.0.0.1:8765` / `localhost:8765` 以外なら拒否する（DNS rebinding 対策）
+- **Host の検証**: `Host` ヘッダーが `127.0.0.1:<ポート>` / `localhost:<ポート>`（待ち受けるポート。既定は 8765）以外なら拒否する（DNS rebinding 対策）
 - **Origin の検証**: `Origin` があり、自分自身（と開発中の Vite のオリジン）以外なら拒否する。CORS は許可しない
 - **起動ごとのトークン**: `vidcut serve` が起動のたびにランダムなトークンを作り、配信する HTML に埋め込む。すべての `/api` で `X-VidCut-Token` ヘッダーを必須にする。
   例外は `/api/recordings/{id}/proxy` だけで、`<video>` はヘッダーを付けられないため、同じトークンを `?token=` のクエリで受け取る（ユーザー決定、2026-10-03）。
-  トークンが端末のログに残らないよう、アクセスログにはクエリを出さない
+  トークンが端末のログに残らないよう、アクセスログは出さない
 - **Content-Type**: 状態を変える要求は `application/json` だけを受け付ける
 - **パスの正規化**: `/api/fs` と `/api/imports` のパスは `Path.resolve(strict=True)` で実体を解決してから `is_relative_to(Path.home())` で判定する（`..` とシンボリックリンク対策）。
   隠しファイル・隠しフォルダ（`~/.ssh` など）は返さず、受け付けない
 - **外部コマンドへの入力**: ffmpeg には解決済みの絶対パスだけを渡す（`-` で始まる値をオプションと誤解させない）。
   `claude -p` の出力に含まれる `id` は、渡したチャンクの範囲内のものだけを受け付ける（文字起こしの内容によるプロンプトインジェクション対策）
 
-実装済み（M6 の PR 2。`api/security.py` の ASGI ミドルウェアが、アプリに渡す前にすべての要求を確かめる）。
-ミドルウェアが担うのは Host・Origin・トークンの検証と本文の検査まで。トークンを起動ごとに作って HTML に埋め込むこと、
-127.0.0.1 だけで待ち受けること、アクセスログにクエリを出さないことは、`vidcut serve`（M6 の PR 3）で実装する:
+実装（M6）。`api/security.py` の ASGI ミドルウェアが、アプリに渡す前にすべての要求を確かめる。
+`vidcut serve`（`serve.py`）が、127.0.0.1 だけで待ち受け、トークンを起動ごとに作り、アクセスログを出さずに起動する:
 
 - Host と Origin は `/api` 以外（配信する HTML）にも適用する。HTML にはトークンを埋め込むため
 - 断るときの応答: Host・Origin は 403、トークンは 401、本文が JSON 以外は 415、本文が上限（1MB）を超えると 413、
@@ -236,9 +239,29 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
   確認に使うヘッダー（Host・Origin・トークン・Content-Length・Content-Type・Transfer-Encoding）が重複していれば 400（どちらを見るかの食い違いを作らない）。
   `/api/` かどうかは、ルーターが照合するのと同じパス（root_path を除いたもの）で判定する。トークンの比較は一定時間で行う
 - 本文のない POST（解除・再解析・再実行）は Content-Type を問わない。トークンのヘッダーは別のページからは付けられない（CORS を許可していない）
-- 対話式のドキュメント（`/docs`・`/redoc`・`/openapi.json`）は配信しない（画面の JS を外部の CDN から読むため）。スキーマは `app.openapi()` で取り出す
+- 対話式のドキュメント（`/docs`・`/redoc`・`/openapi.json`）は配信しない（画面の JS を外部の CDN から読むため）。スキーマは `vidcut openapi` で取り出す
+- **トークン**: `vidcut serve` が起動のたびに 256 ビットの乱数から作り、画面の HTML の `<meta name="vidcut-token">` に埋め込む。環境変数・引数・ログには出さず、worker にも渡さない。
+  画面はこの値を読んで `X-VidCut-Token` に付ける。トークン入りの HTML は `Cache-Control: no-store` で返す
+- **画面の配信**（`api/frontend.py`）: どのルートにも当たらなかった GET（404 になる要求）に、ビルドの出力（`frontend/dist`。環境変数 `VIDCUT_FRONTEND_DIST` で変更可）の中のファイルか、画面の HTML を返す。
+  API のルートの判定は変えない（`/api` の知らないパスは 404、メソッドの違いは 405 のまま）。
+  ビルドの出力の外・隠しファイル・外を指すリンクは返さない。ファイルを求めるパス（`.js`・`.css` など）で見つからないものは 404（HTML を返すと、画面が壊れた理由が分かりにくい）。
+  ビルドがなければ、ビルドの手順を書いたページ（503）を返す（API は使える）。
+  CSP は M7 で画面を作るときに見直す（波形の部品が `blob:` を `fetch` するなら `connect-src`、フォントを埋め込むなら `font-src` を足す）
+- **応答のヘッダー**（`api/headers.py`。すべての応答に付ける。想定していない失敗の 500 にも付ける）: `Content-Security-Policy`（読み込めるのは自分自身のものだけ。スクリプトのインライン実行は不可。`<object>` は不可。ほかのページの枠には入れない）、
+  `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`（proxy 動画の `?token=` を外へ送らない）、`X-Frame-Options: DENY`
+- **止め方**: Ctrl+C と SIGTERM のどちらでも、サーバーを止めてから worker の子プロセスを止める。
+  uvicorn は止まったあとに SIGTERM を送り直すので、worker を起動する前に SIGTERM を KeyboardInterrupt に変えておく（そうしないと worker が残る）。
+  強制終了（SIGKILL）では後始末が走らないので、worker が自分で止まる: `vidcut serve` は worker に自分のプロセス番号を渡し（`--parent-pid`）、
+  worker は 1 秒ごとに親がそのプロセスのままかを確かめ、変わっていたら、処理中のジョブを終えてから止まる
+- **開発中**（`vidcut serve --dev`）: Vite の開発サーバー（`http://localhost:5173`）からの要求を受け付ける。Vite は `/api` を転送するとき、Host を転送先に合わせる（`changeOrigin`）。
+  開発中は HTML を Vite が配信するので、トークンを埋め込めない。渡し方は M7 で決める（7 章の D-6）。
+  5173 番を別のプログラムが使っていると、そのオリジンからの要求も受け付けてしまうので、Vite は 5173 番が使えなければ失敗させる（`strictPort`）。`--dev` は既定では無効
+- **前提**: 画面の HTML を読めればトークンが分かる。ブラウザで開いたほかのサイトからは読めない（Host・Origin の検査、CORS なし）が、同じ Mac で動くほかのプログラムは 127.0.0.1 に接続して読める。
+  利用者 1 名の Mac 1 台で使う前提なので受け入れる
 
 ### 3-5-2. API を支える決定（M6）
+
+接続の持ち方・まとめて確定する保存・proxy のトークンの例外は、[ADR-005](./adr/ADR-005-local-api-runtime.md) に経緯と代替案を記録した。
 
 - **SQLite の接続**: API サーバーはリクエストごとに接続を開いて閉じる（`bootstrap.build_api` の `Api.services()`。worker と CLI は `build_app` が接続を 1 本持つ）。FastAPI は同期の処理をスレッドプールで動かし、
   依存の準備と本体が別のスレッドになることがあるので、接続は `check_same_thread=False` で開き、1 つのリクエストの中で直列に使う
@@ -362,9 +385,10 @@ Job:            id, kind, target_id, status: queued | running | succeeded | fail
 
 ## 7. 未解決の問い
 
-| #   | 問い                                                                                                                                     | 影響範囲 | 優先度 |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ |
-| D-5 | フィラー検出の精度。検証素材にフィラーがなく未検証。フィラーを含む素材が手に入ったら、ヒント文の効果と「未認識の発話」の拾い方を確かめる | 3-2      | 低     |
+| #   | 問い                                                                                                                                                                                                                                                                                                                                    | 影響範囲  | 優先度                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ----------------------- |
+| D-6 | 開発中（Vite の開発サーバー）のトークンの渡し方。候補: (a) Vite のプラグインが Node 側で backend の画面の HTML を読み、トークンを開発用の HTML に埋め込む（backend に新しい経路が増えない。M6 PR 3 のセキュリティレビューの推奨）、(b) `--dev` のときだけトークンを返すエンドポイントを足す（本番のコードにトークンを返す経路ができる） | 3-5-1・M7 | 中（M7 の最初に決める） |
+| D-5 | フィラー検出の精度。検証素材にフィラーがなく未検証。フィラーを含む素材が手に入ったら、ヒント文の効果と「未認識の発話」の拾い方を確かめる                                                                                                                                                                                                | 3-2       | 低                      |
 
 ### 実装前のスパイク（検証）
 

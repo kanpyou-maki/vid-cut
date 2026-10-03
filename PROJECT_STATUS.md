@@ -36,37 +36,44 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち。PR 3（`vidcut serve`・frontend の配信・型生成。`feat/m6-serve`）も review-loop を通過し、PR [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（base は `feat/m6-api-http`）のマージ待ち
 
 ## 次にやること
 
-- [ ] M6 PR 1 の PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ（ユーザー）
-- [ ] M6 PR 2 の PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10) のマージ（ユーザー。#9 のあと）
-- [ ] M6 PR 3（`feat/m6-serve`）: `vidcut serve`・ビルド済み frontend の配信・OpenAPI からの型生成（openapi-typescript）・手動確認（`~/VidCut/` の写しで行う）
+M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確認とマージ。
+
+- [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（PR 3）
+- [ ] M6 の手動確認（ユーザー）: `backend/README.md` の「手で確かめる（M6）」。ワークスペースの写しで行う
+- [ ] M7（frontend）に入るときに最初に決めること: 開発中（Vite）のトークンの渡し方（Design Doc 7 章の D-6。Vite のプラグインで埋め込む案が推奨）、CSP の見直し（3-5-1。波形の部品を入れたあと、`style-src 'unsafe-inline'` を外せるか試す）、
+      書き出し先のパスを API で返す項目（3-4・3-5）、`dropped_restored_ids` の通知を閉じる仕組み。
+      画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
 
-| #   | 決定内容                                                                                                                                                                                                                | 理由                                                           | ADR              |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------- |
-| 1   | 仕上げは Premiere Pro。Premiere XML（xmeml）の書き出しを優先し、MP4 は補助                                                                                                                                              | ユーザー決定（kickoff）                                        | —                |
-| 2   | テロップは MVP から外すが、データモデルは文字単位のタイミングを前提に設計する                                                                                                                                           | ユーザー決定（kickoff）                                        | —                |
-| 3   | 「カット」の合図は使わない                                                                                                                                                                                              | 撮影済み素材が多く、合図があってもカット開始点が明確にならない | —                |
-| 4   | 言い直しの判定は `claude -p`（サブスクの範囲内）                                                                                                                                                                        | 費用を避ける                                                   | —                |
-| 5   | Python（パイプライン + API）+ TypeScript（UI）。Tauri 化は保留                                                                                                                                                          | 音声 ML は Python、編集 UI は Web が最適                       | ADR-001          |
-| 6   | MVP は編集画面（3 ペイン・テキスト編集）まで含める                                                                                                                                                                      | ユーザー決定（2026-10-03）                                     | —                |
-| 7   | 正解データとの一致率は開発上の暫定指標。合格判定は実際の撮影素材を使い人が行う                                                                                                                                          | ユーザー決定（2026-10-03）                                     | —                |
-| 8   | MP4 の直接書き出し（US-09）を MVP に含める                                                                                                                                                                              | ユーザー決定（2026-10-03）                                     | —                |
-| 10  | まとめて解析（US-10）を MVP に含める                                                                                                                                                                                    | ユーザー決定（2026-10-03）                                     | —                |
-| 11  | 一括解析は画面から投入・進捗確認できる形にする（コマンドラインからも可）                                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                |
-| 12  | 別ファイルへの撮り直しがあるため、編集単位を「レクチャー（順序付きの複数録画ファイル）」とし、言い直し判定はレクチャー全体で行う                                                                                        | ユーザー回答（2026-10-03）                                     | —                |
-| 13  | ワークスペースは `~/VidCut/`。Premiere のシーケンス設定は暫定で元素材の解像度・60fps                                                                                                                                    | ユーザー合意（2026-10-03）                                     | ADR-004          |
-| 14  | 中間素材とシーケンスは 60fps。Premiere XML は中間素材を参照する（元素材の直接参照は大きくずれる）                                                                                                                       | ユーザー決定・S-1 の結果（2026-10-03）                         | ADR-002          |
-| 15  | 文字起こしは mlx-whisper large-v3-turbo + WhisperX の位置合わせ                                                                                                                                                         | S-2・S-3 の結果                                                | ADR-003          |
-| 16  | M6 は 3 本の PR に分け、ブランチを積み上げる（下ごしらえ → FastAPI → serve と型生成）                                                                                                                                   | ユーザー承認（2026-10-03）                                     | —                |
-| 17  | proxy 動画だけ、トークンを `?token=` のクエリで受ける（`<video>` はヘッダーを付けられない）。アクセスログにクエリを出さない                                                                                             | ユーザー決定（2026-10-03）                                     | Design Doc 3-5-1 |
-| 18  | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ | ユーザー承認（2026-10-03）                                     | Design Doc 3-5-2 |
-| 9   | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分                                                                            | ユーザー合意（2026-10-03）                                     | —                |
+| #   | 決定内容                                                                                                                                                                                                                | 理由                                                           | ADR                       |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------- |
+| 1   | 仕上げは Premiere Pro。Premiere XML（xmeml）の書き出しを優先し、MP4 は補助                                                                                                                                              | ユーザー決定（kickoff）                                        | —                         |
+| 2   | テロップは MVP から外すが、データモデルは文字単位のタイミングを前提に設計する                                                                                                                                           | ユーザー決定（kickoff）                                        | —                         |
+| 3   | 「カット」の合図は使わない                                                                                                                                                                                              | 撮影済み素材が多く、合図があってもカット開始点が明確にならない | —                         |
+| 4   | 言い直しの判定は `claude -p`（サブスクの範囲内）                                                                                                                                                                        | 費用を避ける                                                   | —                         |
+| 5   | Python（パイプライン + API）+ TypeScript（UI）。Tauri 化は保留                                                                                                                                                          | 音声 ML は Python、編集 UI は Web が最適                       | ADR-001                   |
+| 6   | MVP は編集画面（3 ペイン・テキスト編集）まで含める                                                                                                                                                                      | ユーザー決定（2026-10-03）                                     | —                         |
+| 7   | 正解データとの一致率は開発上の暫定指標。合格判定は実際の撮影素材を使い人が行う                                                                                                                                          | ユーザー決定（2026-10-03）                                     | —                         |
+| 8   | MP4 の直接書き出し（US-09）を MVP に含める                                                                                                                                                                              | ユーザー決定（2026-10-03）                                     | —                         |
+| 10  | まとめて解析（US-10）を MVP に含める                                                                                                                                                                                    | ユーザー決定（2026-10-03）                                     | —                         |
+| 11  | 一括解析は画面から投入・進捗確認できる形にする（コマンドラインからも可）                                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                         |
+| 12  | 別ファイルへの撮り直しがあるため、編集単位を「レクチャー（順序付きの複数録画ファイル）」とし、言い直し判定はレクチャー全体で行う                                                                                        | ユーザー回答（2026-10-03）                                     | —                         |
+| 13  | ワークスペースは `~/VidCut/`。Premiere のシーケンス設定は暫定で元素材の解像度・60fps                                                                                                                                    | ユーザー合意（2026-10-03）                                     | ADR-004                   |
+| 14  | 中間素材とシーケンスは 60fps。Premiere XML は中間素材を参照する（元素材の直接参照は大きくずれる）                                                                                                                       | ユーザー決定・S-1 の結果（2026-10-03）                         | ADR-002                   |
+| 15  | 文字起こしは mlx-whisper large-v3-turbo + WhisperX の位置合わせ                                                                                                                                                         | S-2・S-3 の結果                                                | ADR-003                   |
+| 16  | M6 は 3 本の PR に分け、ブランチを積み上げる（下ごしらえ → FastAPI → serve と型生成）                                                                                                                                   | ユーザー承認（2026-10-03）                                     | —                         |
+| 17  | proxy 動画だけ、トークンを `?token=` のクエリで受ける（`<video>` はヘッダーを付けられない）。アクセスログは出さない                                                                                                     | ユーザー決定（2026-10-03）                                     | ADR-005・Design Doc 3-5-1 |
+| 18  | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ | ユーザー承認（2026-10-03）                                     | ADR-005・Design Doc 3-5-2 |
+| 19  | テスト用の依存は `httpx2` を使う（当初は `httpx`。Starlette が `httpx2` を推奨するため）                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                         |
+| 20  | `openapi-typescript` 7 には、`overrides` でプロジェクトの TypeScript 6 を使わせる                                                                                                                                       | ユーザー承認（2026-10-03）                                     | —                         |
+| 21  | ADR-005（API の接続・まとめて確定する保存・トークン）を承認                                                                                                                                                             | ユーザー承認（2026-10-03）                                     | ADR-005                   |
+| 9   | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分                                                                            | ユーザー合意（2026-10-03）                                     | —                         |
 
 ## ブロッカー
 
@@ -86,19 +93,22 @@ _なし_
 
 ### M6（API）の現状
 
-- PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。設計と決まりは Design Doc 3-5・3-5-1・3-5-2
+- PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`、PR #10）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。PR 3（`feat/m6-serve`、PR #11）: `vidcut serve`・frontend の配信・型生成。設計と決まりは Design Doc 3-5・3-5-1・3-5-2 と ADR-005
 - 構成: `api/app.py` の `create_app(api, settings)`、`api/security.py`（Host・Origin・トークン・本文）、`api/inputs.py`（入力の上限）・`api/outputs.py`（出力の許可リスト）・`api/presenters.py`（出力への変換）、`api/errors.py`・`api/messages.py`（定型文）、`api/routes/`。
   `bootstrap.build_api(workspace)` が起動時に 1 回スキーマを移行し、`Api.services()` がリクエストごとに接続を開く。`ApiServices` は `imports`・`lecture_service`・`lecture_views`・`edits`・`exports`・`jobs`（`JobControl`）・`artifacts`（`RecordingArtifacts`）を持つ。API は ML も `claude` も組み立てない（判定の登録は `JudgeRequests`）
 - 守ること: 応答には種別（`error_code`）と定型文だけを入れる（生の `Job.error`・`ImportFailure.message`・例外の文は入れない）。`InvalidInputError` の文だけはそのまま画面に出るので、絶対パスやほかの例外の文を入れない。
   複数のリポジトリにまたがる保存は `Atomic`（ports）で囲む
 - 実物の uvicorn を一時ワークスペースで確認済み（PR 2）: 並行の読み取り 200 件が成功、同じ版での同時保存は 1 件だけ成功して残りは 409、トークンなしは 401、別の Host は 403
-- dev の依存は承認どおり `httpx` を入れた。Starlette 1.7 は `httpx2`（pydantic/httpx2）を推奨しており、テストの実行時に非推奨の警告が 1 件出る（動作には影響なし）。`httpx2` に替えるかはユーザーの判断待ち
-- PR 3 でやること（PR 2 のセキュリティレビューの指摘を含む）: 待ち受けは `host="127.0.0.1"` に固定し、ポートを `local_guard` の `port` と一致させる。uvicorn に `root_path` を渡さない。
-  トークンは `new_token()` で起動ごとに作り、配信する HTML に埋め込む（環境変数・コマンドライン引数・ログに出さない。worker の子プロセスにも渡さない）。
-  アクセスログにクエリを出さない（proxy の `?token=`）。静的配信にはビルドの出力だけを載せ、応答に `Content-Security-Policy`（`default-src 'self'; frame-ancestors 'none'`）・`X-Content-Type-Options: nosniff`・
-  `Referrer-Policy: no-referrer`・`X-Frame-Options: DENY`・`Cache-Control: no-store`（トークン入りの HTML）を付ける。
-  開発中の Vite からの利用（`dev_origins` と、トークンの渡し方）。Content-Length と実際の本文の食い違いなど HTTP のパーサが関わる点を実物のサーバーで確かめる。
-  OpenAPI からの型生成（プロジェクト外で試し、`openapi-typescript` 7 で素直に生成できることを確認済み）。ADR-005（接続はリクエストごと・`Atomic`・proxy のトークンの例外）を書く。依存の既知の問題を `pip-audit` で確かめる
+- テスト用の依存は `httpx2`（pydantic/httpx2。Starlette 1.7 のテストクライアントが推奨。決定事項 19）。当初の `httpx` から PR 3 で替え、非推奨の警告はなくなった
+- `uv add` / `uv remove` は、ML の追加依存（`--extra ml`）を外して環境を同期し直す。numpy も外れて backend の読み込みが失敗するので、依存を変えたあとは `uv sync --extra ml` を実行する（M6 で発生）
+- PR 3（`feat/m6-serve`）: `serve.py`（127.0.0.1 に固定、トークンは起動ごとに作って HTML の `<meta name="vidcut-token">` に埋め込む、アクセスログなし、worker の子プロセスの起動と停止）、
+  `api/frontend.py`（ビルドの出力の配信）、`api/headers.py`（CSP などのヘッダー）、`vidcut openapi` と `npm --prefix frontend run gen:api`（型は `frontend/src/api/generated/`）、
+  実物のサーバーでの結合テスト（`tests/test_serve_integration.py`）、ADR-005（承認済み）。`pip-audit` と `npm audit` は既知の脆弱性なし（2026-10-03）
+- 結合テストで見つけた不具合（修正済み）: SIGTERM で止めると、uvicorn がシグナルを送り直してプロセスがその場で終わり、worker が残った → SIGTERM を KeyboardInterrupt に変えてから起動する
+- `openapi-typescript` 7.13 は peer 依存が TypeScript 5 で、このプロジェクトの TypeScript 6 と衝突する → `frontend/package.json` の `overrides` でプロジェクトの TypeScript を使わせている（決定事項 20。生成と型チェックは通る）
+- 未決（M7 の最初に決める）: 開発中（Vite の開発サーバー）のトークンの渡し方（Design Doc D-6）。`vidcut serve --dev` は Vite のオリジンを受け付けるところまで
+- `vidcut serve` を SIGKILL で止めても worker は残らない: serve が worker に自分のプロセス番号を渡し（`--parent-pid`）、worker は親が変わったら自分で止まる（処理中のジョブがあれば、それが終わってから）。
+  実物のサーバーを起動するテスト（`tests/test_serve_integration.py`）は、後始末でプロセスグループごと止める。開発中に worker が残っていないかは `pgrep -fl "vidcut.cli"` で確かめられる
 - PR 2 のセキュリティレビューで受け入れたもの: ワークスペース `~/VidCut/` がホーム配下にあり、生成物（`proxy.mp4` など）を録画として取り込める（事故の二重解析はありうる）。フォルダの取り込みは件数を打ち切らない（巨大なフォルダでは時間がかかる）
 - 制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
 - M7 で API に足すもの: 書き出し先のパスの表示（Design Doc 3-4。いまは返す項目がない）、`dropped_restored_ids` の通知を閉じる仕組み

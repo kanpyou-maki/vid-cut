@@ -8,7 +8,7 @@ Content-Length と実際の本文の食い違いなど、パーサが関わる�
 import asyncio
 from collections.abc import Iterator
 
-import httpx
+import httpx2
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -57,7 +57,7 @@ def client() -> TestClient:
     return TestClient(make_app(), base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN})
 
 
-def assert_refused(response: httpx.Response, status: int) -> None:
+def assert_refused(response: httpx2.Response, status: int) -> None:
     assert response.status_code == status
     body = response.json()
     assert (body["success"], body["data"]) == (False, None)

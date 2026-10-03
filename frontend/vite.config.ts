@@ -5,8 +5,12 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   server: {
-    // 開発中は backend（vidcut serve）の API へ転送する
-    proxy: { "/api": "http://127.0.0.1:8765" },
+    // backend（vidcut serve --dev）は 5173 番のオリジンだけを受け付ける。
+    // 5173 番が使われていたら、別のポートに移らずに失敗させる
+    strictPort: true,
+    // 開発中は backend（vidcut serve --dev）の API へ転送する。
+    // backend は Host が 127.0.0.1:8765 の要求だけを受け付けるので、Host を転送先に合わせる
+    proxy: { "/api": { target: "http://127.0.0.1:8765", changeOrigin: true } },
   },
   test: {
     environment: "jsdom",

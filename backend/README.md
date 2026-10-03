@@ -15,7 +15,7 @@ uv run ruff check . && uv run ruff format --check .   # lint と整形の確認�
 ```bash
 uv run vidcut analyze ~/Movies/S05-12.mov --wait   # 取り込んで、この場で解析まで実行
 uv run vidcut analyze ~/Movies/course/              # フォルダ直下の動画を取り込み、ジョブだけ積む
-uv run vidcut worker                                # 積まれたジョブを順に処理し続ける
+uv run vidcut worker                                # 積まれたジョブを順に処理し続ける（serve は自分で worker を起動する）
 ```
 
 解析が終わると、言い直しの判定（`claude -p`）が続けて実行される。`claude` にログインしていないと判定だけが失敗する
@@ -38,13 +38,93 @@ uv run vidcut eval judge --lecture s05-12sample \
 
 ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。
 
-## API（M6）
+## 画面と API のサーバー
 
-FastAPI のアプリは `vidcut.api.app.create_app`（エンドポイントの一覧と入力の上限は [Design Doc](../docs/design.md) の 3-5、防御は 3-5-1）。
-起動するコマンド `vidcut serve` は M6 の PR 3 で追加する。テストは `uv run pytest tests/api`。
+```bash
+npm --prefix ../frontend run build   # 画面をビルドする（初回と、画面を変えたとき）
+uv run vidcut serve                  # http://127.0.0.1:8765/ を開く。worker も一緒に起動する
+uv run vidcut serve --port 9000      # ポートを変える
+uv run vidcut serve --no-worker      # worker を起動しない（別に `vidcut worker` を動かすとき）
+uv run vidcut serve --dev            # 開発中: Vite の開発サーバー（npm run dev）からの要求も受け付ける
+```
+
+- 待ち受けは 127.0.0.1 だけ。起動のたびにトークンを作り、画面の HTML に埋め込む（[Design Doc](../docs/design.md) 3-5-1）。
+  API を直接呼ぶときは、`X-VidCut-Token` ヘッダーにそのトークンを付ける
+- Ctrl+C（または SIGTERM）で、サーバーと worker の両方が止まる
+- エンドポイントの一覧と入力の上限は Design Doc の 3-5。API を変えたら、frontend の型を作り直す: `npm --prefix ../frontend run gen:api`
+
+### 手で確かめる（M6）
+
+実データを書き換えないよう、ワークスペースの写しで行う（まとめる・解除・再解析は DB を書き換え、再解析は `claude -p` の判定も走らせる）。
+
+**1. 写しを作って起動する**（このターミナルは起動したままにする）
+
+```bash
+cp -R ~/VidCut ~/VidCut-check                          # 中間素材を含むので数百 MB
+VIDCUT_WORKSPACE=~/VidCut-check uv run vidcut serve
+```
+
+ブラウザで http://127.0.0.1:8765/ を開くと、画面（いまは土台だけ）が出る。
+
+**2. 別のターミナルで、トークンを読んで API を呼ぶ準備をする**
+
+```bash
+BASE=http://127.0.0.1:8765
+TOKEN=$(curl -s $BASE/ | sed -n 's/.*name="vidcut-token" content="\([^"]*\)".*/\1/p')
+api() { curl -s -H "X-VidCut-Token: $TOKEN" "$@"; }
+show() { python3 -m json.tool | head -${1:-40}; }
+field() { python3 -c "import json,sys; d=json.load(sys.stdin)['data']; print($1)"; }
+```
+
+**3. 一覧・詳細・ジョブ・フォルダ**
+
+```bash
+api $BASE/api/lectures | show                 # s05-12sample が status: ready
+LECTURE=$(api $BASE/api/lectures | field "d[0]['id']")
+RECORDING=$(api $BASE/api/lectures | field "d[0]['recordings'][0]['id']")
+api $BASE/api/lectures/$LECTURE | field "d['status'], len(d['recordings'][0]['tokens']), len(d['judged_suggestions'])"
+                                              # 状態、文字数、言い直しの削除候補の件数
+api $BASE/api/jobs | show 30                  # ジョブの一覧（error_code はあっても、生のエラー文は出ない）
+api $BASE/api/fs | show 20                    # ホームの一覧（隠しフォルダは出ない）
+```
+
+**4. 動画（Range）と波形**
+
+```bash
+curl -s -o /dev/null -w "%{http_code} %{size_download} バイト\n" -H "Range: bytes=0-999" \
+  "$BASE/api/recordings/$RECORDING/proxy?token=$TOKEN"          # 206 1000 バイト
+api $BASE/api/recordings/$RECORDING/peaks | field "d['per_second'], len(d['values'])"
+```
+
+**5. 編集の保存と書き出し**
+
+```bash
+VERSION=$(api $BASE/api/lectures/$LECTURE | field "d['edit_state']['version']")
+api -X PUT -H "Content-Type: application/json" \
+  -d "{\"version\": $VERSION, \"restored_suggestion_ids\": [], \"manual_cuts\": []}" \
+  $BASE/api/lectures/$LECTURE/edits | show     # version が 1 つ進む。同じ内容をもう一度送ると 409
+api -X POST -H "Content-Type: application/json" -d '{"format": "premiere_xml"}' \
+  $BASE/api/lectures/$LECTURE/exports | show   # worker が処理し、~/VidCut-check/exports/s05-12sample/ にできる
+```
+
+**6. 断られることの確認**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" $BASE/api/lectures                     # 401（トークンなし）
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: evil.example" $BASE/          # 403（別の Host）
+api -o /dev/null -w "%{http_code}\n" "$BASE/api/fs?path=/etc"                    # 422（ホームの外）
+```
+
+**7. 止めて、片付ける**
+
+起動したターミナルで Ctrl+C を押す（worker も一緒に止まる。`pgrep -fl "vidcut.cli"` で何も出なければよい）。
+
+```bash
+rm -rf ~/VidCut-check
+```
 
 ## 書き出し
 
 Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワークスペースの `exports/<レクチャー名>/` に書き出す
 （`<レクチャー名>.xml` と `<レクチャー名>.mp4`。Premiere XML は `recordings/<id>/mezzanine.mp4` を参照する）。
-書き出しを依頼するコマンドはまだない。M6 の API（`POST /api/lectures/{id}/exports`）と M7 の画面から依頼する。
+書き出しは API（`POST /api/lectures/{id}/exports`。上の「手で確かめる」を参照）と、M7 の画面から依頼する。

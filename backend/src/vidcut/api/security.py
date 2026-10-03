@@ -99,7 +99,7 @@ class ApiGuard:
         # Origin が付くのは別のページからの要求か、書き込みの要求。CORS は許可しない
         if "origin" in headers and _text(headers, "origin") not in self._settings.origins:
             return 403, messages.REFUSED_ORIGIN
-        path = _route_path(scope)
+        path = route_path(scope)
         if not path.startswith(API_PREFIX):
             return None
         if not self._has_token(path, headers, scope["query_string"]):
@@ -135,7 +135,7 @@ class ApiGuard:
         return None
 
 
-def _route_path(scope: Scope) -> str:
+def route_path(scope: Scope) -> str:
     """ルーターが照合するのと同じパス（アプリが接頭辞つきで動くときは、接頭辞を除いたもの）。
 
     scope["path"] のまま判定すると、root_path つきで動かしたときに /api/ で始まらないと
