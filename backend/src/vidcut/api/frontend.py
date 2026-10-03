@@ -1,5 +1,7 @@
 """ビルド済み frontend の配信（Design Doc 2 章）。HTML には起動ごとのトークンを埋め込む（3-5-1）。
 
+ビルドがないときの案内のページにも埋め込む（開発中は、Vite のプラグインがそこから読む。ADR-006）。
+
 配信するのはビルドの出力（dist）の中のファイルだけ。ほかのパスには、画面の HTML を返す
 （画面は 1 ページのアプリで、パスは画面の中で解釈する）。
 API のルートの判定（404・405）を横取りしないよう、どのルートにも当たらなかった GET にだけ応える。
@@ -84,12 +86,19 @@ def _asset(dist: Path | None, path: str) -> Path | None:
 
 
 def _index(dist: Path | None, token: str) -> HTMLResponse:
-    """画面の HTML。読むたびにファイルを開く（ビルドし直したら、次の読み込みで反映される）。"""
+    """画面の HTML。読むたびにファイルを開く（ビルドし直したら、次の読み込みで反映される）。
+
+    ビルドがなければ、案内のページ（503）を返す。
+    """
     page = _read_index(dist)
     if page is None:
-        return HTMLResponse(_NOT_BUILT, status_code=503, headers=_NO_STORE)
+        return HTMLResponse(_with_token(_NOT_BUILT, token), status_code=503, headers=_NO_STORE)
+    return HTMLResponse(_with_token(page, token), headers=_NO_STORE)
+
+
+def _with_token(page: str, token: str) -> str:
     tag = f'<meta name="{TOKEN_META}" content="{html.escape(token, quote=True)}" />'
-    return HTMLResponse(page.replace(_HEAD_END, f"{tag}{_HEAD_END}", 1), headers=_NO_STORE)
+    return page.replace(_HEAD_END, f"{tag}{_HEAD_END}", 1)
 
 
 def _read_index(dist: Path | None) -> str | None:

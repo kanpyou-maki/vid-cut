@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 と FRIC-004 の解消は main にマージ済み（PR #1〜#8）。M6（API）を 3 本の PR に分けて実装中。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消は main にマージ済み（PR #1〜#11）。M7（frontend）を 7 本の PR に分けて実装中。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -33,20 +33,18 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 - [x] M4: 言い直しの判定（claude adapter・判定の指示文と出力の検証・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）。検証素材で適合率・再現率とも 100%（実際の解析結果で 3 回）— 2026-10-03
 - [x] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ。テスト 602 件 / カバレッジ 98%。review-loop 全通過）。検証素材の書き出しを Premiere で読み込み、音ズレなし（ユーザー確認）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
+- [x] M6: API（services と保存まわり・FastAPI とローカル API の防御・`vidcut serve`・frontend の配信・OpenAPI からの型生成。テスト 1,015 件 / カバレッジ 99%。review-loop 全通過。PR #9〜#11）。`~/VidCut/` の写しで手動確認し、問題なし（ユーザー確認）— 2026-10-04
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち。PR 3（`vidcut serve`・frontend の配信・型生成。`feat/m6-serve`）も review-loop を通過し、PR [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（base は `feat/m6-api-http`）のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。`feat/m7-foundation`）が review-loop を通過し、PR [#12](https://github.com/kanpyou-maki/vid-cut/pull/12) のマージ待ち
 
 ## 次にやること
 
-M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確認とマージ。
-
-- [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（PR 3）
-- [ ] M6 の手動確認（ユーザー）: `backend/README.md` の「手で確かめる（M6）」。ワークスペースの写しで行う
-- [ ] M7（frontend）に入るときに最初に決めること: 開発中（Vite）のトークンの渡し方（Design Doc 7 章の D-6。Vite のプラグインで埋め込む案が推奨）、CSP の見直し（3-5-1。波形の部品を入れたあと、`style-src 'unsafe-inline'` を外せるか試す）、
-      書き出し先のパスを API で返す項目（3-4・3-5）、`dropped_restored_ids` の通知を閉じる仕組み。
-      画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない
+- [ ] M7 の PR 1 の手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」。問題なければマージ
+- [ ] M7: frontend。次は PR 2（`feat/m7-library`: 素材一覧）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
+- [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
+      波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
@@ -73,6 +71,11 @@ M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確�
 | 19  | テスト用の依存は `httpx2` を使う（当初は `httpx`。Starlette が `httpx2` を推奨するため）                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                         |
 | 20  | `openapi-typescript` 7 には、`overrides` でプロジェクトの TypeScript 6 を使わせる                                                                                                                                       | ユーザー承認（2026-10-03）                                     | —                         |
 | 21  | ADR-005（API の接続・まとめて確定する保存・トークン）を承認                                                                                                                                                             | ユーザー承認（2026-10-03）                                     | ADR-005                   |
+| 22  | M7 は 7 本の PR に分ける（土台 → 素材一覧 → 編集状態 → 要確認・判定理由・通知 → プレビュー → 波形 → 書き出し）                                                                                                          | ユーザー承認（2026-10-04）                                     | —                         |
+| 23  | 開発中のトークンは Vite のプラグインが埋め込む。backend は、ビルドの案内のページ（503）にもトークンを入れる                                                                                                             | ユーザー決定（2026-10-04）                                     | ADR-006                   |
+| 24  | 書き出し先はレクチャーの詳細に足す（フォルダ、形式ごとのパスと最後に書き出した日時）。Finder で開く API（`POST /api/lectures/{id}/exports/reveal`）を足す                                                               | ユーザー決定（2026-10-04）                                     | Design Doc 3-5            |
+| 25  | `dropped_restored_ids` の通知は、サーバー側で閉じる API を足す（画面が表示した id だけを消す）。通知は件数だけ                                                                                                          | ユーザー決定（2026-10-04）                                     | Design Doc 3-5            |
+| 26  | frontend に足す依存は `openapi-fetch` と `wavesurfer.js`（最新の安定版。8 系）だけ。ルーティング・データ取得・UI 部品のライブラリは入れない                                                                             | ユーザー承認（2026-10-04）                                     | ADR-006                   |
 | 9   | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分                                                                            | ユーザー合意（2026-10-03）                                     | —                         |
 
 ## ブロッカー
@@ -91,7 +94,7 @@ _なし_
 - ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）は master に反映済み。
   セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化
 
-### M6（API）の現状
+### M6（API）で作ったもの（M7 が使う）
 
 - PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`、PR #10）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。PR 3（`feat/m6-serve`、PR #11）: `vidcut serve`・frontend の配信・型生成。設計と決まりは Design Doc 3-5・3-5-1・3-5-2 と ADR-005
 - 構成: `api/app.py` の `create_app(api, settings)`、`api/security.py`（Host・Origin・トークン・本文）、`api/inputs.py`（入力の上限）・`api/outputs.py`（出力の許可リスト）・`api/presenters.py`（出力への変換）、`api/errors.py`・`api/messages.py`（定型文）、`api/routes/`。
@@ -106,12 +109,22 @@ _なし_
   実物のサーバーでの結合テスト（`tests/test_serve_integration.py`）、ADR-005（承認済み）。`pip-audit` と `npm audit` は既知の脆弱性なし（2026-10-03）
 - 結合テストで見つけた不具合（修正済み）: SIGTERM で止めると、uvicorn がシグナルを送り直してプロセスがその場で終わり、worker が残った → SIGTERM を KeyboardInterrupt に変えてから起動する
 - `openapi-typescript` 7.13 は peer 依存が TypeScript 5 で、このプロジェクトの TypeScript 6 と衝突する → `frontend/package.json` の `overrides` でプロジェクトの TypeScript を使わせている（決定事項 20。生成と型チェックは通る）
-- 未決（M7 の最初に決める）: 開発中（Vite の開発サーバー）のトークンの渡し方（Design Doc D-6）。`vidcut serve --dev` は Vite のオリジンを受け付けるところまで
 - `vidcut serve` を SIGKILL で止めても worker は残らない: serve が worker に自分のプロセス番号を渡し（`--parent-pid`）、worker は親が変わったら自分で止まる（処理中のジョブがあれば、それが終わってから）。
   実物のサーバーを起動するテスト（`tests/test_serve_integration.py`）は、後始末でプロセスグループごと止める。開発中に worker が残っていないかは `pgrep -fl "vidcut.cli"` で確かめられる
 - PR 2 のセキュリティレビューで受け入れたもの: ワークスペース `~/VidCut/` がホーム配下にあり、生成物（`proxy.mp4` など）を録画として取り込める（事故の二重解析はありうる）。フォルダの取り込みは件数を打ち切らない（巨大なフォルダでは時間がかかる）
 - 制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
-- M7 で API に足すもの: 書き出し先のパスの表示（Design Doc 3-4。いまは返す項目がない）、`dropped_restored_ids` の通知を閉じる仕組み
+- M7 で API に足すもの: 書き出し先のパスの表示と Finder で開く API（PR 7。決定事項 24）、`dropped_restored_ids` の通知を閉じる API（PR 4。決定事項 25）
+
+### M7（frontend）の現状
+
+- PR 1（`feat/m7-foundation`、PR #12）: 土台。backend は、ビルドの案内のページ（503）にもトークンを埋め込む。frontend は `openapi-fetch` を追加し、
+  `src/api/`（`Api`・トークン・失敗の種類）、`src/shared/`（画面の切り替え・ポーリング）、`src/app/`（画面の枠）、`src/library/`（名前と状態の一覧まで）、`src/editor/`（準備中の表示だけ）、
+  `vite-plugins/devToken.ts`（開発中のトークン）。frontend のテスト 105 件 / カバレッジ 99%
+- 実物の backend と Vite を一時ワークスペースで起動して確認済み: 開発用の HTML に backend と同じトークンが入る、Vite 経由の API が通る、トークンなしは 401、
+  ほかのオリジンには CORS のヘッダーを返さない、ビルドの出力と各プロセスの出力にトークンが出ない、本番の画面にインラインのスクリプト・スタイルがない
+- 画面の作り方: 画面は `Api`（`src/api/client.ts`）のメソッドだけを使い、テストでは `src/test/fakeApi.ts` の偽物に差し替える。画面に出す失敗の文は `errorMessage` を通す。
+  API クライアントのテストは Node の環境で動かす（jsdom の `AbortSignal` は Node の `Request` に渡せない）。`openapi-fetch` には `baseUrl` に画面のオリジンを渡す（相対パスだと Node で `Request` を作れない）
+- 手動確認の手順: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
 
 ### 素材と解析・判定・書き出しの知見
 

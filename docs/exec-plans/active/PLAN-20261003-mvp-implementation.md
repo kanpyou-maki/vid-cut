@@ -108,25 +108,57 @@ PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 - [x] `vidcut serve`（API サーバー + worker の起動、127.0.0.1 のみ、起動ごとのトークン、アクセスログを出さない、ビルド済み frontend の配信と応答のヘッダー）
 - [x] OpenAPI → `openapi-typescript` で frontend の型を生成（`vidcut openapi` と `npm run gen:api`。ずれはテストと lint で検出）
 - [x] 実物のサーバーでの結合テスト（本文の長さの食い違い・重複したヘッダー・アクセスログ・止め方）、ADR-005
-- [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
+- [x] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる → ユーザーが確認（2026-10-04）。問題なし
 
 M6 で分かった制限:
 
 - `vidcut serve` を SIGKILL で止めた場合、worker は親がいなくなったことに気づいて自分で止まる（処理中のジョブがあれば、それが終わってから）。SIGTERM と Ctrl+C では一緒に止まる
-- 開発中（Vite の開発サーバー）のトークンの渡し方は未決（Design Doc D-6。M7 の最初に決める）
+- 開発中（Vite の開発サーバー）のトークンの渡し方は、M7 の最初に決めた（Vite のプラグインが埋め込む。ADR-006）
 - まとめる・解除のとき、元のレクチャーを処理中のジョブ（判定・書き出し）は、レクチャーがなくなったことで失敗として残る（待機中のものは消す）
-- 引き継げなかった戻し候補の記録（`dropped_restored_ids`）は、次に判定をやり直すまで残る。画面で通知を閉じる仕組みは M7 で決める
+- 引き継げなかった戻し候補の記録（`dropped_restored_ids`）は、次に判定をやり直すまで残る。画面で通知を閉じる API は、M7 の PR 4（`feat/m7-transcript-review`）で足す（Design Doc 3-5）
 - ffmpeg の一時ファイル（`.<名前>.<8 桁>.partial.<拡張子>`）は、強制終了されると残る。1 日以上前のものは、次に同じ生成物を作るときに消す
 
-### M7: frontend（`feat/m7-*` に分割）
+### M7: frontend（7 本の PR に分ける。ユーザー承認、2026-10-04）
+
+前の PR がマージ済みなら main から切り、まだなら積み上げる。1 本ごとに review-loop と、ブラウザでの手動確認（ユーザー）を行う。
+決定は Design Doc 3-5・3-5-1・3-6 と [ADR-006](../../adr/ADR-006-frontend-foundation.md)。
+
+PR 1（`feat/m7-foundation`。`openapi-fetch` を追加）:
+
+- [x] M7 の決定を Design Doc と ADR-006 に反映（開発中のトークン・保存先の項目・通知を閉じる仕組み・依存）
+- [x] backend: ビルドの案内のページ（503）にもトークンを埋め込む
+- [x] 開発中のトークン: Vite のプラグイン（`vite-plugins/devToken.ts`）、開発サーバーの CORS を無効にする
+- [x] API クライアント（トークンのヘッダー、`{success, data, error}` をほどく、失敗の種類）
+- [x] 画面の切り替え（素材一覧 `/` と編集画面 `/lectures/{id}`）、ポーリング、画面の枠（レクチャーの名前と状態の一覧まで）
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
+
+PR 2（`feat/m7-library`）:
 
 - [ ] 素材一覧: レクチャーの一覧と状態、投入ダイアログ（フォルダブラウザ）、まとめる・並べ替え・解除、失敗の再実行
+
+PR 3（`feat/m7-editor-state`）:
+
 - [ ] 編集画面の骨組み: 3 ペインのレイアウト、データ取得
-- [ ] 文字起こし: トークン表示、選択 → 削除、復活、種類ごとの色、要確認の印と移動キー、判定理由の表示
+- [ ] 編集状態: `useReducer` + 履歴による undo / redo、1 秒遅延の自動保存、409 の扱い
+- [ ] 文字起こしの基本: トークン表示、選択 → 削除、復活、種類ごとの色
+
+PR 4（`feat/m7-transcript-review`）:
+
+- [ ] 要確認の印と移動キー、判定理由の表示と移動
+- [ ] `dropped_restored_ids` の通知と、閉じる API（backend。画面が表示した id だけを消す）
+
+PR 5（`feat/m7-preview`）:
+
+- [ ] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）、文字起こしとの再生位置の同期
+
+PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
+
 - [ ] 波形: wavesurfer.js + ピーク値 + regions による削除区間の表示
-- [ ] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）
-- [ ] 編集状態: `useReducer` + 履歴による undo / redo、1 秒遅延の自動保存
-- [ ] 書き出しボタンと保存先の表示
+- [ ] CSP の違反がコンソールに出ないことの確認。`style-src 'unsafe-inline'` を外せるか試す
+
+PR 7（`feat/m7-export`）:
+
+- [ ] 書き出しボタンと進捗、保存先の表示（backend: レクチャーの詳細に保存先を足す、Finder で開く API）
 
 ### M8: E2E と受け入れ（`test/m8-e2e`）
 
