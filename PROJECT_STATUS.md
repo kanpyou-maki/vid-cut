@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 と FRIC-004 の解消は main にマージ済み（PR #1〜#8）。M6（API）を 3 本の PR に分けて実装中。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消は main にマージ済み（PR #1〜#11）。次は M7（frontend）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -33,18 +33,16 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 - [x] M4: 言い直しの判定（claude adapter・判定の指示文と出力の検証・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）。検証素材で適合率・再現率とも 100%（実際の解析結果で 3 回）— 2026-10-03
 - [x] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ。テスト 602 件 / カバレッジ 98%。review-loop 全通過）。検証素材の書き出しを Premiere で読み込み、音ズレなし（ユーザー確認）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
+- [x] M6: API（services と保存まわり・FastAPI とローカル API の防御・`vidcut serve`・frontend の配信・OpenAPI からの型生成。テスト 1,015 件 / カバレッジ 99%。review-loop 全通過。PR #9〜#11）。`~/VidCut/` の写しで手動確認し、問題なし（ユーザー確認）— 2026-10-04
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち。PR 3（`vidcut serve`・frontend の配信・型生成。`feat/m6-serve`）も review-loop を通過し、PR [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（base は `feat/m6-api-http`）のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了
 
 ## 次にやること
 
-M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確認とマージ。
-
-- [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（PR 3）
-- [ ] M6 の手動確認（ユーザー）: `backend/README.md` の「手で確かめる（M6）」。ワークスペースの写しで行う
-- [ ] M7（frontend）に入るときに最初に決めること: 開発中（Vite）のトークンの渡し方（Design Doc 7 章の D-6。Vite のプラグインで埋め込む案が推奨）、CSP の見直し（3-5-1。波形の部品を入れたあと、`style-src 'unsafe-inline'` を外せるか試す）、
+- [ ] M7: frontend（`feat/m7-*` に分割）。素材一覧、編集画面（3 ペイン）、文字起こし、波形、プレビュー、編集状態と自動保存、書き出しボタン
+- [ ] M7 に入るときに最初に決めること: 開発中（Vite）のトークンの渡し方（Design Doc 7 章の D-6。Vite のプラグインで埋め込む案が推奨）、CSP の見直し（3-5-1。波形の部品を入れたあと、`style-src 'unsafe-inline'` を外せるか試す）、
       書き出し先のパスを API で返す項目（3-4・3-5）、`dropped_restored_ids` の通知を閉じる仕組み。
       画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -91,7 +89,7 @@ _なし_
 - ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）は master に反映済み。
   セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化
 
-### M6（API）の現状
+### M6（API）で作ったもの（M7 が使う）
 
 - PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`、PR #10）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。PR 3（`feat/m6-serve`、PR #11）: `vidcut serve`・frontend の配信・型生成。設計と決まりは Design Doc 3-5・3-5-1・3-5-2 と ADR-005
 - 構成: `api/app.py` の `create_app(api, settings)`、`api/security.py`（Host・Origin・トークン・本文）、`api/inputs.py`（入力の上限）・`api/outputs.py`（出力の許可リスト）・`api/presenters.py`（出力への変換）、`api/errors.py`・`api/messages.py`（定型文）、`api/routes/`。

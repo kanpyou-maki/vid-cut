@@ -108,7 +108,7 @@ PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 - [x] `vidcut serve`（API サーバー + worker の起動、127.0.0.1 のみ、起動ごとのトークン、アクセスログを出さない、ビルド済み frontend の配信と応答のヘッダー）
 - [x] OpenAPI → `openapi-typescript` で frontend の型を生成（`vidcut openapi` と `npm run gen:api`。ずれはテストと lint で検出）
 - [x] 実物のサーバーでの結合テスト（本文の長さの食い違い・重複したヘッダー・アクセスログ・止め方）、ADR-005
-- [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
+- [x] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる → ユーザーが確認（2026-10-04）。問題なし
 
 M6 で分かった制限:
 
