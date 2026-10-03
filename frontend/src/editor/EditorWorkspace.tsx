@@ -1,5 +1,3 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
-import { useApi } from "../api/ApiContext";
 import type { LectureDetail } from "../api/types";
 import { failedJobs } from "../shared/lectureStatus";
 import { Modal } from "../shared/Modal";
@@ -8,24 +6,8 @@ import { LIBRARY_PATH } from "../shared/routes";
 import type { SaveStatus } from "./autosaver";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
 import styles from "./EditorWorkspace.module.css";
-import { createEditorReducer } from "./editorReducer";
-import {
-  draftOf,
-  type EditDraft,
-  type TokenCut,
-  toEdits,
-  tokenCuts,
-} from "./edits";
-import { canRedo, canUndo, startHistory } from "./history";
 import { TranscriptView } from "./TranscriptView";
-import { selectedTokenRange } from "./tokenSelection";
-import { buildTranscript } from "./transcript";
-import { useAutosave } from "./useAutosave";
-import {
-  useEditorKeys,
-  useHasTokenSelection,
-  useUnloadWarning,
-} from "./useEditorKeys";
+import { type Editing, useEditing } from "./useEditing";
 
 const SAVE_LABELS: Readonly<Record<SaveStatus["name"], string>> = {
   saved: "保存済み",
@@ -35,11 +17,6 @@ const SAVE_LABELS: Readonly<Record<SaveStatus["name"], string>> = {
   conflict: "保存を止めています",
   gone: "保存を止めています",
 };
-
-/** 新しい削除区間の id のもと（API の id の形: 英数字と _ - の 64 文字まで）。 */
-function newSeed(): string {
-  return crypto.randomUUID().replaceAll("-", "");
-}
 
 /**
  * 編集できる状態のレクチャーの編集画面（Design Doc 3-6）: 編集状態と履歴、自動保存、文字起こしの操作。
@@ -54,91 +31,12 @@ export function EditorWorkspace({
   detail: LectureDetail;
   onReload: () => void;
 }) {
-  const api = useApi();
-  const transcript = useMemo(() => buildTranscript(detail), [detail]);
-  const initial = useMemo(() => draftOf(detail.edit_state), [detail]);
-  const reducer = useMemo(() => createEditorReducer(transcript), [transcript]);
-  const [history, dispatch] = useReducer(reducer, initial, startHistory);
-  const draft = history.present;
-
-  const save = useCallback(
-    (edited: EditDraft, version: number) =>
-      api.saveEdits(detail.id, toEdits(edited, version)),
-    [api, detail.id],
-  );
-  const { status, retry } = useAutosave({
-    draft,
-    initial,
-    version: detail.edit_state.version,
-    save,
-  });
-  // 版の食い違い・レクチャーの消失のあとは、編集しても保存できない
-  const locked = status.name === "conflict" || status.name === "gone";
-
-  const cuts = useMemo(() => tokenCuts(transcript, draft), [transcript, draft]);
-  const transcriptRoot = useRef<HTMLDivElement>(null);
-  const hasSelection = useHasTokenSelection(transcriptRoot);
-
-  const deleteSelection = useCallback((): boolean => {
-    const root = transcriptRoot.current;
-    const selection = window.getSelection();
-    const range = root === null ? null : selectedTokenRange(selection, root);
-    if (range === null) {
-      return false;
-    }
-    dispatch({ type: "delete", range, seed: newSeed() });
-    selection?.removeAllRanges();
-    return true;
-  }, []);
-  const restore = useCallback(
-    (cut: TokenCut) => dispatch({ type: "restore", cut }),
-    [],
-  );
-  const undoEdit = useCallback(() => dispatch({ type: "undo" }), []);
-  const redoEdit = useCallback(() => dispatch({ type: "redo" }), []);
-
-  useEditorKeys(!locked, {
-    onDelete: deleteSelection,
-    onUndo: undoEdit,
-    onRedo: redoEdit,
-  });
-  useUnloadWarning(!locked && status.name !== "saved");
+  const editing = useEditing(detail);
+  const { saveStatus, locked } = editing;
 
   return (
-    <EditorLayout
-      title={detail.title}
-      toolbar={
-        <>
-          <SaveStatusView status={status} onRetry={retry} />
-          <button
-            type="button"
-            disabled={locked || !hasSelection}
-            // 押したときに、文字起こしの選択が外れないようにする
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              deleteSelection();
-            }}
-          >
-            削除
-          </button>
-          <button
-            type="button"
-            disabled={locked || !canUndo(history)}
-            onClick={undoEdit}
-          >
-            元に戻す
-          </button>
-          <button
-            type="button"
-            disabled={locked || !canRedo(history)}
-            onClick={redoEdit}
-          >
-            やり直す
-          </button>
-        </>
-      }
-    >
-      {status.name === "gone" && (
+    <EditorLayout title={detail.title} toolbar={<Toolbar editing={editing} />}>
+      {saveStatus.name === "gone" && (
         <p role="alert" className={styles.failure}>
           このレクチャーはなくなりました（別の画面でまとめた・解除した可能性があります）。
           <Link to={LIBRARY_PATH}>素材一覧へ</Link>
@@ -148,15 +46,50 @@ export function EditorWorkspace({
       <EditorPanes
         transcript={
           <TranscriptView
-            transcript={transcript}
-            cuts={cuts}
-            onRestore={locked ? undefined : restore}
-            rootRef={transcriptRoot}
+            transcript={editing.transcript}
+            cuts={editing.cuts}
+            onRestore={locked ? undefined : editing.restore}
+            rootRef={editing.transcriptRoot}
           />
         }
       />
-      {status.name === "conflict" && <ConflictDialog onReload={onReload} />}
+      {saveStatus.name === "conflict" && <ConflictDialog onReload={onReload} />}
     </EditorLayout>
+  );
+}
+
+/** 上の行の右側: 保存の状態と、「削除」「元に戻す」「やり直す」。 */
+function Toolbar({ editing }: { editing: Editing }) {
+  const { locked } = editing;
+  return (
+    <>
+      <SaveStatusView status={editing.saveStatus} onRetry={editing.retrySave} />
+      <button
+        type="button"
+        disabled={locked || !editing.hasSelection}
+        // 押したときに、文字起こしの選択が外れないようにする
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          editing.deleteSelection();
+        }}
+      >
+        削除
+      </button>
+      <button
+        type="button"
+        disabled={locked || !editing.canUndo}
+        onClick={editing.undo}
+      >
+        元に戻す
+      </button>
+      <button
+        type="button"
+        disabled={locked || !editing.canRedo}
+        onClick={editing.redo}
+      >
+        やり直す
+      </button>
+    </>
   );
 }
 

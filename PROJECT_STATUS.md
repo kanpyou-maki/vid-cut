@@ -135,7 +135,7 @@ _なし_
   `/api/fs` は隠しフォルダを扱わないので、素材の一時フォルダはホームの直下に作って最後に消す。ビルドは `npx vite build --outDir <一時フォルダ>` と `VIDCUT_FRONTEND_DIST` で、`frontend/dist` を書き換えずに済む
 - PR 3（`feat/m7-editor-state`）: 編集画面の骨組みと編集状態。画面の構成はユーザー承認（2026-10-04。Design Doc 3-6 の「編集画面の骨組みと編集状態」）。backend の変更なし。
   `Api` に `getLecture`・`saveEdits` を足した。`src/editor/` は、待ち受け（`LectureGate`。編集できる状態になるまで `usePolling` で読み直し、なったら読み直しをやめる）と
-  編集（`EditorWorkspace`。`useReducer` + 履歴、自動保存、文字起こしの操作）に分かれる。読み込み直し（409 のあと）は、待ち受けからやり直して編集の部品ごと作り直す。
+  編集（`EditorWorkspace` と `useEditing`。`useReducer` + 履歴、自動保存、文字起こしの操作）に分かれる。読み込み直し（409 のあと）は、待ち受けからやり直して編集の部品ごと作り直す。
   編集状態は不変のオブジェクトで、自動保存（`autosaver.ts`。React の外で持つ）は「保存済みと同じオブジェクトか」で未保存を判断する（undo で保存済みの内容に戻れば、保存しない）。
   状態・失敗・時間の文は `src/shared/lectureStatus.ts` に移し、素材一覧と共用する
 - PR 3 で確認済み（`~/VidCut` の DB と解析結果の JSON だけを写した一時ワークスペース。実物の backend を `--no-worker` で起動、ヘッドレスの Chrome）:
