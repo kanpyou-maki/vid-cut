@@ -71,4 +71,4 @@
   汎用的な改善なので sync-upstream で master に還元し、style-reviewer の確認項目も同じ表現にそろえる
 - **対応:** ルール文書はツールを名指しせず `commands.lint` を正とした。style-reviewer に「整形・lint は `commands.lint` の結果で判定し、ツールの種類は問わない」を追加。
   python-patterns スキルの早見表も同じ方針に直した。vid-cut の `commands.lint` には `ruff format --check` を加え、整形の崩れを機械的に検出する
-- **Status:** resolved（vid-cut: `chore/fric-004-formatter-rule` の PR。master: sync-upstream の PR）
+- **Status:** resolved（vid-cut: [#6](https://github.com/kanpyou-maki/vid-cut/pull/6)。master: [claude-config-master#4](https://github.com/kanpyou-maki/claude-config-master/pull/4)）
