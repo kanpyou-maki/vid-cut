@@ -92,6 +92,23 @@ class TestList:
         assert listing.path == (home / "Movies" / "course").resolve()
         assert [e.name for e in listing.entries] == ["c.m4v"]
 
+    @pytest.mark.parametrize("name", ["a\x00b", "a" * 300])
+    def test_names_the_file_system_cannot_handle_are_refused(
+        self, browser: FileBrowser, home: Path, name: str
+    ) -> None:
+        # NUL 文字や長すぎる名前で、想定していない例外（500）にしない
+        with pytest.raises(InvalidInputError, match="パスが正しくありません"):
+            browser.list(home / "Movies" / name)
+        with pytest.raises(InvalidInputError, match="パスが正しくありません"):
+            browser.import_targets(home / "Movies" / name / "a.mov")
+
+    def test_symlink_loop_is_refused(self, browser: FileBrowser, home: Path) -> None:
+        (home / "loop-a").symlink_to(home / "loop-b")
+        (home / "loop-b").symlink_to(home / "loop-a")
+        with pytest.raises(InvalidInputError, match="パスが正しくありません"):
+            browser.list(home / "loop-a")
+        assert [e.name for e in browser.list().entries] == ["Movies"]
+
     def test_missing_folder(self, browser: FileBrowser, home: Path) -> None:
         with pytest.raises(NotFoundError):
             browser.list(home / "Movies" / "nope")
@@ -142,6 +159,22 @@ class TestImportTargets:
     def test_missing_file(self, browser: FileBrowser, home: Path) -> None:
         with pytest.raises(NotFoundError):
             browser.import_targets(home / "Movies" / "nope.mov")
+
+    def test_file_that_is_not_a_video_is_refused(self, browser: FileBrowser, home: Path) -> None:
+        # 一覧に出ないファイルは、直接指定しても取り込めない
+        with pytest.raises(InvalidInputError, match="動画ファイル"):
+            browser.import_targets(home / "Movies" / "notes.txt")
+
+    def test_folder_with_many_subfolders_still_gives_all_its_videos(
+        self, browser: FileBrowser, home: Path
+    ) -> None:
+        # 一覧は MAX_ENTRIES で打ち切るが、取り込みでは動画を落とさない
+        big = home / "big"
+        for index in range(MAX_ENTRIES + 2):
+            (big / f"sub{index:05d}").mkdir(parents=True)
+        (big / "a.mov").write_bytes(b"x")
+        assert browser.list(big).truncated
+        assert [t.name for t in browser.import_targets(big)] == ["a.mov"]
 
     def test_relative_path_is_refused(self, browser: FileBrowser) -> None:
         # サーバーの作業ディレクトリによって意味が変わる指定は受け付けない

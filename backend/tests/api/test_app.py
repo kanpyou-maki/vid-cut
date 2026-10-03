@@ -3,6 +3,7 @@ import logging
 import pytest
 
 from tests.api.conftest import ApiEnv
+from vidcut.api.envelope import ErrorOut
 from vidcut.api.messages import ERROR_MESSAGES
 from vidcut.domain.models import ErrorCode
 
@@ -39,6 +40,37 @@ class TestErrors:
         # 画面の JS を外部の CDN から読むページを、ローカルアプリには置かない
         for path in ("/docs", "/redoc", "/openapi.json"):
             assert env.client.get(path).status_code == 404
+
+
+class TestOpenApi:
+    """frontend の型は OpenAPI から作る（M6 の PR 3）。スキーマが実際の応答と合っていること。"""
+
+    def test_failures_are_described_as_the_envelope(self, env: ApiEnv) -> None:
+        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        assert "HTTPValidationError" not in schema["components"]["schemas"]
+        operations = [op for path in schema["paths"].values() for op in path.values()]
+        assert len(operations) == 14
+        for operation in operations:
+            for status in ("401", "403", "404", "422", "500"):
+                content = operation["responses"][status]["content"]["application/json"]
+                assert content["schema"] == {"$ref": "#/components/schemas/ErrorOut"}
+        error = schema["components"]["schemas"]["ErrorOut"]
+        assert set(error["required"]) == {"success", "data", "error"}
+
+    def test_conflict_is_described_where_it_can_happen(self, env: ApiEnv) -> None:
+        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        edits = schema["paths"]["/api/lectures/{lecture_id}/edits"]["put"]
+        assert "409" in edits["responses"]
+
+    def test_proxy_is_described_as_a_video(self, env: ApiEnv) -> None:
+        schema = env.client.app.openapi()  # type: ignore[attr-defined]
+        proxy = schema["paths"]["/api/recordings/{recording_id}/proxy"]["get"]
+        assert list(proxy["responses"]["200"]["content"]) == ["video/mp4"]
+        assert "206" in proxy["responses"]
+
+    def test_error_response_matches_the_described_shape(self, env: ApiEnv) -> None:
+        body = env.client.get("/api/lectures/nope").json()
+        assert ErrorOut.model_validate(body).error == body["error"]
 
 
 class TestGuardIsInstalled:

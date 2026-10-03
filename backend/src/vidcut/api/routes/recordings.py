@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 
 from vidcut.api.deps import PathId, Services
 from vidcut.api.envelope import Envelope, ok
-from vidcut.api.schemas import PeaksOut
+from vidcut.api.outputs import PeaksOut
 from vidcut.bootstrap import ApiServices
 from vidcut.pipeline.analysis import PEAKS_FILE, PROXY_FILE
 from vidcut.pipeline.ports import NotFoundError
@@ -17,7 +17,14 @@ router = APIRouter()
 PROXY_MEDIA_TYPE = "video/mp4"
 
 
-@router.get("/api/recordings/{recording_id}/proxy", response_class=FileResponse)
+@router.get(
+    "/api/recordings/{recording_id}/proxy",
+    response_class=FileResponse,
+    responses={
+        200: {"content": {PROXY_MEDIA_TYPE: {}}, "description": "動画の全体"},
+        206: {"content": {PROXY_MEDIA_TYPE: {}}, "description": "Range で指定した部分"},
+    },
+)
 def get_proxy(recording_id: PathId, services: Services) -> FileResponse:
     """<video> が読む。トークンは ?token= でも受け付ける（Design Doc 3-5-1）。"""
     proxy = _artifact(services, recording_id, PROXY_FILE)

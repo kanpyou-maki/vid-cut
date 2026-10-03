@@ -7,7 +7,8 @@ from fastapi import APIRouter, Query
 
 from vidcut.api.deps import Browser
 from vidcut.api.envelope import Envelope, ok
-from vidcut.api.schemas import MAX_PATH_CHARS, FsListingOut
+from vidcut.api.inputs import MAX_PATH_CHARS
+from vidcut.api.outputs import FsListingOut
 
 router = APIRouter()
 

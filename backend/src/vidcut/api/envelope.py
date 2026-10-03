@@ -1,5 +1,7 @@
 """応答の形 `{success, data, error}`（.claude/rules/common/patterns.md、Design Doc 3-5）。"""
 
+from typing import Literal
+
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
@@ -10,6 +12,14 @@ class Envelope[T](BaseModel):
     success: bool
     data: T | None = None
     error: str | None = None
+
+
+class ErrorOut(BaseModel):
+    """失敗の応答の形（OpenAPI に載せる。frontend の型はここから作る）。"""
+
+    success: Literal[False]
+    data: None
+    error: str
 
 
 def ok[T](data: T) -> Envelope[T]:

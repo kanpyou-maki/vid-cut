@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from vidcut.api.deps import PathId, Services
 from vidcut.api.envelope import Envelope, ok
-from vidcut.api.schemas import JobListItemOut
+from vidcut.api.outputs import JobListItemOut
 from vidcut.pipeline.ports import InvalidInputError, NotFoundError
 
 router = APIRouter()

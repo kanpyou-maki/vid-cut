@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, Path, Request
 
-from vidcut.api.schemas import ID_PATTERN
+from vidcut.api.inputs import ID_PATTERN
 from vidcut.bootstrap import ApiServices
 from vidcut.services.file_browser import FileBrowser
 

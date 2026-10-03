@@ -3,17 +3,14 @@
 from fastapi import APIRouter
 
 from vidcut.api.deps import PathId, Services
-from vidcut.api.envelope import Envelope, ok
-from vidcut.api.schemas import (
-    EditsIn,
+from vidcut.api.envelope import Envelope, ErrorOut, ok
+from vidcut.api.inputs import EditsIn, ExportIn, MergeIn, OrderIn
+from vidcut.api.outputs import (
     EditStateOut,
-    ExportIn,
     JobOut,
     LectureDetailOut,
     LectureRefOut,
     LectureSummaryOut,
-    MergeIn,
-    OrderIn,
 )
 
 router = APIRouter()
@@ -56,7 +53,10 @@ def reanalyze_lecture(lecture_id: PathId, services: Services) -> Envelope[list[J
     return ok([JobOut.of(job) for job in services.lecture_service.reanalyze(lecture_id)])
 
 
-@router.put("/api/lectures/{lecture_id}/edits")
+@router.put(
+    "/api/lectures/{lecture_id}/edits",
+    responses={409: {"model": ErrorOut, "description": "編集状態の版が古い"}},
+)
 def save_edits(lecture_id: PathId, body: EditsIn, services: Services) -> Envelope[EditStateOut]:
     """version が保存済みの版と違えば 409（読み込み直してからやり直す）。"""
     return ok(EditStateOut.of(services.edits.save(body.to_domain(lecture_id))))

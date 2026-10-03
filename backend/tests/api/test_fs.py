@@ -31,5 +31,9 @@ class TestFs:
     def test_missing_folder(self, env: ApiEnv) -> None:
         env.error(404, "GET", "/api/fs", params={"path": str(env.home / "nope")})
 
+    def test_path_with_a_nul_character_is_refused(self, env: ApiEnv) -> None:
+        bad = str(env.home / "a\x00b")
+        assert "パスが正しくありません" in env.error(422, "GET", "/api/fs", params={"path": bad})
+
     def test_overlong_path_is_refused(self, env: ApiEnv) -> None:
         env.error(422, "GET", "/api/fs", params={"path": "/" + "a" * 5000})

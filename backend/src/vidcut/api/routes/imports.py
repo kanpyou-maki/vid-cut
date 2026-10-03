@@ -6,8 +6,9 @@ from fastapi import APIRouter
 
 from vidcut.api.deps import Browser, Services
 from vidcut.api.envelope import Envelope, ok
+from vidcut.api.inputs import ImportIn
 from vidcut.api.messages import ERROR_MESSAGES
-from vidcut.api.schemas import ImportFailureOut, ImportIn, ImportResultOut
+from vidcut.api.outputs import ImportFailureOut, ImportResultOut
 from vidcut.domain.models import ErrorCode
 from vidcut.pipeline.ports import NotFoundError
 

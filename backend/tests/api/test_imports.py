@@ -60,6 +60,16 @@ class TestImports:
             env.error(422, "POST", "/api/imports", json={"paths": [str(video), bad]})
         assert env.data("GET", "/api/lectures") == []
 
+    def test_unusable_path_refuses_the_request_instead_of_failing_halfway(
+        self, env: ApiEnv
+    ) -> None:
+        video = env.video("a.mov")
+        notes = video.parent / "notes.txt"
+        notes.write_text("x")
+        for bad in (str(video.parent / "a\x00b.mov"), str(video.parent / ("a" * 300)), str(notes)):
+            env.error(422, "POST", "/api/imports", json={"paths": [str(video), bad]})
+        assert env.data("GET", "/api/lectures") == []
+
     def test_symlink_to_a_video_outside_home_is_refused(self, env: ApiEnv, tmp_path: Path) -> None:
         outside = tmp_path / "outside.mov"
         outside.write_bytes(b"x")
