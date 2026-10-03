@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）は実装済みで、review-loop 中
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）も review-loop を通過し、PR のマージ待ち（PR 4 の上に積んでいる）
 
 ## 次にやること
 
@@ -165,6 +165,9 @@ _なし_
 - PR 5 で確認済み（一時ワークスペースに proxy 動画も写した。ヘッドレスの Chrome で実際に再生）: 最初の残す区間の頭（8.1 秒）が出る、文字のクリックで移る、再生中に言い直しの区間を飛ばす
   （フレームごとの記録で、削除区間の中のフレームが 1 つ以下）、再生位置の文字の印、Space での一時停止、「削除した部分も再生する」で削除区間も再生、段落の時刻のクリック、バーの中央のクリック。
   PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 500 件 / カバレッジ 98%（分岐 94%）、backend 1,043 件
+- PR 5 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: Design Doc の PR 3 の節に「プレビューと波形は場所だけ用意する」が残っていた → 修正して PASS）。
+  PR 4 と同じ種類の手戻りが 2 回続いたので、FRIC-005 に記録し、`frontend/README.md` の「画面の実装で守ること」と `.claude/agents/self-reviewer.md` のチェックリストに「ドキュメントの追従」を足した（master への還元は未実施）。
+  Stage 1 の提案で、残す区間の例を backend と frontend のテストで共有し（`backend/tests/domain/keep_ranges_cases.json`）、テスト用の動画のまねを「`src` を替えると止まる」まで再現した
 - PR 5 の残り・制限: 録画ファイルの切り替えは `src` の差し替えなので、切り替えのときに短い間が空く。複数の録画ファイルのレクチャーは、テストでだけ確かめた（実物では M8 で確かめる）。
   jsdom は再生を実装していないので、テストでは再生の状態と位置だけをまねている（`src/test/setup.ts`。`src` を替えると止まって頭に戻る、まで。読み込めたこと（`loadedmetadata`）は、テストが知らせる）。プレビューは proxy 動画なので、書き出し（中間素材、60fps）とは 1 フレーム未満のずれがありうる
 - PR 4 で踏んだこと: 要素ごとの `mouseenter` / `mouseleave`（React の `onMouseEnter` と、要素に直接付けたリスナー）を混ぜると、「対象から出た」と「理由に入った」の順序が食い違い、理由の上に移ったときに消える
