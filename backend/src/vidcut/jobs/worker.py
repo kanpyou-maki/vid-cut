@@ -71,7 +71,13 @@ class Worker:
         """stop が立つまで、ジョブを待って処理し続ける（`vidcut serve` / `vidcut worker`）。"""
         self.recover()
         while not stop.is_set():
-            if self.run_once() is None:
+            try:
+                processed = self.run_once()
+            except Exception:
+                # 結果の記録に失敗しても（ジョブが消された・DB が使えない）、worker は止めない
+                self._logger.exception("ジョブの処理結果を記録できませんでした")
+                processed = None
+            if processed is None:
                 stop.wait(poll_interval_s)
 
 

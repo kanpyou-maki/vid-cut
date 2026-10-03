@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -66,6 +67,22 @@ class TestRunWithProgress:
                 on_progress=None,
                 timeout_s=0.2,
             )
+
+    def test_kills_process_when_progress_callback_fails(self, tmp_path: Path) -> None:
+        # worker の中断などで呼び出し側が例外を出したら、ffmpeg を残さない
+        pid_file = tmp_path / "pid"
+        code = (
+            f"import os, time; open({str(pid_file)!r}, 'w').write(str(os.getpid())); "
+            "print('out_time_us=1', flush=True); time.sleep(30)"
+        )
+
+        def explode(_: float) -> None:
+            raise KeyboardInterrupt
+
+        with pytest.raises(KeyboardInterrupt):
+            run_with_progress(python_args(code), total_ms=1_000, on_progress=explode)
+        with pytest.raises(ProcessLookupError):
+            os.kill(int(pid_file.read_text()), 0)
 
 
 class TestRunCapture:

@@ -50,3 +50,16 @@ class TestTransaction:
             conn.execute("INSERT INTO lectures (id, title) VALUES ('l1', 't')")
             raise ValueError("boom")
         assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 0
+
+    def test_failed_commit_leaves_connection_usable(self, conn: sqlite3.Connection) -> None:
+        # 外部キーの検査を COMMIT まで遅らせ、COMMIT 自体を失敗させる
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        with pytest.raises(sqlite3.IntegrityError), transaction(conn):
+            conn.execute(
+                "INSERT INTO lecture_recordings (lecture_id, position, recording_id)"
+                " VALUES ('missing', 0, 'missing')"
+            )
+        assert not conn.in_transaction
+        with transaction(conn):
+            conn.execute("INSERT INTO lectures (id, title) VALUES ('l1', 't')")
+        assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 1

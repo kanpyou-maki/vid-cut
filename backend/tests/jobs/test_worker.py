@@ -169,6 +169,28 @@ class TestRunForever:
         )
         assert handler.calls == ["crashed", "next"]
 
+    def test_keeps_running_when_recording_a_result_fails(
+        self, queue: SqliteJobQueue, db_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        enqueue(queue, "vanishing")
+        enqueue(queue, "next")
+        stop = threading.Event()
+        handler = Recorder()
+        other = open_database(db_path)
+
+        def run(job: Job, report: ProgressReporter) -> None:
+            handler(job, report)
+            if job.id == "vanishing":
+                other.execute("DELETE FROM jobs WHERE id = 'vanishing'")  # 結果を書けなくなる
+            else:
+                stop.set()
+
+        with caplog.at_level(logging.ERROR):
+            Worker(queue, {JobKind.ANALYZE_RECORDING: run}).run_forever(stop, poll_interval_s=0.01)
+        other.close()
+        assert handler.calls == ["vanishing", "next"]
+        assert "vanishing" in caplog.text
+
     def test_waits_for_new_jobs_while_idle(self, queue: SqliteJobQueue, db_path: Path) -> None:
         stop = threading.Event()
         handler = Recorder()

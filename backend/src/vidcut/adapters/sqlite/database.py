@@ -90,10 +90,12 @@ def transaction(conn: sqlite3.Connection) -> Iterator[None]:
     conn.execute("BEGIN IMMEDIATE")
     try:
         yield
+        conn.execute("COMMIT")
     except BaseException:
-        conn.execute("ROLLBACK")
+        # COMMIT 自体の失敗（外部キーの遅延検査・SQLITE_BUSY）でもトランザクションを残さない
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
         raise
-    conn.execute("COMMIT")
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

@@ -59,6 +59,11 @@ def run_with_progress(
         try:
             _follow_progress(process, total_ms, report)
             returncode = process.wait()
+        except BaseException:
+            # 呼び出し側の例外や中断で ffmpeg が孤児として書き続けないよう止める
+            process.kill()
+            process.wait()
+            raise
         finally:
             if timer is not None:
                 timer.cancel()
