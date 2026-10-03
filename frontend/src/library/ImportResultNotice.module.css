@@ -1,0 +1,19 @@
+.notice {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 0.25rem;
+}
+
+.summary {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.failed {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+  overflow-wrap: anywhere;
+}
