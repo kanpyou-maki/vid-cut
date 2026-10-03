@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from vidcut.adapters.media.waveform import compute_peaks
+from vidcut.adapters.media.waveform import compute_peaks, wav_duration_ms
 
 
 def write_wav(
@@ -58,3 +58,7 @@ class TestComputePeaks:
             compute_peaks(write_wav(tmp_path / "s.wav", [0] * 4, channels=2), per_second=100)
         with pytest.raises(ValueError):
             compute_peaks(write_wav(tmp_path / "b.wav", [0] * 4, width=1), per_second=100)
+
+
+def test_wav_duration_in_milliseconds(tmp_path: Path) -> None:
+    assert wav_duration_ms(write_wav(tmp_path / "a.wav", [0] * 24_000)) == 1_500

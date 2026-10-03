@@ -9,6 +9,7 @@ from vidcut.adapters.media.commands import (
     mezzanine_args,
     probe_args,
     proxy_args,
+    timeout_for,
 )
 
 SOURCE = Path("/rec/-weird name.mov")
@@ -122,3 +123,12 @@ def test_inputs_are_restricted_to_local_files(name: str) -> None:
     whitelist = args.index("-protocol_whitelist")
     assert args[whitelist + 1] == "file"
     assert whitelist < args.index(str(SOURCE))
+
+
+class TestTimeoutFor:
+    def test_grows_with_recording_length(self) -> None:
+        assert timeout_for(60_000) < timeout_for(3_600_000)
+
+    def test_allows_several_times_real_time(self) -> None:
+        # 中間素材は実時間の 0.8 倍ほどかかる（ADR-002）。遅い機械でも打ち切らない余裕を持つ
+        assert timeout_for(360_000) >= 360 * 3

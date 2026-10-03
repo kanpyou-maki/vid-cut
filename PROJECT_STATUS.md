@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）・M1（domain）が完了。M2（ffmpeg・SQLite・ジョブ）を `feat/m2-adapters` で実装し、レビュー中。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 は main にマージ済み。M3（解析パイプライン）は review-loop を通過し、PR のマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
 
 ## 完了済み
 
@@ -28,16 +28,18 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土
 - [x] 実装計画の承認、M0（backend / frontend の土台）— 2026-10-03
 - [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 80 件 / カバレッジ 100%）— 2026-10-03
 - [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 226 件 / カバレッジ 99%。review-loop 全通過）— 2026-10-03
+- [x] M3: 解析パイプライン（無音・VAD・mlx-whisper・WhisperX・フィラー・要確認の印・段のキャッシュ・CLI）。検証素材の解析 2 分 29 秒、正解の 69 チャンクと一致 — 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M2 完了
-- [ ] M2 の PR（`feat/m2-adapters`）のマージ待ち（マージはユーザー）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
+- [ ] M3 の PR（`feat/m3-analysis`）のマージ待ち（マージはユーザー）
+- [ ] FRIC-004（Python のルール文書が black / isort を指定）を improve-harness で解消し、sync-upstream で master へ還元する（ユーザーの判断待ち）
 
 ## 次にやること
 
-- [ ] M3: 解析パイプライン（無音検出・文字起こし・位置合わせ・フィラー・`analyze_recording` / `make_mezzanine` ジョブ・CLI）
+- [ ] M4: 言い直しの判定（claude adapter・判定の指示文・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）
 
 ## 決定事項
 
@@ -77,6 +79,11 @@ _なし_
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
 - M5 で確かめること: 中間素材は音声をコピーするので、音声の 51ms の遅れを時刻情報として持ったまま。Premiere がこれをどう扱うか（XML の in / out とずれないか）を検証素材で確認する（M2 の docs-reviewer の指摘）
 - 実素材での M2 の実測: probe 0.1 秒、解析用 wav 0.4 秒、ピーク値 0.2 秒、proxy 38 秒、中間素材 296 秒（196MB）。proxy の 38 秒は解析時間の目標（5 分）に含まれる
-- M2 のセキュリティレビューの LOW（後のマイルストーンで対応）: ffmpeg のタイムアウトは既定でなし → M3 の bootstrap で録画の長さに応じた上限を渡す。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
+- M2 のセキュリティレビューの LOW: ffmpeg のタイムアウトは M3 で対応済み（録画の長さに応じた上限）。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
+- ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
+- 検証素材のチャンク 32 で Whisper の定番の幻聴「ご視聴ありがとうございました。」が出る（低確信度の印は付く。正解でも削除対象）。M4 の判定で拾えるか確認する
+- 解析ロジックの更新後に登録済みの録画を解析し直す手段がない → M6 の API で再解析を用意する
+- M3 のセキュリティレビューの LOW: ジョブのエラー文と CLI の出力に ffmpeg の stderr や絶対パスが入る → M6 の API では理由を分類して返し、詳細はログへ。wav は一括で読み込む（2 時間で約 230MB）
+- コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
 - SQLite の接続はスレッドをまたげない（`check_same_thread`）。M6 の API サーバーでは接続の持ち方を決める必要がある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）

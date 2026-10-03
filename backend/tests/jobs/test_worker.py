@@ -8,7 +8,8 @@ import pytest
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.domain.models import Job, JobKind, JobStatus
-from vidcut.jobs.worker import MAX_ERROR_CHARS, JobHandler, ProgressReporter, Worker
+from vidcut.jobs.worker import MAX_ERROR_CHARS, JobHandler, Worker
+from vidcut.pipeline.ports import ProgressReporter
 
 
 @pytest.fixture
@@ -81,6 +82,23 @@ class TestRunOnce:
 
         Worker(queue, {JobKind.ANALYZE_RECORDING: handler}).run_once()
         assert seen == [("transcribe", 0.5)]
+
+    def test_logs_start_and_each_new_stage(
+        self, queue: SqliteJobQueue, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        enqueue(queue, "j1")
+
+        def handler(job: Job, report: ProgressReporter) -> None:
+            report("transcribe", 0.1)
+            report("transcribe", 0.2)
+            report("align", 0.8)
+
+        with caplog.at_level(logging.INFO):
+            Worker(queue, {JobKind.ANALYZE_RECORDING: handler}).run_once()
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("j1" in m and "開始" in m for m in messages)
+        assert sum("transcribe" in m for m in messages) == 1
+        assert any("align" in m for m in messages)
 
     def test_failure_is_recorded_and_logged(
         self, queue: SqliteJobQueue, caplog: pytest.LogCaptureFixture

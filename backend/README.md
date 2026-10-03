@@ -8,3 +8,13 @@ uv sync --extra ml      # 実物の ML モデル（mlx-whisper / WhisperX / Sile
 uv run pytest           # テスト（ML を使うテストは除外）
 uv run pytest -m ml     # ML を使うテストだけ実行
 ```
+
+## コマンドライン
+
+```bash
+uv run vidcut analyze ~/Movies/S05-12.mov --wait   # 取り込んで、この場で解析まで実行
+uv run vidcut analyze ~/Movies/course/              # フォルダ直下の動画を取り込み、ジョブだけ積む
+uv run vidcut worker                                # 積まれたジョブを順に処理し続ける
+```
+
+ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。

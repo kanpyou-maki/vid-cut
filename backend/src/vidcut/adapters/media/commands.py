@@ -10,6 +10,9 @@ _COMMON = ("-nostdin", "-v", "error", "-y")
 # 中身がプレイリストのファイルから、ネットワークや他のプロトコルを開かせない
 _LOCAL_ONLY = ("-protocol_whitelist", "file")
 _PROGRESS = ("-progress", "pipe:1", "-nostats")
+# 打ち切りまでの時間 = 基本 + 録画の長さ × 倍率。中間素材は実時間の 0.8 倍ほどかかる（ADR-002）
+_BASE_TIMEOUT_S = 300
+_TIMEOUT_PER_MEDIA_SECOND = 4
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,19 @@ def audio_args(ffmpeg: str, source: Path, dest: Path) -> list[str]:
         "-af", "aresample=async=1:first_pts=0", "-ac", "1", "-ar", "16000",
         "-c:a", "pcm_s16le", _abs(dest),
     ]  # fmt: skip
+
+
+def silence_args(ffmpeg: str, audio: Path, *, threshold_db: float, min_ms: int) -> list[str]:
+    """音量による無音検出。検出結果は ametadata で標準出力に出す（-v error でも読めるように）。"""
+    detect = f"silencedetect=noise={threshold_db:g}dB:duration={_seconds(min_ms)}"
+    return [
+        ffmpeg, *_COMMON, *_LOCAL_ONLY, "-i", _abs(audio), "-map", "0:a:0",
+        "-af", f"{detect},ametadata=mode=print:file=-", "-f", "null", "-",
+    ]  # fmt: skip
+
+
+def timeout_for(duration_ms: int) -> float:
+    return _BASE_TIMEOUT_S + duration_ms / 1000 * _TIMEOUT_PER_MEDIA_SECOND
 
 
 def mezzanine_args(

@@ -5,15 +5,13 @@ import threading
 from collections.abc import Callable, Mapping
 
 from vidcut.domain.models import Job, JobKind
-from vidcut.pipeline.ports import JobQueue
+from vidcut.pipeline.ports import JobQueue, ProgressReporter
 
 MAX_ERROR_CHARS = 1000
 """画面に出すエラーの最大文字数。詳細はログに残す。"""
 
-ProgressReporter = Callable[[str | None, float], None]
-"""処理中の段の名前と進捗（0〜1）を知らせる。"""
-
-JobHandler = Callable[[Job, ProgressReporter], None]
+JobHandler = Callable[[Job, ProgressReporter], object]
+"""ジョブを処理する。戻り値は使わない（結果は生成物と DB に残す）。"""
 
 _logger = logging.getLogger(__name__)
 
@@ -47,18 +45,30 @@ class Worker:
         if job is None:
             return None
         handler = self._handlers.get(job.kind)
+        self._logger.info("ジョブ %s（%s %s）を開始します", job.id, job.kind, job.target_id)
         try:
             if handler is None:
                 raise LookupError(f"{job.kind} の処理方法がありません")
-            handler(
-                job, lambda stage, progress: self._queue.report_progress(job.id, stage, progress)
-            )
+            handler(job, self._reporter(job))
         except Exception as e:
             self._logger.exception("ジョブ %s（%s）が失敗しました", job.id, job.kind)
             self._queue.mark_failed(job.id, _error_message(e))
         else:
             self._queue.mark_succeeded(job.id)
+            self._logger.info("ジョブ %s（%s）が完了しました", job.id, job.kind)
         return job
+
+    def _reporter(self, job: Job) -> ProgressReporter:
+        """進捗を記録し、段が変わったときだけログに出す。"""
+        stages: list[str | None] = []
+
+        def report(stage: str | None, progress: float) -> None:
+            if not stages or stages[-1] != stage:
+                stages.append(stage)
+                self._logger.info("ジョブ %s: %s", job.id, stage)
+            self._queue.report_progress(job.id, stage, progress)
+
+        return report
 
     def run_until_idle(self) -> int:
         """待機中のジョブがなくなるまで処理し、処理した件数を返す（`vidcut analyze --wait`）。"""

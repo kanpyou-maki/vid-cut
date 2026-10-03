@@ -1,11 +1,12 @@
 """外部ツールと永続化の抽象（Design Doc 3-1）。実装は adapters/ にあり、bootstrap.py が注入する。"""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from vidcut.domain.intervals import Interval
 from vidcut.domain.models import EditState, Job, Lecture, MediaInfo, Recording
 
 
@@ -27,6 +28,9 @@ class VersionConflictError(RuntimeError):
 
 ProgressCallback = Callable[[float], None]
 """長い処理の進捗（0〜1）を受け取る。"""
+
+ProgressReporter = Callable[[str | None, float], None]
+"""ジョブの処理中の段の名前と、ジョブ全体の進捗（0〜1）を知らせる。"""
 
 
 @dataclass(frozen=True)
@@ -68,6 +72,83 @@ class MediaTool(Protocol):
     def compute_peaks(self, audio: Path, per_second: int) -> Peaks:
         """extract_audio で作った wav から波形のピーク値を求める。"""
         ...
+
+    def detect_silences(
+        self, audio: Path, *, threshold_db: float, min_ms: int
+    ) -> tuple[Interval, ...]:
+        """音量が threshold_db 未満の状態が min_ms 以上続く区間。"""
+        ...
+
+
+class VoiceActivityDetector(Protocol):
+    def detect_speech(self, audio: Path) -> tuple[Interval, ...]:
+        """解析用の wav から、人の声がある区間を返す。"""
+        ...
+
+
+@dataclass(frozen=True)
+class ChunkTranscript:
+    """発話チャンク 1 つの文字起こし。avg_logprob は確信度の目安（0 に近いほど高い）。"""
+
+    text: str
+    avg_logprob: float
+
+
+class Transcriber(Protocol):
+    model_id: str
+    """モデルの識別子。生成物のキャッシュのキーに入れる（モデルを変えたら作り直す）。"""
+
+    def transcribe(
+        self,
+        audio: Path,
+        spans: Sequence[Interval],
+        *,
+        hint: str,
+        on_progress: ProgressCallback | None,
+    ) -> tuple[ChunkTranscript, ...]:
+        """spans の各区間を個別に文字起こしし、同じ順で返す。"""
+        ...
+
+
+@dataclass(frozen=True)
+class AlignedChar:
+    """位置合わせした 1 文字。時刻が付かなかった文字は start_ms / end_ms が None。"""
+
+    text: str
+    start_ms: int | None
+    end_ms: int | None
+    score: float | None
+
+
+class Aligner(Protocol):
+    model_id: str
+    """モデルの識別子。生成物のキャッシュのキーに入れる。"""
+
+    def align(
+        self, audio: Path, segments: Sequence[tuple[Interval, str]]
+    ) -> tuple[tuple[AlignedChar, ...], ...]:
+        """各区間の文字列に文字単位の時刻（録画ファイル内のミリ秒）を付け、同じ順で返す。"""
+        ...
+
+
+class ArtifactStore(Protocol):
+    """録画ファイルごとの生成物（ワークスペースのファイル）。"""
+
+    def path(self, recording_id: str, name: str) -> Path:
+        """生成物のファイルの場所。親のディレクトリは作っておく。"""
+        ...
+
+    def read_json(self, recording_id: str, name: str) -> object | None:
+        """保存されていなければ None。"""
+        ...
+
+    def write_json(self, recording_id: str, name: str, data: object) -> None:
+        """書き終えてから置き換える（途中の状態を残さない）。"""
+        ...
+
+
+Fingerprinter = Callable[[Path], str]
+"""録画ファイルの同一性の判定に使う値（サイズ + 更新日時 + 先頭と末尾のハッシュ）。"""
 
 
 class RecordingRepository(Protocol):

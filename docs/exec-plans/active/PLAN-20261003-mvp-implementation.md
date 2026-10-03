@@ -45,13 +45,15 @@
 
 ### M3: 解析パイプライン（`feat/m3-analysis`）
 
-- [ ] 無音検出（Silero VAD + 音量）と発話チャンクへの分割
-- [ ] 文字起こし adapter（mlx-whisper large-v3-turbo、チャンクごと、ヒント文、`avg_logprob`）
-- [ ] 位置合わせ adapter（WhisperX、日本語、文字単位）
-- [ ] フィラー検出（辞書 + 前後の無音）と要確認の印（低確信度・未認識の発話）
-- [ ] `analyze_recording` ジョブ（段ごとの生成物のキャッシュと再開）、`make_mezzanine` ジョブ
-- [ ] CLI: `vidcut analyze <paths...> [--wait]`、`vidcut worker`
-- [ ] 手動確認: 検証素材で解析時間が 5 分以内（中間素材を除く）
+- [x] 無音検出（Silero VAD + 音量）と発話チャンクへの分割
+- [x] 文字起こし adapter（mlx-whisper large-v3-turbo、チャンクごと、ヒント文、`avg_logprob`）
+- [x] 位置合わせ adapter（WhisperX、日本語、文字単位）
+- [x] フィラー検出（辞書 + 前後の無音）と要確認の印（低確信度・未認識の発話）
+- [x] `analyze_recording` ジョブ（段ごとの生成物のキャッシュと再開）、`make_mezzanine` ジョブ
+- [x] CLI: `vidcut analyze <paths...> [--wait]`、`vidcut worker`
+- [x] 手動確認: 検証素材で解析時間が 5 分以内（中間素材を除く）→ 2 分 29 秒（proxy 39 秒・文字起こし 76 秒・位置合わせ 31 秒）。中間素材は別ジョブで 4 分 53 秒
+- 実装中に見つけたこと: VAD の発話区間を無音から単純に差し引くと、余韻と句の間の短い無音をまたぐ区間のせいでチャンクが 69 → 48 につながった。無音の内側に収まる VAD の区間だけを除くように直し、正解データの 69 チャンクと開始・終了とも 60ms 以内で一致した
+- 残る課題: 解析ロジックを更新したとき、登録済みの録画ファイルを解析し直す手段がない（取り込みは「登録済み」で止まる）。M6 の API で再解析を用意する
 
 ### M4: 言い直しの判定（`feat/m4-judge`）
 

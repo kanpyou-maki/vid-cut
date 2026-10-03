@@ -60,3 +60,13 @@
   当面の回避策: Biome の整形設定を Prettier の既定に合わせ（2 スペース・80 桁・ダブルクォート・セミコロン）、CSS は両者で結果が同じになる書き方にする
 - **Status:** resolved（フックを修正しテスト 14 件を追加。master: [claude-config-master#3](https://github.com/kanpyou-maki/claude-config-master/pull/3)。vid-cut には同じフックを取り込み済み）
 
+
+### FRIC-004: Python のルール文書が black / isort を指定しているが、プロジェクトは ruff format を使う
+
+- **日付:** 2026-10-03
+- **状況:** M2・M3 の review-loop で、style-reviewer が 2 回続けて「`.claude/rules/python/coding-style.md` は black と isort を指定しているが、実態は ruff format」と指摘した。
+  毎回、依頼文で「ruff format を使う」と断りを入れる必要があり、断りを忘れると誤った BLOCK になりうる
+- **根本原因の仮説:** ドキュメント不足。master から配布されるルール文書が特定の整形ツールを名指ししており、プロジェクトの選択（ADR-001: ruff）と `harness.json` の `lint` コマンドを参照していない
+- **改善候補:** `.claude/rules/python/coding-style.md` の「Formatting Tools」を「整形と lint は `.claude/harness.json` の `lint` コマンド（このプロジェクトは ruff format / ruff check）に従う」に書き換える。
+  汎用的な改善なので sync-upstream で master に還元し、style-reviewer の確認項目も同じ表現にそろえる
+- **Status:** open
