@@ -26,7 +26,7 @@ from vidcut.domain.models import (
 )
 from vidcut.pipeline.analysis_result import save_analysis
 from vidcut.pipeline.ports import Judgement, NotFoundError, RecordingRepository
-from vidcut.services.lecture_views import LectureQuery, LectureStatus, lecture_status
+from vidcut.services.lecture_views import JobView, LectureQuery, LectureStatus, lecture_status
 
 ANALYZE = JobKind.ANALYZE_RECORDING
 JUDGE = JobKind.JUDGE_LECTURE
@@ -136,6 +136,22 @@ class TestSummaries:
         assert first.jobs[-1].error_code is ErrorCode.TOOL_FAILED
         assert second.status is LectureStatus.QUEUED
         assert [j.id for j in second.jobs] == ["a3"]
+
+    def test_jobs_carry_the_error_code_but_not_the_raw_error(self, env: Env) -> None:
+        # 生のエラー文には絶対パスや外部ツールの出力が入る。API に渡す型には載せない
+        env.finished("a3", ANALYZE, "r3", failed=True)
+        _, second = env.query().summaries()
+        (view,) = second.jobs
+        assert view == JobView(
+            id="a3",
+            kind=ANALYZE,
+            target_id="r3",
+            status=FAILED,
+            stage=None,
+            progress=0.0,
+            error_code=ErrorCode.TOOL_FAILED,
+        )
+        assert "/Users/me" not in repr(second)
 
     def test_mezzanine_and_export_jobs_do_not_change_the_status(self, env: Env) -> None:
         env.finished("a3", ANALYZE, "r3")

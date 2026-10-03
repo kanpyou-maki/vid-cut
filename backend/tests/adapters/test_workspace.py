@@ -118,6 +118,16 @@ class TestFileExportStore:
             store.write_text("L", ".xml", "<x/>")
         assert list(outside.iterdir()) == []
 
+    def test_export_file_that_is_a_symlink_is_replaced_not_followed(self, tmp_path: Path) -> None:
+        outside = tmp_path / "outside.xml"
+        outside.write_text("<外のファイル/>", encoding="utf-8")
+        store = FileExportStore(tmp_path / "ws")
+        store.path("L", ".xml").symlink_to(outside)
+        path = store.write_text("L", ".xml", "<x/>")
+        assert not path.is_symlink()
+        assert path.read_text(encoding="utf-8") == "<x/>"
+        assert outside.read_text(encoding="utf-8") == "<外のファイル/>"
+
     def test_refuses_an_exports_directory_that_is_a_symlink(self, tmp_path: Path) -> None:
         outside = tmp_path / "outside"
         outside.mkdir()

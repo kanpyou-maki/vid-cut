@@ -107,3 +107,10 @@ _なし_
 - 複数のリポジトリにまたがる保存は `Atomic`（ports）で囲む。SQLite の `transaction()` は、既にトランザクションの中ならそれに加わる
 - M6 PR 2 で決めること: `build_app` はワーカー用にすべてを組み立てる（ML・`claude` を含む）。API はリクエストごとに接続を開くので、API 用の軽い組み立て（リポジトリと services だけ）を `bootstrap.py` に分ける
 - M6 PR 1 の制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。`dropped_restored_ids` の通知を閉じる仕組みは M7 で決める。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
+- M6 PR 1 のセキュリティレビュー（WARNING で通過）から、PR 2 で必ず行うこと: 応答の型は許可リスト方式にし、生の `Job.error` と `ImportFailure.message` が出ないことをテストで固定する（一覧と詳細は `JobView` を返すようにした）。
+  pydantic で件数（`lecture_ids`・`recording_ids`・`manual_cuts`・`restored_suggestion_ids`）、id の長さと文字種、題名の長さ（100 文字を超えたら拒否）、本文のサイズを制限する。
+  例外の文（`str(e)`）は絶対パスを含みうるので、応答には定型文だけを入れる（symlink の拒否、壊れた JSON など）。500 の応答に例外文とスタックトレースを出さない
+- M6 PR 2 の下調べ（プロジェクト外で確認）: fastapi 0.142 / starlette 1.7 / pydantic 2.13 / uvicorn 0.54。`FileResponse` は Range に対応（206 / 416）。厳格な型（`strict=True`・`extra="forbid"`）は期待どおり 422。
+  本文サイズは `Content-Length` で先に弾く（読みながら数えると 400 になる）。JSON 以外の Content-Type は明示的に 415 にする。
+  Starlette のテストクライアントは `httpx` ではなく `httpx2`（pydantic/httpx2）を推奨し、`httpx` だと非推奨の警告が出る → 承認済みの一覧（dev に httpx）と違うので、PR 2 の着手時にユーザーに確認する
+

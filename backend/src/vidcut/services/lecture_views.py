@@ -5,7 +5,15 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from vidcut.domain.models import EditState, Job, JobKind, JobStatus, Lecture, Recording
+from vidcut.domain.models import (
+    EditState,
+    ErrorCode,
+    Job,
+    JobKind,
+    JobStatus,
+    Lecture,
+    Recording,
+)
 from vidcut.pipeline.analysis_result import Analysis, load_analysis
 from vidcut.pipeline.ports import (
     ArtifactStore,
@@ -33,13 +41,42 @@ class LectureStatus(StrEnum):
 
 
 @dataclass(frozen=True)
+class JobView:
+    """画面に出してよいジョブの情報。生のエラー文（Job.error）は持たない。
+
+    Job.error には絶対パスや外部ツールの出力が入るので、API に渡す型から外しておく
+    （Design Doc 3-5-2。画面には error_code と定型文を出す）。
+    """
+
+    id: str
+    kind: JobKind
+    target_id: str
+    status: JobStatus
+    stage: str | None
+    progress: float
+    error_code: ErrorCode | None
+
+    @classmethod
+    def of(cls, job: Job) -> "JobView":
+        return cls(
+            id=job.id,
+            kind=job.kind,
+            target_id=job.target_id,
+            status=job.status,
+            stage=job.stage,
+            progress=job.progress,
+            error_code=job.error_code,
+        )
+
+
+@dataclass(frozen=True)
 class LectureSummary:
     """jobs は状態の根拠: 各録画ファイルの解析と、レクチャーの判定の、それぞれ最新のジョブ。"""
 
     lecture: Lecture
     recordings: tuple[Recording, ...]  # レクチャー内の順
     status: LectureStatus
-    jobs: tuple[Job, ...]
+    jobs: tuple[JobView, ...]
 
 
 @dataclass(frozen=True)
@@ -144,7 +181,7 @@ def _summarize(
         lecture=lecture,
         recordings=tuple(_require(recordings.get(rid), rid) for rid in lecture.recording_ids),
         status=lecture_status(jobs),
-        jobs=jobs,
+        jobs=tuple(JobView.of(job) for job in jobs),
     )
 
 
