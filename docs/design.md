@@ -189,6 +189,7 @@ Lecture:        id, title, recording_ids: tuple[str, ...]      # 順序付き。
 CutSuggestion:  id, recording_id, span,
                 kind: silence | filler | retake | misspeak | noise,
                 reason（言い直し系は必須）, superseded_by(言い直し後の位置、任意)
+ManualCut:      id, recording_id, span                         # 人が追加した削除区間
 EditState:      lecture_id, version,
                 restored_suggestion_ids: frozenset[str],       # 自動の削除候補を戻したもの
                 manual_cuts: tuple[ManualCut, ...]             # 人が追加した削除区間（ミリ秒。画面がトークンの選択範囲から求める）
