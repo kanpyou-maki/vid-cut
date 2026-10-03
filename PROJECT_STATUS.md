@@ -36,13 +36,13 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち。PR 3（`vidcut serve`・frontend の配信・型生成。`feat/m6-serve`）を実装済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち。PR 3（`vidcut serve`・frontend の配信・型生成。`feat/m6-serve`）も review-loop を通過し、PR [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（base は `feat/m6-api-http`）のマージ待ち
 
 ## 次にやること
 
 M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確認とマージ。
 
-- [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ PR 3（`feat/m6-serve`）
+- [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（PR 3）
 - [ ] M6 の手動確認（ユーザー）: `backend/README.md` の「手で確かめる（M6）」。ワークスペースの写しで行う
 - [ ] ADR-005（提案中）の承認（ユーザー）
 - [ ] 判断（ユーザー）: テスト用の依存を `httpx` のままにするか、Starlette が推奨する `httpx2` に替えるか（いまは `httpx` で、非推奨の警告が 1 件出る）
@@ -93,7 +93,7 @@ _なし_
 
 ### M6（API）の現状
 
-- PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`、PR #10）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。PR 3（`feat/m6-serve`）: `vidcut serve`・frontend の配信・型生成。設計と決まりは Design Doc 3-5・3-5-1・3-5-2 と ADR-005
+- PR 1（`feat/m6-api`、PR #9）: services と保存まわり。PR 2（`feat/m6-api-http`、PR #10）: FastAPI のアプリ・防御・入力の上限・各エンドポイント。PR 3（`feat/m6-serve`、PR #11）: `vidcut serve`・frontend の配信・型生成。設計と決まりは Design Doc 3-5・3-5-1・3-5-2 と ADR-005
 - 構成: `api/app.py` の `create_app(api, settings)`、`api/security.py`（Host・Origin・トークン・本文）、`api/inputs.py`（入力の上限）・`api/outputs.py`（出力の許可リスト）・`api/presenters.py`（出力への変換）、`api/errors.py`・`api/messages.py`（定型文）、`api/routes/`。
   `bootstrap.build_api(workspace)` が起動時に 1 回スキーマを移行し、`Api.services()` がリクエストごとに接続を開く。`ApiServices` は `imports`・`lecture_service`・`lecture_views`・`edits`・`exports`・`jobs`（`JobControl`）・`artifacts`（`RecordingArtifacts`）を持つ。API は ML も `claude` も組み立てない（判定の登録は `JudgeRequests`）
 - 守ること: 応答には種別（`error_code`）と定型文だけを入れる（生の `Job.error`・`ImportFailure.message`・例外の文は入れない）。`InvalidInputError` の文だけはそのまま画面に出るので、絶対パスやほかの例外の文を入れない。
