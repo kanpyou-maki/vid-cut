@@ -52,6 +52,7 @@
 ```
 backend:  api / cli / jobs → services → pipeline → domain
           adapters → pipeline.ports / domain（ports の実装。pipeline・services は adapters を import しない）
+          jobs は pipeline の ports と error_codes を直接使ってよい（ジョブ表と失敗の分類。services は handler として注入される）
           bootstrap.py だけが adapters を import して注入する
           domain は他のどのパッケージにも依存しない（字幕・テロップ用の文字単位タイミングを最初から保持する）
 frontend → backend の HTTP API のみ（backend の内部構造に依存しない。型は API スキーマから生成）

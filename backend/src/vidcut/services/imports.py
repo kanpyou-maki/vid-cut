@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from vidcut.domain.models import ErrorCode, Job, JobKind, Lecture, Recording
-from vidcut.domain.titles import normalize_title
+from vidcut.domain.titles import FALLBACK_TITLE, normalize_title
 from vidcut.pipeline.error_codes import classify_error
 from vidcut.pipeline.ports import (
     ExternalToolError,
@@ -18,7 +18,6 @@ from vidcut.pipeline.ports import (
 )
 
 VIDEO_SUFFIXES = frozenset({".mov", ".mp4", ".m4v"})
-FALLBACK_TITLE = "untitled"
 
 
 @dataclass(frozen=True)

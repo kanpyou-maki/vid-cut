@@ -4,6 +4,8 @@ import re
 import unicodedata
 
 MAX_TITLE_CHARS = 100
+FALLBACK_TITLE = "untitled"
+"""ファイル名から題名を作れなかったとき（見える文字がない）の題名。"""
 
 # 改行・タブ・行と段落の区切り。除くと前後の語がくっつくので、題名では空白 1 つにする
 _LINE_BREAKS = re.compile(r"[\t\n\r\v\f\x1c-\x1f\x85\u2028\u2029]+")

@@ -24,6 +24,7 @@ from vidcut.domain.models import (
     Lecture,
     ManualCut,
 )
+from vidcut.domain.titles import FALLBACK_TITLE, MAX_TITLE_CHARS
 from vidcut.pipeline.analysis_result import save_analysis
 from vidcut.pipeline.judge import JudgeSettings
 from vidcut.pipeline.ports import (
@@ -140,6 +141,11 @@ class TestMerge:
     def test_given_title_is_normalized(self, env: Env) -> None:
         merged = env.service().merge(["l1", "l2"], title=" ガイド‮ ")
         assert merged.title == "ガイド"
+
+    def test_long_title_is_shortened(self, env: Env) -> None:
+        merged = env.service().merge(["l1", "l2"], title="あ" * (MAX_TITLE_CHARS + 1))
+        assert merged.title == "あ" * MAX_TITLE_CHARS
+        assert env.lectures.get(merged.id) == merged
 
     def test_title_with_nothing_visible_is_rejected(self, env: Env) -> None:
         with pytest.raises(InvalidInputError, match="レクチャー名"):
@@ -270,6 +276,14 @@ class TestSplit:
         ]
         assert env.titles() == {"S05-13": ("r3",), "S05-12": ("r2",), "S05-11": ("r1",)}
 
+    def test_file_name_with_nothing_visible_gets_the_fallback_title(
+        self, env: Env, tmp_path: Path
+    ) -> None:
+        SqliteRecordingRepository(env.conn).add(make_recording(tmp_path / "\u200b.mov", "r4"))
+        lecture = Lecture(id="l34", title="まとめ", recording_ids=("r3", "r4"))
+        env.lectures.replace(remove=("l3",), save=(lecture,))
+        assert [part.title for part in env.service().split("l34")] == ["S05-13", FALLBACK_TITLE]
+
     def test_manual_cuts_go_to_the_lecture_of_their_recording(
         self, env: Env, merged: Lecture
     ) -> None:
@@ -376,6 +390,15 @@ class TestReanalyze:
         again = service.reanalyze("l1")
         assert again == first
         assert len(env.queue.list_all()) == 1
+
+    def test_only_recordings_without_a_waiting_analysis_get_a_new_job(self, env: Env) -> None:
+        env.lectures.replace(
+            remove=("l1", "l2"), save=(Lecture(id="l12", title="t", recording_ids=("r1", "r2")),)
+        )
+        env.queue.enqueue(Job(id="waiting", kind=JobKind.ANALYZE_RECORDING, target_id="r1"))
+        jobs = env.service().reanalyze("l12")
+        assert [(j.id, j.target_id) for j in jobs] == [("waiting", "r1"), ("new0", "r2")]
+        assert len(env.queue.list_all()) == 2
 
     def test_can_be_requested_again_after_the_analysis_started(self, env: Env) -> None:
         service = env.service()

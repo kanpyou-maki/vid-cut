@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
 from vidcut.domain.models import EditState, Job, JobKind, Lecture, ManualCut
-from vidcut.domain.titles import normalize_title
+from vidcut.domain.titles import FALLBACK_TITLE, normalize_title
 from vidcut.pipeline.analysis_result import load_analysis
 from vidcut.pipeline.ports import (
     ArtifactStore,
@@ -19,7 +19,6 @@ from vidcut.pipeline.ports import (
     NotFoundError,
     RecordingRepository,
 )
-from vidcut.services.imports import FALLBACK_TITLE
 from vidcut.services.job_requests import find_queued
 
 JudgeRequester = Callable[[str], object]

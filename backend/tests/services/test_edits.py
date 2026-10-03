@@ -67,6 +67,11 @@ class TestSave:
         assert saved.manual_cuts == state.manual_cuts
         assert saved.restored_suggestion_ids == {"r1-silence-0000"}
 
+    def test_restoration_of_a_suggestion_that_no_longer_exists_is_accepted(self, env: Env) -> None:
+        # 判定のやり直しで候補が消えた直後の画面からも保存できる（削除区間の計算では使われない）
+        saved = env.service.save(edits(0, restored=("gone",)))
+        assert (saved.version, saved.restored_suggestion_ids) == (1, {"gone"})
+
     def test_stale_version_is_a_conflict(self, env: Env) -> None:
         env.service.save(edits(0, cut("m1")))
         with pytest.raises(VersionConflictError):
