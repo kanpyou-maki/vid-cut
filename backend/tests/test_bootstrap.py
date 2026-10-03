@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vidcut.bootstrap import build_app, workspace_from_env
+from vidcut.bootstrap import build_app, judge_workdir, workspace_from_env
 from vidcut.domain.models import JobKind
 
 
@@ -20,7 +20,14 @@ def test_build_app_creates_database_and_worker(tmp_path: Path) -> None:
     app = build_app(tmp_path / "ws")
     try:
         assert (tmp_path / "ws" / "vidcut.sqlite3").exists()
-        assert {JobKind.ANALYZE_RECORDING, JobKind.MAKE_MEZZANINE} <= set(app.handlers)
+        kinds = {JobKind.ANALYZE_RECORDING, JobKind.MAKE_MEZZANINE, JobKind.JUDGE_LECTURE}
+        assert kinds <= set(app.handlers)
         assert app.worker().run_once() is None
     finally:
         app.close()
+
+
+def test_judge_runs_claude_in_neutral_directory_inside_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    assert judge_workdir(workspace) == workspace / "judge"
+    assert not judge_workdir(workspace).is_relative_to(Path(__file__).parents[2])

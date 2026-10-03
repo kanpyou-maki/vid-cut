@@ -1,4 +1,4 @@
-"""コマンドライン: vidcut analyze <paths...> [--wait] / vidcut worker（Design Doc 2 章）。"""
+"""コマンドライン: vidcut analyze / worker / eval judge（Design Doc 2 章・6 章）。"""
 
 import argparse
 import logging
@@ -11,7 +11,16 @@ from types import FrameType
 
 from vidcut.bootstrap import App, build_app, workspace_from_env
 from vidcut.domain.models import JobStatus
+from vidcut.pipeline.judge import JudgeEntry
+from vidcut.pipeline.ports import ExternalToolError
 from vidcut.services.imports import ImportResult
+from vidcut.services.judge_eval import (
+    PRECISION_TARGET,
+    RECALL_TARGET,
+    EvalRun,
+    load_sample_entries,
+    load_truth,
+)
 
 AppFactory = Callable[[], App]
 
@@ -29,6 +38,8 @@ def main(
     try:
         if args.command == "analyze":
             return _analyze(app, [Path(p) for p in args.paths], wait=args.wait)
+        if args.command == "eval":
+            return _eval_judge(app, args)
         return _worker(app, stop or threading.Event())
     finally:
         app.close()
@@ -41,7 +52,25 @@ def _parser() -> argparse.ArgumentParser:
     analyze.add_argument("paths", nargs="+", help="録画ファイルまたはフォルダ")
     analyze.add_argument("--wait", action="store_true", help="この場で解析が終わるまで処理する")
     commands.add_parser("worker", help="ジョブを待って処理し続ける")
+    evaluations = commands.add_parser("eval", help="精度を評価する").add_subparsers(
+        dest="target", required=True
+    )
+    judge = evaluations.add_parser(
+        "judge", help="言い直しの判定を正解データと比べる（claude を呼ぶ）"
+    )
+    source = judge.add_mutually_exclusive_group(required=True)
+    source.add_argument("--chunks", type=Path, help="チャンク一覧の JSON（プロトタイプの形）")
+    source.add_argument("--lecture", help="解析済みのレクチャーの題名または id")
+    judge.add_argument("--truth", type=Path, required=True, help="正解データの JSON")
+    judge.add_argument("--runs", type=_positive_int, default=1, help="判定を繰り返す回数")
     return parser
+
+
+def _positive_int(value: str) -> int:
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("1 以上を指定してください")
+    return number
 
 
 def _analyze(app: App, paths: list[Path], *, wait: bool) -> int:
@@ -71,6 +100,48 @@ def _print_import(result: ImportResult) -> None:
         print(f"  登録 {recording.source_path}")
     for path, message in result.failed:
         print(f"  失敗 {path}: {message}")
+
+
+def _eval_judge(app: App, args: argparse.Namespace) -> int:
+    """終了コード 0: すべての回で目標（適合率 90%・再現率 80%）を達成。"""
+    try:
+        truth = load_truth(args.truth)
+        if args.chunks is not None:
+            entries = load_sample_entries(args.chunks)
+        else:
+            entries = app.judge_eval.lecture_entries(args.lecture)
+        print(f"{len(entries)} チャンクを判定します（正解の削除対象: {len(truth)} 件）")
+        runs: list[EvalRun] = []
+        for index in range(args.runs):
+            run = app.judge_eval.run(entries, truth)
+            _print_eval_run(index + 1, run, entries)
+            runs.append(run)
+    except (ExternalToolError, LookupError, ValueError) as e:
+        print(f"評価できませんでした: {e}")
+        return 1
+    achieved = all(run.score.meets_targets for run in runs)
+    print(
+        f"結果: 目標（適合率 {PRECISION_TARGET:.0%} 以上・再現率 {RECALL_TARGET:.0%} 以上）"
+        f"{'を達成' if achieved else 'は未達'}"
+    )
+    return 0 if achieved else 1
+
+
+def _print_eval_run(index: int, run: EvalRun, entries: Sequence[JudgeEntry]) -> None:
+    score = run.score
+    deleted = len(score.correct) + len(score.wrong)
+    expected = len(score.correct) + len(score.missed)
+    print(
+        f"{index} 回目: 適合率 {score.precision:.1%}（{len(score.correct)}/{deleted}）"
+        f" 再現率 {score.recall:.1%}（{len(score.correct)}/{expected}）"
+    )
+    texts = {entry.number: entry.text for entry in entries}
+    decisions = {decision.number: decision for decision in run.decisions}
+    for number in score.wrong:
+        decision = decisions[number]
+        print(f"  誤って削除 {number} {texts[number]}（{decision.kind}: {decision.reason}）")
+    for number in score.missed:
+        print(f"  見逃し {number} {texts[number]}")
 
 
 def _worker(app: App, stop: threading.Event) -> int:

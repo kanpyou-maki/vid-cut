@@ -1,4 +1,5 @@
 import math
+from itertools import pairwise
 
 import pytest
 
@@ -73,3 +74,19 @@ class TestBuildTokens:
 
     def test_empty_transcript_has_no_tokens(self) -> None:
         assert build_tokens(CHUNK, ChunkTranscript("", -1.0), []) == ()
+
+    def test_text_is_kept_when_alignment_returned_nothing(self) -> None:
+        # 検証素材のチャンク 32: 0.18 秒の雑音が「ご視聴ありがとうございました。」と書き起こされ、
+        # WhisperX が位置合わせに失敗して文字を 1 つも返さなかった。文字を捨てると判定に届かない
+        tokens = build_tokens(CHUNK, ChunkTranscript("ご視聴 ありがとう。", -0.5), [])
+        assert "".join(t.text for t in tokens) == "ご視聴ありがとう。"
+        assert tokens[0].span.start_ms == CHUNK.span.start_ms
+        assert tokens[-1].span.end_ms == CHUNK.span.end_ms
+        assert all(a.span.end_ms <= b.span.start_ms for a, b in pairwise(tokens))
+        assert all(t.align_score == 0.0 for t in tokens)
+
+    def test_fallback_fits_long_text_into_a_very_short_chunk(self) -> None:
+        short = SpeechChunk(id="r1-c0002", recording_id="r1", span=Interval(1_000, 1_005))
+        tokens = build_tokens(short, ChunkTranscript("ご視聴ありがとうございました。", -0.5), [])
+        assert len(tokens) == 15
+        assert all(1_000 <= t.span.start_ms < t.span.end_ms <= 1_005 for t in tokens)

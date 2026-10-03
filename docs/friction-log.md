@@ -46,7 +46,10 @@
 - **根本原因の仮説:** ドキュメント不足（`claude -p` をアプリの部品として使う場合の注意点がない）
 - **改善候補:** Design Doc 3-3 に「作業ディレクトリをワークスペースの中立なディレクトリにし、ツールを使わせない」と記載した（対応済み）。
   実装時に adapter のテストで、作業ディレクトリの指定を検証する
-- **Status:** open
+- **対応:** M4 の claude adapter（`backend/src/vidcut/adapters/claude_cli.py`）は、ワークスペース内の空のディレクトリ（`<ワークスペース>/judge/`）を
+  作業ディレクトリにし、`--tools ""` と `--safe-mode`（利用者の CLAUDE.md・フック・MCP も読み込まない）を付けて呼ぶ。
+  作業ディレクトリと引数は `tests/adapters/test_claude_cli.py` で検証している
+- **Status:** resolved（M4 の PR）
 
 ### FRIC-003: フックが backend/ ・ frontend/ のサブディレクトリ構成に対応していない
 

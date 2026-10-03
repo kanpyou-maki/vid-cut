@@ -15,8 +15,15 @@ def build_tokens(
 
     時刻が付かなかった文字（句読点など）は、前後の時刻の付いた文字の間を等分して割り当てる。
     時刻はチャンクの範囲に収め、長さ 0 にならないよう補う。
+
+    位置合わせが文字を 1 つも返さなかったとき（短い雑音の誤認識で起きる）は、文字起こしの文字を
+    チャンクに等分して割り当てる。文字を捨てると、画面にも言い直しの判定にも届かなくなる。
     """
-    visible = [c for c in chars if c.text.strip()]
+    visible = [c for c in chars if c.text.strip()] or [
+        AlignedChar(text=c, start_ms=None, end_ms=None, score=None)
+        for c in transcript.text
+        if c.strip()
+    ]
     spans = _fill_spans(chunk.span, visible)
     confidence = min(1.0, math.exp(transcript.avg_logprob))
     return tuple(

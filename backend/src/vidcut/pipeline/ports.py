@@ -7,11 +7,15 @@ from pathlib import Path
 from typing import Protocol
 
 from vidcut.domain.intervals import Interval
-from vidcut.domain.models import EditState, Job, Lecture, MediaInfo, Recording
+from vidcut.domain.models import CutSuggestion, EditState, Job, Lecture, MediaInfo, Recording
 
 
 class ExternalToolError(RuntimeError):
     """ffmpeg などの外部ツールが見つからない・失敗した。"""
+
+
+class LoginRequiredError(ExternalToolError):
+    """`claude` にログインしていない。利用者が `/login` を実行する必要がある。"""
 
 
 class UnsupportedMediaError(ValueError):
@@ -131,6 +135,12 @@ class Aligner(Protocol):
         ...
 
 
+class LanguageModel(Protocol):
+    def complete(self, prompt: str) -> str:
+        """指示文を渡し、応答の文章を返す。ツールは使わせない（Design Doc 3-3）。"""
+        ...
+
+
 class ArtifactStore(Protocol):
     """録画ファイルごとの生成物（ワークスペースのファイル）。"""
 
@@ -184,6 +194,26 @@ class EditStateRepository(Protocol):
 
     def save(self, state: EditState) -> EditState:
         """state.version が保存済みの版と一致すれば保存し、version を 1 進めた状態を返す。"""
+        ...
+
+
+@dataclass(frozen=True)
+class Judgement:
+    """レクチャーの言い直しの判定結果。input_key は判定に渡した入力のハッシュ。"""
+
+    lecture_id: str
+    input_key: str
+    suggestions: tuple[CutSuggestion, ...]  # retake / misspeak / noise
+    dropped_restored_ids: tuple[str, ...] = ()  # 判定のやり直しで引き継げなかった「戻した候補」
+
+
+class JudgementRepository(Protocol):
+    def get(self, lecture_id: str) -> Judgement | None:
+        """まだ判定していなければ None。"""
+        ...
+
+    def save(self, judgement: Judgement) -> None:
+        """レクチャーの判定結果を置き換える。"""
         ...
 
 

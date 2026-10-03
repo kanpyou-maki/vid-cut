@@ -61,6 +61,15 @@ _MIGRATIONS: tuple[str, ...] = (
     );
     CREATE INDEX jobs_by_queue_order ON jobs (status, priority DESC, seq);
     """,
+    f"""
+    CREATE TABLE judgements (
+        lecture_id TEXT PRIMARY KEY REFERENCES lectures (id) ON DELETE CASCADE,
+        input_key TEXT NOT NULL,
+        suggestions TEXT NOT NULL,
+        dropped_restored_ids TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT ({NOW})
+    );
+    """,
 )
 
 SCHEMA_VERSION = len(_MIGRATIONS)
