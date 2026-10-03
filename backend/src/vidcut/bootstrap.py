@@ -3,6 +3,7 @@
 import os
 import sqlite3
 from collections.abc import Mapping
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from vidcut.adapters.media.tool import FfmpegMediaTool
 from vidcut.adapters.ml.aligner import WhisperxAligner
 from vidcut.adapters.ml.transcriber import MlxWhisperTranscriber
 from vidcut.adapters.ml.vad import SileroVad
-from vidcut.adapters.sqlite.database import open_database
+from vidcut.adapters.sqlite.database import open_database, transaction
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
@@ -135,11 +136,17 @@ def build_app(
     )
     resolved_judge_settings = judge_settings or JudgeSettings()
     edit_states = SqliteEditStateRepository(conn)
+
+    def atomic() -> AbstractContextManager[None]:
+        # リポジトリはすべて同じ接続を使うので、この接続のトランザクションでまとめられる
+        return transaction(conn)
+
     judge = JudgeService(
         lectures=lectures,
         store=store,
         judgements=judgements,
         edit_states=edit_states,
+        atomic=atomic,
         queue=queue,
         model=language_model,
         settings=resolved_judge_settings,

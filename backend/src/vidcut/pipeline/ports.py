@@ -1,6 +1,7 @@
 """外部ツールと永続化の抽象（Design Doc 3-1）。実装は adapters/ にあり、bootstrap.py が注入する。"""
 
 from collections.abc import Callable, Iterable, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -200,6 +201,12 @@ class ExportStore(Protocol):
         """書き終えてから置き換え、書いたファイルの場所を返す。"""
         ...
 
+
+Atomic = Callable[[], AbstractContextManager[None]]
+"""`with atomic():` で囲んだ保存をまとめて確定する。途中で例外が出たら、囲んだ保存をすべて取り消す。
+
+複数のリポジトリやジョブ表にまたがる保存に使う（Design Doc 3-5-2）。
+"""
 
 Fingerprinter = Callable[[Path], str]
 """録画ファイルの同一性の判定に使う値（サイズ + 更新日時 + 先頭と末尾のハッシュ）。"""

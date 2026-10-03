@@ -73,6 +73,31 @@ class TestTransaction:
             raise ValueError("boom")
         assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 0
 
+    def test_nested_transaction_joins_the_outer_one(self, conn: sqlite3.Connection) -> None:
+        with transaction(conn):
+            with transaction(conn):
+                conn.execute("INSERT INTO lectures (id, title) VALUES ('l1', 't')")
+            assert conn.in_transaction  # 内側を抜けても、外側が終わるまで確定しない
+        assert not conn.in_transaction
+        assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 1
+
+    def test_error_after_a_nested_transaction_undoes_it_too(self, conn: sqlite3.Connection) -> None:
+        with pytest.raises(ValueError), transaction(conn):
+            with transaction(conn):
+                conn.execute("INSERT INTO lectures (id, title) VALUES ('l1', 't')")
+            raise ValueError("boom")
+        assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 0
+
+    def test_error_inside_a_nested_transaction_undoes_the_outer_one(
+        self, conn: sqlite3.Connection
+    ) -> None:
+        with pytest.raises(ValueError), transaction(conn):
+            conn.execute("INSERT INTO lectures (id, title) VALUES ('l1', 't')")
+            with transaction(conn):
+                raise ValueError("boom")
+        assert not conn.in_transaction
+        assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 0
+
     def test_failed_commit_leaves_connection_usable(self, conn: sqlite3.Connection) -> None:
         # 外部キーの検査を COMMIT まで遅らせ、COMMIT 自体を失敗させる
         conn.execute("PRAGMA defer_foreign_keys = ON")

@@ -100,6 +100,14 @@ def open_database(path: Path) -> sqlite3.Connection:
 
 @contextmanager
 def transaction(conn: sqlite3.Connection) -> Iterator[None]:
+    """囲んだ文をまとめて確定する。例外が出たらすべて取り消す。
+
+    既にトランザクションの中なら、それに加わる（確定と取り消しはいちばん外側が行う）。
+    複数のリポジトリにまたがる保存を、services が 1 つにまとめるために使う（ports の Atomic）。
+    """
+    if conn.in_transaction:
+        yield
+        return
     conn.execute("BEGIN IMMEDIATE")
     try:
         yield
