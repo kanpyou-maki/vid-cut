@@ -22,6 +22,10 @@ class TestFileArtifactStore:
     def test_missing_json_is_none(self, tmp_path: Path) -> None:
         assert FileArtifactStore(tmp_path).read_json("r1", "a.json") is None
 
+    def test_reading_creates_no_directory(self, tmp_path: Path) -> None:
+        FileArtifactStore(tmp_path).read_json("never", "a.json")
+        assert not (tmp_path / "recordings" / "never").exists()
+
     def test_broken_json_is_value_error(self, tmp_path: Path) -> None:
         store = FileArtifactStore(tmp_path)
         store.path("r1", "a.json").write_text("{broken")

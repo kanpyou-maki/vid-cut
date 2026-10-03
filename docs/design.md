@@ -44,7 +44,7 @@
 
 - `vidcut serve` が API サーバーと worker プロセスを 1 つずつ起動する。両者は SQLite のジョブ表だけで連携する（[ADR-004](./adr/ADR-004-local-app-runtime.md)）
 - worker はジョブを **1 件ずつ順番に** 処理する。ML モデルのメモリ使用量と `claude -p` の利用上限を考え、並列にはしない
-- `vidcut analyze <paths...>` は同じジョブ表にジョブを登録する。サーバーが起動していなければ `--wait` で自分で処理する
+- `vidcut analyze <paths...>` は同じジョブ表にジョブを登録する。`--wait` を付けると、サーバーの有無に関わらず自分のプロセスで、積まれたジョブがなくなるまで処理する
 - 本番では API サーバーがビルド済みの frontend も配信する。開発中は Vite の開発サーバーから API へプロキシする
 
 ## 3. コンポーネント設計
@@ -187,6 +187,7 @@ Recording:      id, source_path, fingerprint(サイズ + 更新日時 + 先頭�
 SpeechChunk:    id, recording_id, span            # 無音で区切った発話のまとまり
 Token:          id, recording_id, chunk_id, text, span,
                 asr_confidence(0..1), align_score(0..1)        # 日本語では 1 文字 = 1 トークンが基本
+                # asr_confidence はチャンクの avg_logprob から min(1, exp(avg_logprob))。同じチャンクの文字は同じ値
 Silence:        recording_id, span
 Lecture:        id, title, recording_ids: tuple[str, ...]      # 順序付き。1 本以上
 CutSuggestion:  id, recording_id, span,

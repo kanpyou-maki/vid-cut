@@ -18,12 +18,13 @@ class FileArtifactStore:
         self._root = root
 
     def path(self, recording_id: str, name: str) -> Path:
-        directory = self._root / "recordings" / _safe(recording_id)
-        directory.mkdir(parents=True, exist_ok=True)
-        return directory / _safe(name)
+        """書き込み先として渡すため、親のディレクトリを作っておく。"""
+        file = self._file(recording_id, name)
+        file.parent.mkdir(parents=True, exist_ok=True)
+        return file
 
     def read_json(self, recording_id: str, name: str) -> object | None:
-        path = self.path(recording_id, name)
+        path = self._file(recording_id, name)
         try:
             text = path.read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -44,6 +45,9 @@ class FileArtifactStore:
         except BaseException:
             Path(temp).unlink(missing_ok=True)
             raise
+
+    def _file(self, recording_id: str, name: str) -> Path:
+        return self._root / "recordings" / _safe(recording_id) / _safe(name)
 
 
 def file_fingerprint(path: Path) -> str:
