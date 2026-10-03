@@ -7,30 +7,33 @@
 
 <!-- 選択肢: 議論中 | ドキュメント作成中 | 実装中 | レビュー中 | メンテナンス中 | 完了 -->
 
-議論中
+ドキュメント作成中
 
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-bootstrap が完了し、MVP の要件整理（Phase 1）を始める段階。
+PRD・Design Doc が承認済み。要件・設計・スパイクが完了（PLAN-20261003-mvp-discovery）。実装計画の承認待ち。
 
 ## 完了済み
 
 - [x] bootstrap（CLAUDE.md / ARCHITECTURE.md / harness.json のカスタマイズ、.gitignore）— 2026-10-03
-- [x] 言語選定の評価 → [ADR-001](./docs/adr/ADR-001-language-and-stack.md)（提案中）
+- [x] 言語選定 → [ADR-001](./docs/adr/ADR-001-language-and-stack.md)（承認済み）— 2026-10-03
+- [x] MVP のスコープと成功指標の議論 — 2026-10-03
+- [x] PRD → [docs/prd.md](./docs/prd.md)（承認済み）— 2026-10-03
+- [x] Design Doc → [docs/design.md](./docs/design.md)（承認済み）、ADR-004（承認済み）— 2026-10-03
+- [x] スパイク S-4（判定の基準値）— 2026-10-03
+- [x] uv の導入（0.12.22）— 2026-10-03
+- [x] スパイク S-2・S-3（文字起こし・位置合わせ）→ ADR-003 に結果を記録 — 2026-10-03
+- [x] ADR-002（中間素材・60fps）・ADR-003（mlx-whisper + WhisperX）承認 — 2026-10-03
+- [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-discovery](./docs/exec-plans/active/PLAN-20261003-mvp-discovery.md)
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)（承認待ち）
 
 ## 次にやること
 
-- [ ] ADR-001（Python + TypeScript の据え置き）の承認
-- [ ] MVP のスコープと成功指標の議論
-- [ ] PRD 作成 (`docs/prd.md`)
-- [ ] Design Doc 作成 (`docs/design.md`)
-- [ ] ADR: 文字起こしエンジン、可変フレームレート素材と Premiere XML
-- [ ] 環境準備（uv の導入、`claude` CLI の再ログイン）→ backend/frontend のスキャフォールド作成
+- [ ] 実装計画の承認 → M0（backend / frontend の土台）から着手
 
 ## 決定事項
 
@@ -40,14 +43,29 @@ bootstrap が完了し、MVP の要件整理（Phase 1）を始める段階。
 | 2   | テロップは MVP から外すが、データモデルは文字単位のタイミングを前提に設計する | ユーザー決定（kickoff）                                        | —                 |
 | 3   | 「カット」の合図は使わない                                                    | 撮影済み素材が多く、合図があってもカット開始点が明確にならない | —                 |
 | 4   | 言い直しの判定は `claude -p`（サブスクの範囲内）                              | 費用を避ける                                                   | —                 |
-| 5   | Python（パイプライン + API）+ TypeScript（UI）。Tauri 化は保留                | 音声 ML は Python、編集 UI は Web が最適                       | ADR-001（提案中） |
+| 5 | Python（パイプライン + API）+ TypeScript（UI）。Tauri 化は保留 | 音声 ML は Python、編集 UI は Web が最適 | ADR-001 |
+| 6 | MVP は編集画面（3 ペイン・テキスト編集）まで含める | ユーザー決定（2026-10-03） | — |
+| 7 | 正解データとの一致率は開発上の暫定指標。合格判定は実際の撮影素材を使い人が行う | ユーザー決定（2026-10-03） | — |
+| 8 | MP4 の直接書き出し（US-09）を MVP に含める | ユーザー決定（2026-10-03） | — |
+| 10 | まとめて解析（US-10）を MVP に含める | ユーザー決定（2026-10-03） | — |
+| 11 | 一括解析は画面から投入・進捗確認できる形にする（コマンドラインからも可） | ユーザー決定（2026-10-03） | — |
+| 12 | 別ファイルへの撮り直しがあるため、編集単位を「レクチャー（順序付きの複数録画ファイル）」とし、言い直し判定はレクチャー全体で行う | ユーザー回答（2026-10-03） | — |
+| 13 | ワークスペースは `~/VidCut/`。Premiere のシーケンス設定は暫定で元素材の解像度・60fps | ユーザー合意（2026-10-03） | ADR-004 |
+| 14 | 中間素材とシーケンスは 60fps。Premiere XML は中間素材を参照する（元素材の直接参照は大きくずれる） | ユーザー決定・S-1 の結果（2026-10-03） | ADR-002 |
+| 15 | 文字起こしは mlx-whisper large-v3-turbo + WhisperX の位置合わせ | S-2・S-3 の結果 | ADR-003 |
+| 9 | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分 | ユーザー合意（2026-10-03） | — |
 
 ## ブロッカー
 
-_なし_（uv 未導入と `claude` CLI の OAuth 期限切れは、実装開始までに解消すればよい）
+_なし_
 
 ## メモ
 
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`
 - harness.json の test/typecheck/lint は `backend/` と `frontend/` を作るまで失敗する（想定どおり）
+- `claude -p` は再ログイン済み。リポジトリ内で呼ぶと開発用設定が読み込まれるので、中立なディレクトリから呼ぶ（FRIC-002）
+- deny ルールの記法を修正済み（FRIC-001）。master へは claude-config-master#2 で PR 中（マージは人が行う）
+- スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
+- 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
+- スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す

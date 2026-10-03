@@ -5,9 +5,9 @@
 
 ## ディレクトリ責務
 
-### アプリケーション（予定 — 設計フェーズで確定し、実装開始時に作成する）
+### アプリケーション（予定 — 実装開始時に作成する）
 
-技術選定は [ADR-001](./docs/adr/ADR-001-language-and-stack.md)。
+技術選定は [ADR-001](./docs/adr/ADR-001-language-and-stack.md)、詳細は [Design Doc](./docs/design.md)。
 
 | パス | 責務 | 主な変更者 |
 |-----|------|----------|
@@ -16,6 +16,9 @@
 | `backend/src/vidcut/pipeline/` | 各段の処理（音声抽出・VAD・文字起こし・位置合わせ・言い直し判定・書き出し） | `tdd-guide` |
 | `backend/src/vidcut/adapters/` | 外部ツールの境界（ffmpeg、mlx-whisper / WhisperX、Silero、`claude -p`） | `tdd-guide` |
 | `backend/src/vidcut/api/` | FastAPI のルーティング（HTTP の関心事のみ） | `tdd-guide` |
+| `backend/src/vidcut/services/` | ユースケース（取り込み・まとめる・編集の保存・書き出しの依頼） | `tdd-guide` |
+| `backend/src/vidcut/jobs/` | SQLite のジョブ表と worker のループ（[ADR-004](./docs/adr/ADR-004-local-app-runtime.md)） | `tdd-guide` |
+| `backend/src/vidcut/bootstrap.py` | 依存の組み立て。ports に具象 adapters を注入する唯一の場所 | `tdd-guide` |
 | `backend/tests/` | pytest（unit / integration）。重い ML とメディア処理はアダプタ境界でモックする | `tdd-guide` |
 | `frontend/` | TypeScript + React + Vite。プレビュー・文字起こしエディタ・波形タイムライン | `tdd-guide` |
 | `docs/references/prototype/` | work-repo 時代のプロトタイプと正解データ（参照専用。改変しない） | 人間 |
@@ -45,8 +48,9 @@
 ### アプリケーション（予定）
 
 ```
-backend:  api → pipeline → domain
-                pipeline → adapters（ポート経由で注入。pipeline は具象アダプタを import しない）
+backend:  api / cli / jobs → services → pipeline → domain
+          adapters → pipeline.ports / domain（ports の実装。pipeline・services は adapters を import しない）
+          bootstrap.py だけが adapters を import して注入する
           domain は他のどのパッケージにも依存しない（字幕・テロップ用の文字単位タイミングを最初から保持する）
 frontend → backend の HTTP API のみ（backend の内部構造に依存しない。型は API スキーマから生成）
 ```
