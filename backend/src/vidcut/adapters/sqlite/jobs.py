@@ -114,6 +114,16 @@ class SqliteJobQueue:
             raise NotFoundError(f"ジョブがありません: {job_id}")
 
 
+def _to_error_code(value: str | None) -> ErrorCode | None:
+    """知らない種別（新しい版が書いたもの）は internal として読む。一覧ごと読めなくしない。"""
+    if value is None:
+        return None
+    try:
+        return ErrorCode(value)
+    except ValueError:
+        return ErrorCode.INTERNAL
+
+
 def _to_stored(row: sqlite3.Row) -> StoredJob:
     return StoredJob(
         job=Job(
@@ -124,7 +134,7 @@ def _to_stored(row: sqlite3.Row) -> StoredJob:
             stage=row["stage"],
             progress=row["progress"],
             error=row["error"],
-            error_code=ErrorCode(row["error_code"]) if row["error_code"] else None,
+            error_code=_to_error_code(row["error_code"]),
         ),
         priority=row["priority"],
         created_at=datetime.fromisoformat(row["created_at"]),

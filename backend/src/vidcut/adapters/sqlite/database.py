@@ -104,6 +104,9 @@ def transaction(conn: sqlite3.Connection) -> Iterator[None]:
 
     既にトランザクションの中なら、それに加わる（確定と取り消しはいちばん外側が行う）。
     複数のリポジトリにまたがる保存を、services が 1 つにまとめるために使う（ports の Atomic）。
+    接続は同時に 1 つのスレッドからだけ使うこと。複数のスレッドで共有すると、
+    別のスレッドの文がこのトランザクションに混ざる
+    （API はリクエストごとに接続を開く。Design Doc 3-5-2）。
     """
     if conn.in_transaction:
         yield

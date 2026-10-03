@@ -117,6 +117,17 @@ class TestProgressAndCompletion:
         assert (stored.job.status, stored.job.error) == (JobStatus.FAILED, "ffmpeg が失敗しました")
         assert stored.job.error_code is ErrorCode.TOOL_FAILED
 
+    def test_error_code_from_a_newer_version_reads_as_internal(
+        self, queue: SqliteJobQueue, conn: sqlite3.Connection
+    ) -> None:
+        # 読めない種別が 1 件あるだけで、ジョブの一覧（と素材一覧）が出なくなるのを防ぐ
+        queue.enqueue(job("j1"))
+        queue.claim_next()
+        queue.mark_failed("j1", "boom", ErrorCode.TOOL_FAILED)
+        conn.execute("UPDATE jobs SET error_code = 'added_later' WHERE id = 'j1'")
+        (stored,) = queue.list_all()
+        assert stored.job.error_code is ErrorCode.INTERNAL
+
     def test_jobs_that_did_not_fail_have_no_error_code(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))
         queue.claim_next()

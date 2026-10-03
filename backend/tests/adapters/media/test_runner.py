@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -132,6 +133,32 @@ class TestWriteAtomically:
         assert seen[0] != seen[1]
         assert all(p.name.startswith(".mezzanine.") and p.suffix == ".mp4" for p in seen)
         assert [p.name for p in tmp_path.iterdir()] == ["mezzanine.mp4"]
+
+    def test_removes_leftovers_of_a_killed_run_but_not_fresh_ones(self, tmp_path: Path) -> None:
+        # 強制終了されると一時ファイルが残る。中間素材は数百 MB あるので、次に作るときに片付ける
+        old = tmp_path / ".mezzanine.0a1b2c3d.partial.mp4"
+        fresh = tmp_path / ".mezzanine.4e5f6a7b.partial.mp4"  # 別の worker が書いている最中
+        other = tmp_path / ".proxy.0a1b2c3d.partial.mp4"
+        for path in (old, fresh, other):
+            path.write_bytes(b"half")
+        two_days_ago = time.time() - 2 * 24 * 60 * 60
+        os.utime(old, (two_days_ago, two_days_ago))
+        os.utime(other, (two_days_ago, two_days_ago))
+        write_atomically(tmp_path / "mezzanine.mp4", lambda partial: partial.write_bytes(b"data"))
+        assert sorted(p.name for p in tmp_path.iterdir()) == [
+            fresh.name,
+            other.name,
+            "mezzanine.mp4",
+        ]
+
+    def test_leftover_that_cannot_be_removed_does_not_stop_the_work(self, tmp_path: Path) -> None:
+        stuck = tmp_path / ".mezzanine.0a1b2c3d.partial.mp4"
+        stuck.mkdir()  # ファイルとして消せない
+        two_days_ago = time.time() - 2 * 24 * 60 * 60
+        os.utime(stuck, (two_days_ago, two_days_ago))
+        dest = tmp_path / "mezzanine.mp4"
+        write_atomically(dest, lambda partial: partial.write_bytes(b"data"))
+        assert dest.read_bytes() == b"data"
 
     def test_leaves_no_file_when_production_fails(self, tmp_path: Path) -> None:
         dest = tmp_path / "proxy.mp4"

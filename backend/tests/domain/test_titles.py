@@ -38,6 +38,11 @@ class TestNormalizeTitle:
     def test_removes_invisible_characters_and_composes(self) -> None:
         assert normalize_title("‮ガイド​") == "ガイド"
 
+    @pytest.mark.parametrize("separator", ["\n", "\t", "\r\n", "\u2028", "\u2029", "\x85"])
+    def test_line_breaks_and_tabs_become_a_space(self, separator: str) -> None:
+        # 貼り付けた題名の改行で、前後の語がくっつかない
+        assert normalize_title(f"第1回{separator}環境構築") == "第1回 環境構築"
+
     def test_shortens_long_titles(self) -> None:
         assert normalize_title("あ" * 300) == "あ" * MAX_TITLE_CHARS
 

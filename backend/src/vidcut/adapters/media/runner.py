@@ -1,9 +1,11 @@
 """外部プロセスの実行（引数リスト、タイムアウト、進捗の読み取り）と、生成物の原子的な書き込み。"""
 
+import glob
 import os
 import subprocess
 import tempfile
 import threading
+import time
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -11,6 +13,8 @@ from pathlib import Path
 from vidcut.pipeline.ports import ExternalToolError, ProgressCallback
 
 _STDERR_TAIL_CHARS = 2000
+# これより古い一時ファイルは、強制終了された実行の残りとみなして消す（実行中のものは消さない）
+_STALE_PARTIAL_S = 24 * 60 * 60
 _PROGRESS_KEY = "out_time_us="
 
 
@@ -82,7 +86,9 @@ def write_atomically(dest: Path, produce: Callable[[Path], None]) -> None:
     途中で止まった生成物を完成品と誤認しないため（段の再開は生成物の有無で判断する）。
     一時ファイルの名前は呼び出しごとに変える（同じ生成物を同時に作っても、互いの書きかけを壊さない）。
     拡張子は dest と同じにする（ffmpeg は拡張子で形式を決める）。
+    強制終了されると一時ファイルが残るので、同じ生成物の古い一時ファイルを先に片付ける。
     """
+    _remove_stale_partials(dest)
     partial = dest.with_name(f".{dest.stem}.{uuid.uuid4().hex[:8]}.partial{dest.suffix}")
     try:
         produce(partial)
@@ -91,6 +97,17 @@ def write_atomically(dest: Path, produce: Callable[[Path], None]) -> None:
         os.replace(partial, dest)
     finally:
         partial.unlink(missing_ok=True)
+
+
+def _remove_stale_partials(dest: Path) -> None:
+    oldest_kept = time.time() - _STALE_PARTIAL_S
+    for leftover in dest.parent.glob(f".{glob.escape(dest.stem)}.*.partial{dest.suffix}"):
+        try:
+            if leftover.stat().st_mtime < oldest_kept:
+                leftover.unlink()
+        except OSError:
+            # 別の実行が先に片付けた、など。片付けは後回しにできるので、本来の処理を止めない
+            continue
 
 
 def _follow_progress(

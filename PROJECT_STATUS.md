@@ -106,4 +106,4 @@ _なし_
   入力の誤りは `InvalidInputError`（422 にする）、見つからないものは `NotFoundError`、版の食い違いは `VersionConflictError`（409 にする）
 - 複数のリポジトリにまたがる保存は `Atomic`（ports）で囲む。SQLite の `transaction()` は、既にトランザクションの中ならそれに加わる
 - M6 PR 2 で決めること: `build_app` はワーカー用にすべてを組み立てる（ML・`claude` を含む）。API はリクエストごとに接続を開くので、API 用の軽い組み立て（リポジトリと services だけ）を `bootstrap.py` に分ける
-- M6 PR 1 の制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。`dropped_restored_ids` の通知を閉じる仕組みは M7 で決める。ffmpeg の一時ファイルは強制終了で残ることがある
+- M6 PR 1 の制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。`dropped_restored_ids` の通知を閉じる仕組みは M7 で決める。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
