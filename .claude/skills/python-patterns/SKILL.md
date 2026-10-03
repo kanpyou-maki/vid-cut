@@ -263,11 +263,9 @@ requires-python = ">=3.9"
 dependencies = ["pydantic>=2.0.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4.0", "pytest-cov", "black", "ruff", "mypy"]
+dev = ["pytest>=7.4.0", "pytest-cov", "ruff", "mypy"]
 
-[tool.black]
-line-length = 88
-
+# Formatter and linter are the project's choice (this example uses ruff for both).
 [tool.ruff]
 line-length = 88
 select = ["E", "F", "I", "N", "W"]
