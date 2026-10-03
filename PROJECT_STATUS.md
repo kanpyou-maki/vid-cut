@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装と review-loop が済み（PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8)）、Premiere での音ズレ確認（ユーザー）待ち。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装・review-loop・Premiere での音ズレ確認まで済み、PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ待ち。次は M6（API）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -31,19 +31,18 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 
 - [x] M3: 解析パイプライン（無音・VAD・mlx-whisper・WhisperX・フィラー・要確認の印・段のキャッシュ・CLI）。検証素材の解析 2 分 29 秒、正解の 69 チャンクと一致 — 2026-10-03
 - [x] FRIC-004: 整形・lint は `harness.json` の `commands.lint` を正とする（ルール文書・style-reviewer・python-patterns を修正。`lint` に `ruff format --check` を追加）— 2026-10-03
 - [x] M4: 言い直しの判定（claude adapter・判定の指示文と出力の検証・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）。検証素材で適合率・再現率とも 100%（実際の解析結果で 3 回）— 2026-10-03
+- [x] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ。テスト 602 件 / カバレッジ 98%。review-loop 全通過）。検証素材の書き出しを Premiere で読み込み、音ズレなし（ユーザー確認）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了。M5 は実装済み（`feat/m5-export`）で、手動確認が残る
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了（M5 は PR #8 のマージ待ち）
 
 ## 次にやること
 
-- [ ] M5 の手動確認（ユーザー）: `~/VidCut/exports/s05-12sample/s05-12sample.xml` を Premiere で読み込み、音ズレがないこと。
-      中間素材の音声を Premiere が ffmpeg と同じ時刻に置くかは、`~/VidCut/spikes/m5/s05-12sample_reference.wav`（書き出した MP4 の音声を wav にしたもの）を
-      シーケンスの 0 秒に並べ、波形が A1 / A2 と重なるかで確かめられる（ADR-002「M5 の調査」）
-- [ ] M5 の PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ（ユーザー）。ずれていた場合は、ADR-002 の対策（中間素材の音声を作り直す）を先に入れる
+- [ ] M5 の PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ（ユーザー）
 - [ ] M6: API
+- [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
 
@@ -82,7 +81,7 @@ _なし_
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
 - 中間素材の音声の時刻（M5 で調査。ADR-002）: 元素材のエディットリストは「51.25ms の空白 + 先頭 2,112 サンプルを飛ばす」、中間素材は「7ms の空白 + 先頭から再生」。
-  ffmpeg で読むと両者は 0.25ms で一致する。Premiere が前置きの 2,112 サンプルを自動で取り除くと、音声が最大 44ms 早くなる（未確認。手動確認で確かめる）
+  ffmpeg で読むと両者は 0.25ms で一致する。Premiere でも音ズレはなかった（ユーザー確認）。中間素材の音声はコピーのままでよい
 - 書き出しの CLI はない（計画外）。検証素材の書き出しは、`build_app` → `app.exports.request(...)` → `app.worker().run_until_idle()` の使い捨てスクリプトで行った。
   CLI にするなら `vidcut export <レクチャーの題名または id> [--format premiere|mp4|both] [--wait]`（`eval judge --lecture` と同じ指定の仕方）を提案済み
 - 検証素材は `~/VidCut/` に登録済み（レクチャー `s05-12sample`）。書き出しの実測: Premiere XML は 1 秒未満、MP4 は約 2 分半（39 区間・172 秒・98MB）。MP4 の音声は全 39 区間で元素材と 0.25ms 以内で一致（相互相関で計測）
