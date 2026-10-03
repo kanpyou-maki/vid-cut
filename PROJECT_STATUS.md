@@ -118,7 +118,7 @@ _なし_
 
 - PR 1（`feat/m7-foundation`）: 土台。backend は、ビルドの案内のページ（503）にもトークンを埋め込む。frontend は `openapi-fetch` を追加し、
   `src/api/`（`Api`・トークン・失敗の種類）、`src/shared/`（画面の切り替え・ポーリング）、`src/app/`（画面の枠）、`src/library/`（名前と状態の一覧まで）、`src/editor/`（準備中の表示だけ）、
-  `vite-plugins/devToken.ts`（開発中のトークン）。frontend のテスト 93 件 / カバレッジ 97%
+  `vite-plugins/devToken.ts`（開発中のトークン）。frontend のテスト 96 件 / カバレッジ 99%
 - 実物の backend と Vite を一時ワークスペースで起動して確認済み: 開発用の HTML に backend と同じトークンが入る、Vite 経由の API が通る、トークンなしは 401、
   ほかのオリジンには CORS のヘッダーを返さない、ビルドの出力と各プロセスの出力にトークンが出ない、本番の画面にインラインのスクリプト・スタイルがない
 - 画面の作り方: 画面は `Api`（`src/api/client.ts`）のメソッドだけを使い、テストでは `src/test/fakeApi.ts` の偽物に差し替える。画面に出す失敗の文は `errorMessage` を通す。
