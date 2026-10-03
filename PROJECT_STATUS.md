@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装と review-loop が済み、Premiere での音ズレ確認（ユーザー）待ち。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装と review-loop が済み（PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8)）、Premiere での音ズレ確認（ユーザー）待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -42,7 +42,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 
 - [ ] M5 の手動確認（ユーザー）: `~/VidCut/exports/s05-12sample/s05-12sample.xml` を Premiere で読み込み、音ズレがないこと。
       中間素材の音声を Premiere が ffmpeg と同じ時刻に置くかは、`~/VidCut/spikes/m5/s05-12sample_reference.wav`（書き出した MP4 の音声を wav にしたもの）を
       シーケンスの 0 秒に並べ、波形が A1 / A2 と重なるかで確かめられる（ADR-002「M5 の調査」）
-- [ ] M5 の PR のマージ（ユーザー）。ずれていた場合は、ADR-002 の対策（中間素材の音声を作り直す）を先に入れる
+- [ ] M5 の PR [#8](https://github.com/kanpyou-maki/vid-cut/pull/8) のマージ（ユーザー）。ずれていた場合は、ADR-002 の対策（中間素材の音声を作り直す）を先に入れる
 - [ ] M6: API
 
 ## 決定事項
