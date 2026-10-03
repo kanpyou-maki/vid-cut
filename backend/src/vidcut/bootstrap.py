@@ -37,10 +37,12 @@ from vidcut.pipeline.ports import (
     VoiceActivityDetector,
 )
 from vidcut.services.analysis import AnalysisService
+from vidcut.services.edits import EditService
 from vidcut.services.export import ExportService
 from vidcut.services.imports import ImportService
 from vidcut.services.judge import JudgeService
 from vidcut.services.judge_eval import JudgeEvalService
+from vidcut.services.lecture_views import LectureQuery
 from vidcut.services.lectures import LectureService
 
 DATABASE_FILE = "vidcut.sqlite3"
@@ -87,6 +89,8 @@ class App:
     judge: JudgeService
     judge_eval: JudgeEvalService
     lecture_service: LectureService
+    lecture_views: LectureQuery
+    edits: EditService
     exports: ExportService
     handlers: Mapping[JobKind, JobHandler]
 
@@ -169,6 +173,15 @@ def build_app(
         atomic=atomic,
         request_judge=judge.request_for_recording,
     )
+    lecture_views = LectureQuery(
+        lectures=lectures,
+        recordings=recordings,
+        edit_states=edit_states,
+        judgements=judgements,
+        store=store,
+        queue=queue,
+    )
+    edits = EditService(lectures=lectures, recordings=recordings, edit_states=edit_states)
     exports = ExportService(
         lectures=lectures,
         recordings=recordings,
@@ -191,6 +204,8 @@ def build_app(
         judge=judge,
         judge_eval=judge_eval,
         lecture_service=lecture_service,
+        lecture_views=lecture_views,
+        edits=edits,
         exports=exports,
         handlers=_job_handlers(analysis, judge, exports),
     )

@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 と FRIC-004 の解消は main にマージ済み（PR #1〜#8）。次は M6（API）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 と FRIC-004 の解消は main にマージ済み（PR #1〜#8）。M6（API）を 3 本の PR に分けて実装中。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -36,11 +36,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）を実装済み
 
 ## 次にやること
 
-- [ ] M6: API（FastAPI・ローカル API の防御・入力の上限・各エンドポイント・`vidcut serve`・OpenAPI からの型生成）
+- [ ] M6 PR 2（`feat/m6-api-http`。PR 1 のブランチから切る）: FastAPI のアプリ・ローカル API の防御・入力の上限・各エンドポイント・proxy（Range）と peaks。依存に fastapi・uvicorn・pydantic、dev に httpx を追加（承認済み）
+- [ ] M6 PR 3（`feat/m6-serve`）: `vidcut serve`・ビルド済み frontend の配信・OpenAPI からの型生成（openapi-typescript）・手動確認（`~/VidCut/` の写しで行う）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
@@ -61,6 +62,9 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 | 13 | ワークスペースは `~/VidCut/`。Premiere のシーケンス設定は暫定で元素材の解像度・60fps | ユーザー合意（2026-10-03） | ADR-004 |
 | 14 | 中間素材とシーケンスは 60fps。Premiere XML は中間素材を参照する（元素材の直接参照は大きくずれる） | ユーザー決定・S-1 の結果（2026-10-03） | ADR-002 |
 | 15 | 文字起こしは mlx-whisper large-v3-turbo + WhisperX の位置合わせ | S-2・S-3 の結果 | ADR-003 |
+| 16 | M6 は 3 本の PR に分け、ブランチを積み上げる（下ごしらえ → FastAPI → serve と型生成） | ユーザー承認（2026-10-03） | — |
+| 17 | proxy 動画だけ、トークンを `?token=` のクエリで受ける（`<video>` はヘッダーを付けられない）。アクセスログにクエリを出さない | ユーザー決定（2026-10-03） | Design Doc 3-5-1 |
+| 18 | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ | ユーザー承認（2026-10-03） | Design Doc 3-5-2 |
 | 9 | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分 | ユーザー合意（2026-10-03） | — |
 
 ## ブロッカー
@@ -86,22 +90,20 @@ _なし_
 - 検証素材は `~/VidCut/` に登録済み（レクチャー `s05-12sample`）。書き出しの実測: Premiere XML は 1 秒未満、MP4 は約 2 分半（39 区間・172 秒・98MB）。MP4 の音声は全 39 区間で元素材と 0.25ms 以内で一致（相互相関で計測）
 - 書き出し（M5）の制限: 音声はステレオ前提。レクチャー内で解像度や音声形式が違う録画を混ぜた MP4 は失敗する。同じ名前のレクチャーは同じ `exports/<名前>/` に上書きする。
   MP4 のつなぎ目にフェードはない（プロトタイプは 30ms のフェードを付けていた。必要なら Premiere XML との一致をどうするかと合わせて決める）
-- M5 のセキュリティレビューの LOW（M6 で API からレクチャー名を受け取る前に対応を検討）: 書き出しのファイル名で、双方向制御文字などの見えない文字（Unicode の Cf / Zl / Zp）と
-  NFC 正規化を扱っていない（フォルダの外には出られない。見た目の紛らわしさだけ）。`exports/<名前>` が symlink だと、その先に書く。
-  ffmpeg の出力の一時ファイル名（`.<名前>.partial.<拡張子>`）が固定で、同じレクチャーの書き出しが重なると衝突する（worker は 1 つなので現状は起きない）
 - 解析の段 5（無音）を更新した（M5。無音を録画の終わりまで延ばす）。M5 より前に解析した録画は、解析し直すと無音の段から作り直される
 - 実素材での M2 の実測: probe 0.1 秒、解析用 wav 0.4 秒、ピーク値 0.2 秒、proxy 38 秒、中間素材 296 秒（196MB）。proxy の 38 秒は解析時間の目標（5 分）に含まれる
-- M2 のセキュリティレビューの LOW: ffmpeg のタイムアウトは M3 で対応済み（録画の長さに応じた上限）。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
+- M2 のセキュリティレビューの LOW: ffmpeg のタイムアウトは M3 で対応済み（録画の長さに応じた上限）。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 PR 1 で種別（`Job.error_code`）を記録するようにした。PR 2 の API は種別と定型文だけを返すこと（生の `Job.error` と `ImportFailure.message` は返さない）
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
 - 検証素材のチャンク 32 の幻聴「ご視聴ありがとうございました。」は、位置合わせの失敗でトークンが 0 個になり判定に届いていなかった。M4 で文字を残すように直し、判定が `noise` として削除することを確認した
-- M4 より前に解析した録画ファイルは、解析し直すと位置合わせの段から作り直される（段のキーを上げた）。解析し直す手段は M6 の API で用意する
+- M4 より前に解析した録画ファイルは、解析し直すと位置合わせの段から作り直される（段のキーを上げた）。解析し直す手段は `LectureService.reanalyze`（M6 PR 1）。API は PR 2 の `POST /api/lectures/{id}/reanalyze`
 - `claude -p` は `<ワークスペース>/judge/` から `--tools ""` と `--safe-mode` を付けて呼ぶ（FRIC-002 は解消）。未ログインだと判定ジョブだけが失敗し、エラーに `/login` の案内が出る
 - 判定の評価: `uv run vidcut eval judge --chunks … --truth …`（プロトタイプのチャンク）または `--lecture <題名>`（解析済みのレクチャー）。1 回約 15 秒
 - 複数ファイルのレクチャーと 300 チャンク超の窓分割は、検証素材を人工的に分けた確認だけ（結果は変わらず）。実素材では M8 で確かめる
-- M6 で使うもの: 判定結果は `JudgementRepository`（`judgements` 表）、引き継げなかった戻し候補は `Judgement.dropped_restored_ids`。まとめる・並べ替えの API は判定ジョブを積むこと
-- M6 で再検討すること（M4 のレビューより）: 編集状態と判定結果の保存を 1 つのトランザクションにするか（いまは別々で、間で止まると引き継げなかった id の記録だけが失われる）。`claude` の失敗時の出力（末尾 2000 文字）はジョブのエラー文に入るので、API では種別に分類して返す。判定の `reason` は言語モデルの自由記述なので、画面では必ずエスケープする
-- 解析ロジックの更新後に登録済みの録画を解析し直す手段がない → M6 の API で再解析を用意する
-- M3 のセキュリティレビューの LOW: ジョブのエラー文と CLI の出力に ffmpeg の stderr や絶対パスが入る → M6 の API では理由を分類して返し、詳細はログへ。wav は一括で読み込む（2 時間で約 230MB）
+- M3 のセキュリティレビューの LOW: ジョブのエラー文と CLI の出力に ffmpeg の stderr や絶対パスが入る → 上と同じく種別で返す（CLI は自分の端末なので生の文を出す）。wav は一括で読み込む（2 時間で約 230MB）
 - コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
-- SQLite の接続はスレッドをまたげない（`check_same_thread`）。M6 の API サーバーでは接続の持ち方を決める必要がある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）
+- M6 PR 1 で用意した、PR 2 の API が使うもの（`bootstrap.App`）: `lecture_service`（merge / reorder / split / reanalyze）、`edits`（`EditService.save`）、`lecture_views`（`LectureQuery.summaries` / `detail`）、`exports.request`、`imports.import_paths`、`queue`（一覧・retry）。
+  入力の誤りは `InvalidInputError`（422 にする）、見つからないものは `NotFoundError`、版の食い違いは `VersionConflictError`（409 にする）
+- 複数のリポジトリにまたがる保存は `Atomic`（ports）で囲む。SQLite の `transaction()` は、既にトランザクションの中ならそれに加わる
+- M6 PR 2 で決めること: `build_app` はワーカー用にすべてを組み立てる（ML・`claude` を含む）。API はリクエストごとに接続を開くので、API 用の軽い組み立て（リポジトリと services だけ）を `bootstrap.py` に分ける
+- M6 PR 1 の制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。`dropped_restored_ids` の通知を閉じる仕組みは M7 で決める。ffmpeg の一時ファイルは強制終了で残ることがある
