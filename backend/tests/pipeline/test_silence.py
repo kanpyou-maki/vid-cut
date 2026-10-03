@@ -1,7 +1,7 @@
 import pytest
 
 from vidcut.domain.intervals import Interval
-from vidcut.pipeline.silence import find_silences, split_chunks
+from vidcut.pipeline.silence import extend_to_end, find_silences, split_chunks
 
 
 class TestFindSilences:
@@ -64,3 +64,48 @@ class TestSplitChunks:
     def test_rejects_non_positive_duration(self) -> None:
         with pytest.raises(ValueError):
             split_chunks(0, [], min_ms=100)
+
+
+class TestExtendToEnd:
+    """解析用の音声は、録画ファイルの長さ（probe の値）より数十 ms 早く終わることがある。"""
+
+    def test_silence_reaching_the_end_of_the_audio_extends_to_the_end_of_the_recording(
+        self,
+    ) -> None:
+        # 実素材: 音声は 368,946ms まで、録画ファイルの長さは 368,977ms
+        silences = [Interval(0, 8_248), Interval(364_369, 368_946)]
+        assert extend_to_end(silences, 368_977) == (
+            Interval(0, 8_248),
+            Interval(364_369, 368_977),
+        )
+
+    def test_silence_that_ends_well_before_the_end_is_left_alone(self) -> None:
+        # 最後まで話している。終わりの 500ms は発話
+        silences = [Interval(1_000, 9_500)]
+        assert extend_to_end(silences, 10_000) == (Interval(1_000, 9_500),)
+
+    def test_silence_already_reaching_the_end_is_unchanged(self) -> None:
+        assert extend_to_end([Interval(9_000, 10_000)], 10_000) == (Interval(9_000, 10_000),)
+
+    def test_only_the_last_silence_is_extended(self) -> None:
+        silences = [Interval(9_000, 9_930), Interval(9_950, 9_980)]
+        assert extend_to_end(silences, 10_000) == (
+            Interval(9_000, 9_930),
+            Interval(9_950, 10_000),
+        )
+
+    def test_no_silences(self) -> None:
+        assert extend_to_end([], 10_000) == ()
+
+    def test_tolerance_is_configurable(self) -> None:
+        assert extend_to_end([Interval(0, 9_500)], 10_000, tolerance_ms=500) == (
+            Interval(0, 10_000),
+        )
+        assert extend_to_end([Interval(0, 9_499)], 10_000, tolerance_ms=500) == (
+            Interval(0, 9_499),
+        )
+
+    @pytest.mark.parametrize(("duration_ms", "tolerance_ms"), [(0, 100), (10_000, -1)])
+    def test_rejects_invalid_arguments(self, duration_ms: int, tolerance_ms: int) -> None:
+        with pytest.raises(ValueError):
+            extend_to_end([], duration_ms, tolerance_ms=tolerance_ms)
