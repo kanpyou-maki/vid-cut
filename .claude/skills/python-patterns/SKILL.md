@@ -326,8 +326,8 @@ result = "".join(str(item) for item in items)
 
 ```bash
 # Format and lint with the tools the project has chosen: run `commands.lint` in .claude/harness.json.
-ruff format .    # Format and sort imports (or: black . && isort .)
-ruff check .     # Lint
+ruff format .    # Format (or: black .)
+ruff check .     # Lint; the `I` rules check import order (or: isort .)
 mypy .           # Type check
 bandit -r src/   # Security scan
 pytest --cov=src # Tests + coverage
