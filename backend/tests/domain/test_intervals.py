@@ -74,3 +74,11 @@ class TestSubtract:
             Interval(350, 400),
             Interval(500, 600),
         )
+
+
+@pytest.mark.parametrize("bad", [1.5, True, "10"])
+def test_interval_rejects_non_int_values(bad: object) -> None:
+    with pytest.raises(TypeError):
+        Interval(bad, 100)  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        Interval(0, bad)  # type: ignore[arg-type]

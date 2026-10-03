@@ -1,5 +1,6 @@
 """vid-cut のデータモデル（Design Doc 4 章）。すべて不変で、変更は新しいオブジェクトを返す。"""
 
+import math
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
@@ -23,7 +24,7 @@ class MediaInfo:
     def __post_init__(self) -> None:
         if self.width <= 0 or self.height <= 0:
             raise ValueError(f"解像度が不正です: {self.width}x{self.height}")
-        if self.avg_fps <= 0 or self.audio_rate <= 0:
+        if not math.isfinite(self.avg_fps) or self.avg_fps <= 0 or self.audio_rate <= 0:
             raise ValueError(f"フレームレートまたはサンプルレートが不正です: {self}")
 
 

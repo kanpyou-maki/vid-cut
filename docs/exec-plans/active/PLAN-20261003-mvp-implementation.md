@@ -71,6 +71,7 @@
 
 - [ ] FastAPI のアプリと `{success, data, error}` の形、127.0.0.1 のみ
 - [ ] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、起動ごとのトークン、パスの正規化）
+- [ ] 入力の上限（M1 のセキュリティレビュー）: pydantic の厳格な型（StrictInt）、件数（manual_cuts・suggestions・silences）と JSON サイズ、文字列の長さ、時刻の上限（24 時間）。`reason` / `error` は画面でエスケープする
 - [ ] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
 - [ ] `/api/recordings/{id}/proxy`（Range 対応）、`/peaks`
 - [ ] `vidcut serve`（API サーバー + worker の起動、ビルド済み frontend の配信）
@@ -102,7 +103,7 @@
 ## 進捗メモ
 
 - 2026-10-03: M0 完了（`chore/m0-scaffold`）。backend: Python 3.12・pytest・ruff・mypy（strict）。frontend: React 19・Vite 8・TypeScript 6・vitest 5・Biome 2。テンプレート既定の oxlint は Biome に置き換えた
-- 2026-10-03: M1 完了（`feat/m1-domain`）。domain に intervals / models / cuts / timeline / overrides。テスト 69 件、カバレッジ 100%
+- 2026-10-03: M1 完了（`feat/m1-domain`）。domain に intervals / models / cuts / timeline / overrides。テスト 80 件、カバレッジ 100%。review-loop の指摘で、接する無音の統合、整数以外・NaN・負の許容幅の拒否を追加
 
 - スパイクのスクリプト（xmeml の最小実装、ASR の計測）は使い捨て。知見は ADR-002・ADR-003 に記録済み
 - ML の初回実行ではモデルのダウンロード（合計約 3GB、5 分程度）が発生する

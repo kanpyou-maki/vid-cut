@@ -25,6 +25,9 @@ def carry_over_restorations(
     同じ id が残っていればそのまま。言い直し系の候補は、同じ録画ファイルで開始・終了の差が
     tolerance_ms 以内の言い直し系の新しい候補へ付け替える。引き継げなかったものは破棄して返す。
     """
+    if tolerance_ms < 0:
+        raise ValueError(f"tolerance_ms は 0 以上である必要があります: {tolerance_ms}")
+
     old_by_id = {s.id: s for s in old_suggestions}
     new = tuple(new_suggestions)
     new_ids = {s.id for s in new}

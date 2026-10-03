@@ -141,3 +141,9 @@ class TestJob:
 def test_cut_suggestion_requires_reason_for_retake() -> None:
     with pytest.raises(ValueError):
         make_suggestion(kind=CutKind.RETAKE)
+
+
+@pytest.mark.parametrize("fps", [float("nan"), float("inf")])
+def test_media_info_rejects_non_finite_fps(fps: float) -> None:
+    with pytest.raises(ValueError):
+        MediaInfo(width=1920, height=1080, is_vfr=True, avg_fps=fps, audio_rate=48000)

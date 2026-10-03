@@ -4,6 +4,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 
+def require_int(name: str, value: object) -> None:
+    """整数（bool を除く）であることを確かめる。API から来た値の型の混入を防ぐ多層防御。"""
+    if type(value) is not int:
+        raise TypeError(f"{name} は整数である必要があります: {type(value).__name__}")
+
+
 @dataclass(frozen=True, order=True)
 class Interval:
     """録画ファイル内の時刻の半開区間。時刻は整数ミリ秒で、長さ 0 の区間は作れない。"""
@@ -12,6 +18,8 @@ class Interval:
     end_ms: int
 
     def __post_init__(self) -> None:
+        require_int("start_ms", self.start_ms)
+        require_int("end_ms", self.end_ms)
         if self.start_ms < 0:
             raise ValueError(f"start_ms は 0 以上である必要があります: {self.start_ms}")
         if self.end_ms <= self.start_ms:

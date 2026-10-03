@@ -1,3 +1,5 @@
+import pytest
+
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, CutSuggestion, EditState, ManualCut
 from vidcut.domain.overrides import carry_over_restorations
@@ -82,3 +84,8 @@ def test_tolerance_boundary_is_inclusive() -> None:
     assert carry_over_restorations(BASE.restore("old"), [old], [beyond]).dropped_suggestion_ids == (
         "old",
     )
+
+
+def test_rejects_negative_tolerance() -> None:
+    with pytest.raises(ValueError):
+        carry_over_restorations(BASE, [], [], tolerance_ms=-1)

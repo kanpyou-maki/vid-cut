@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
-from vidcut.domain.intervals import Interval, merge, subtract
+from vidcut.domain.intervals import Interval, merge, require_int, subtract
 
 DEFAULT_PAD_BEFORE_MS = 150
 DEFAULT_PAD_AFTER_MS = 250
@@ -59,6 +59,8 @@ class FrameRange:
     end_frame: int
 
     def __post_init__(self) -> None:
+        require_int("start_frame", self.start_frame)
+        require_int("end_frame", self.end_frame)
         if self.start_frame < 0 or self.end_frame <= self.start_frame:
             raise ValueError(f"フレーム範囲が不正です: [{self.start_frame}, {self.end_frame})")
 

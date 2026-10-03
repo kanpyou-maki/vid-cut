@@ -128,3 +128,9 @@ class TestOutputTimeline:
 
     def test_empty_timeline(self) -> None:
         assert output_duration_ms(build_output_timeline([])) == 0
+
+
+@pytest.mark.parametrize("bad", [1.5, True])
+def test_frame_range_rejects_non_int_values(bad: object) -> None:
+    with pytest.raises(TypeError):
+        FrameRange(bad, 100)  # type: ignore[arg-type]
