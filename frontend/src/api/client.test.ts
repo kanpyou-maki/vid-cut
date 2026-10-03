@@ -327,6 +327,95 @@ describe("createApi: 素材一覧の操作", () => {
   });
 });
 
+const EDIT_STATE = {
+  version: 4,
+  restored_suggestion_ids: ["rec1-c0003-judged"],
+  manual_cuts: [
+    { id: "m1", recording_id: "rec1", start_ms: 1000, end_ms: 2000 },
+  ],
+};
+const DETAIL = {
+  ...LECTURE,
+  judged: true,
+  judged_suggestions: [],
+  dropped_restored_ids: [],
+  edit_state: EDIT_STATE,
+};
+
+describe("createApi: 編集画面", () => {
+  it("getLecture は、レクチャーの詳細を読む", async () => {
+    const { api, sent } = recordingApi(DETAIL);
+
+    await expect(api.getLecture("lec1")).resolves.toEqual(DETAIL);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].method).toBe("GET");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec1`);
+  });
+
+  it("getLecture の中断は、そのまま伝える", async () => {
+    const controller = new AbortController();
+    const api = apiWith(async (request) => {
+      controller.abort();
+      request.signal.throwIfAborted();
+      return json(200, { success: true, data: DETAIL, error: null });
+    });
+
+    const error = await caught(api.getLecture("lec1", controller.signal));
+
+    expect(error).toMatchObject({ name: "AbortError" });
+  });
+
+  it("getLecture は、レクチャーがなければ not_found の失敗にする", async () => {
+    const api = apiWith(async () =>
+      failure(404, "指定されたデータが見つかりません"),
+    );
+
+    const error = await caught(api.getLecture("gone"));
+
+    expect(error).toMatchObject({ kind: "not_found", status: 404 });
+  });
+
+  it("saveEdits は、版と編集状態を PUT で送り、新しい版を返す", async () => {
+    const saved = { ...EDIT_STATE, version: 5 };
+    const { api, sent } = recordingApi(saved);
+
+    await expect(api.saveEdits("lec1", EDIT_STATE)).resolves.toEqual(saved);
+
+    expect(sent[0].method).toBe("PUT");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec1/edits`);
+    expect(sent[0].headers.get("Content-Type")).toBe("application/json");
+    expect(sent[0].body).toEqual(EDIT_STATE);
+  });
+
+  it("saveEdits は、版が古ければ（409）conflict の失敗にする", async () => {
+    const api = apiWith(async () =>
+      failure(409, "編集状態がほかで更新されています"),
+    );
+
+    const error = await caught(api.saveEdits("lec1", EDIT_STATE));
+
+    expect(error).toMatchObject({
+      kind: "conflict",
+      status: 409,
+      message: "編集状態がほかで更新されています",
+    });
+  });
+
+  it.each<[string, (api: ReturnType<typeof apiWith>) => Promise<unknown>]>([
+    ["getLecture", (api) => api.getLecture("lec1")],
+    ["saveEdits", (api) => api.saveEdits("lec1", EDIT_STATE)],
+  ])("%s は、トークンをヘッダーにだけ付ける", async (_name, call) => {
+    const { api, sent } = recordingApi(DETAIL);
+
+    await call(api);
+
+    expect(sent[0].headers.get("X-VidCut-Token")).toBe(TOKEN);
+    expect(sent[0].url).not.toContain(TOKEN);
+    expect(JSON.stringify(sent[0].body)).not.toContain(TOKEN);
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(

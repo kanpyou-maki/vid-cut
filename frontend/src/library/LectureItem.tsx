@@ -1,14 +1,13 @@
 import type { LectureSummary } from "../api/types";
-import { Link } from "../shared/navigation";
-import { lecturePath } from "../shared/routes";
-import styles from "./LectureItem.module.css";
 import {
   failedJobs,
   formatDuration,
-  isOnlyJudgeFailed,
   statusText,
-  summaryText,
-} from "./lectureView";
+} from "../shared/lectureStatus";
+import { Link } from "../shared/navigation";
+import { lecturePath } from "../shared/routes";
+import styles from "./LectureItem.module.css";
+import { isOnlyJudgeFailed, summaryText } from "./lectureView";
 
 // 2 本以上の録画ファイルを持つレクチャーが「まとめたレクチャー」
 const MIN_MERGED_RECORDINGS = 2;

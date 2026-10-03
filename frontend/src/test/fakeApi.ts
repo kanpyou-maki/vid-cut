@@ -1,10 +1,15 @@
 import type { Api } from "../api/client";
 import type {
+  EditState,
   FsListing,
   ImportResult,
   Job,
+  LectureDetail,
   LectureSummary,
   Recording,
+  RecordingDetail,
+  Suggestion,
+  Token,
 } from "../api/types";
 
 function pending<T>(): Promise<T> {
@@ -21,6 +26,8 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     reorderLecture: () => pending(),
     splitLecture: () => pending(),
     retryJob: () => pending(),
+    getLecture: () => pending(),
+    saveEdits: () => pending(),
     ...overrides,
   };
 }
@@ -79,4 +86,86 @@ export function importResult(
   overrides: Partial<ImportResult> = {},
 ): ImportResult {
   return { added: [], existing: [], failed: [], ...overrides };
+}
+
+export function editState(overrides: Partial<EditState> = {}): EditState {
+  return {
+    version: 0,
+    restored_suggestion_ids: [],
+    manual_cuts: [],
+    ...overrides,
+  };
+}
+
+/** 1 文字 = 1 トークン。text の各文字を、startMs から 100ms ずつ並べる。 */
+export function tokens(
+  chunkId: string,
+  text: string,
+  startMs: number,
+): Token[] {
+  return [...text].map((character, index) => ({
+    id: `${chunkId}-t${index}`,
+    chunk_id: chunkId,
+    text: character,
+    start_ms: startMs + index * 100,
+    end_ms: startMs + (index + 1) * 100,
+    asr_confidence: 1,
+    align_score: 1,
+  }));
+}
+
+export function suggestion(overrides: Partial<Suggestion> = {}): Suggestion {
+  return {
+    id: "sug1",
+    recording_id: "rec1",
+    kind: "retake",
+    reason: "後で同じ文を言い直している",
+    superseded_by: null,
+    start_ms: 0,
+    end_ms: 1000,
+    ...overrides,
+  };
+}
+
+/** 解析済みの録画ファイル。チャンクは、渡したトークンの範囲から作る。 */
+export function recordingDetail(
+  overrides: Partial<RecordingDetail> = {},
+): RecordingDetail {
+  const recordingTokens = overrides.tokens ?? [];
+  const chunkIds = [...new Set(recordingTokens.map((token) => token.chunk_id))];
+  return {
+    ...recording(),
+    analyzed: true,
+    analysis_unreadable: false,
+    chunks: chunkIds.map((id) => {
+      const inChunk = recordingTokens.filter((token) => token.chunk_id === id);
+      return {
+        id,
+        start_ms: Math.min(...inChunk.map((token) => token.start_ms)),
+        end_ms: Math.max(...inChunk.map((token) => token.end_ms)),
+      };
+    }),
+    tokens: recordingTokens,
+    silences: [],
+    suggestions: [],
+    review_marks: [],
+    ...overrides,
+  };
+}
+
+export function lectureDetail(
+  overrides: Partial<LectureDetail> = {},
+): LectureDetail {
+  return {
+    id: "lec1",
+    title: "s05-12sample",
+    status: "ready",
+    recordings: [],
+    jobs: [],
+    judged: true,
+    judged_suggestions: [],
+    dropped_restored_ids: [],
+    edit_state: editState(),
+    ...overrides,
+  };
 }

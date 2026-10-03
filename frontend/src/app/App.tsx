@@ -14,7 +14,7 @@ export function App({ api }: { api: Api | null }) {
   const route = parseRoute(usePathname());
 
   return (
-    <div className={styles.app}>
+    <div className={appClassName(route)}>
       <header className={styles.header}>
         <h1 className={styles.title}>
           <Link to={LIBRARY_PATH}>vid-cut</Link>
@@ -33,12 +33,18 @@ export function App({ api }: { api: Api | null }) {
   );
 }
 
+/** 編集画面は、画面の高さに収める（中の文字起こしだけをスクロールさせる）。 */
+function appClassName(route: Route): string {
+  return route.name === "editor" ? `${styles.app} ${styles.fill}` : styles.app;
+}
+
 function Page({ route }: { route: Route }) {
   switch (route.name) {
     case "library":
       return <LibraryPage />;
     case "editor":
-      return <EditorPage lectureId={route.lectureId} />;
+      // 別のレクチャーに移ったら、編集状態と履歴ごと作り直す
+      return <EditorPage key={route.lectureId} lectureId={route.lectureId} />;
     case "not_found":
       return <NotFound />;
   }

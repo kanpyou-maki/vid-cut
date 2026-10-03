@@ -23,3 +23,24 @@
   flex: 1;
   padding: 1rem;
 }
+
+/* 編集画面: 画面の高さに収め、中の部品が自分でスクロールする */
+.fill {
+  height: 100dvh;
+  min-height: 0;
+}
+
+.fill > .main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 幅が狭いときは、編集画面も縦に積んでページ全体をスクロールする
+   （境目の幅は、editor/EditorLayout.module.css と同じ値にすること） */
+@media (max-width: 900px) {
+  .fill {
+    height: auto;
+    min-height: 100vh;
+  }
+}

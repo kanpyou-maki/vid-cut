@@ -11,3 +11,13 @@ export type JobListItem = Schemas["JobListItemOut"];
 export type FsListing = Schemas["FsListingOut"];
 export type FsEntry = Schemas["FsEntryOut"];
 export type ImportResult = Schemas["ImportResultOut"];
+export type LectureDetail = Schemas["LectureDetailOut"];
+export type RecordingDetail = Schemas["RecordingDetailOut"];
+export type Chunk = Schemas["ChunkOut"];
+export type Token = Schemas["TokenOut"];
+export type Suggestion = Schemas["SuggestionOut"];
+export type CutKind = Schemas["CutKind"];
+export type EditState = Schemas["EditStateOut"];
+export type ManualCut = Schemas["ManualCutOut"];
+/** 保存する編集状態（version は、読み込んだときの版） */
+export type Edits = Schemas["EditsIn"];

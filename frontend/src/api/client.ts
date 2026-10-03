@@ -2,9 +2,12 @@ import createClient from "openapi-fetch";
 import { ApiError, type ApiErrorKind } from "./errors";
 import type { paths } from "./generated/schema";
 import type {
+  EditState,
+  Edits,
   FsListing,
   ImportResult,
   JobListItem,
+  LectureDetail,
   LectureRef,
   LectureSummary,
 } from "./types";
@@ -41,6 +44,13 @@ export interface Api {
   /** まとめたレクチャーを、録画ファイルごとのレクチャーに戻す */
   splitLecture(lectureId: string): Promise<LectureRef[]>;
   retryJob(jobId: string): Promise<JobListItem>;
+  /** 編集画面に必要なもの一式（文字起こし、削除候補、編集状態） */
+  getLecture(lectureId: string, signal?: AbortSignal): Promise<LectureDetail>;
+  /**
+   * 編集状態を保存して、版を 1 進めたものを返す。
+   * edits.version が保存済みの版と違えば、conflict の失敗になる
+   */
+  saveEdits(lectureId: string, edits: Edits): Promise<EditState>;
 }
 
 export interface ApiOptions {
@@ -91,6 +101,20 @@ export function createApi(options: ApiOptions): Api {
       unwrap(
         client.POST("/api/jobs/{job_id}/retry", {
           params: { path: { job_id: jobId } },
+        }),
+      ),
+    getLecture: (lectureId, signal) =>
+      unwrap(
+        client.GET("/api/lectures/{lecture_id}", {
+          params: { path: { lecture_id: lectureId } },
+          signal,
+        }),
+      ),
+    saveEdits: (lectureId, edits) =>
+      unwrap(
+        client.PUT("/api/lectures/{lecture_id}/edits", {
+          params: { path: { lecture_id: lectureId } },
+          body: edits,
         }),
       ),
   };

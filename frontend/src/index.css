@@ -4,6 +4,14 @@
 
   /* 失敗を表す文字の色 */
   --color-danger: light-dark(#b3261e, #f2b8b5);
+
+  /* 削除済みの部分の背景色（種類ごと。Design Doc 3-6） */
+  --color-cut-retake: light-dark(#f8cfcb, #6e2b26);
+  --color-cut-misspeak: light-dark(#fcd9b0, #6b4212);
+  --color-cut-noise: light-dark(#e2d2f6, #4b3572);
+  --color-cut-filler: light-dark(#f9ec9f, #5a500f);
+  --color-cut-silence: light-dark(#cde1f9, #24466d);
+  --color-cut-manual: light-dark(#dadada, #4d4d4d);
 }
 
 body {
