@@ -74,4 +74,60 @@ describe("Modal", () => {
     expect(screen.getByRole("dialog")).toHaveProperty("open", true);
     expect(screen.getByRole("dialog")).toHaveTextContent("後");
   });
+
+  it("閉じたら（描くのをやめたら）、開く前にフォーカスがあった要素へフォーカスを戻す", () => {
+    const { rerender } = render(
+      <>
+        <button type="button">開く</button>
+        {null}
+      </>,
+    );
+    const opener = screen.getByRole("button", { name: "開く" });
+    opener.focus();
+    rerender(
+      <>
+        <button type="button">開く</button>
+        <Modal title="題名" onClose={() => {}}>
+          <button type="button">中のボタン</button>
+        </Modal>
+      </>,
+    );
+    screen.getByRole("button", { name: "中のボタン" }).focus();
+
+    rerender(
+      <>
+        <button type="button">開く</button>
+        {null}
+      </>,
+    );
+
+    expect(opener).toHaveFocus();
+  });
+
+  it("開く前の要素がなくなっていたら、フォーカスを戻さない", () => {
+    const { rerender } = render(
+      <>
+        <button type="button">開く</button>
+        {null}
+      </>,
+    );
+    screen.getByRole("button", { name: "開く" }).focus();
+    rerender(
+      <>
+        <button type="button">開く</button>
+        <Modal title="題名" onClose={() => {}}>
+          <p>中身</p>
+        </Modal>
+      </>,
+    );
+
+    rerender(
+      <>
+        {null}
+        {null}
+      </>,
+    );
+
+    expect(document.body).toHaveFocus();
+  });
 });

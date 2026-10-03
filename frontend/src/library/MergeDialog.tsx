@@ -45,11 +45,12 @@ export function MergeDialog({
         lectures.map((lecture) => lecture.id),
         trimmed,
       );
-      onMerged();
     } catch (cause) {
       setError(errorMessage(cause));
       setSubmitting(false);
+      return;
     }
+    onMerged();
   };
 
   return (

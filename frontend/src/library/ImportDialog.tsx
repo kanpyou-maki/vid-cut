@@ -49,12 +49,15 @@ export function ImportDialog({
       .map((entry) => entry.path);
     setSubmitting(true);
     setSubmitError(null);
+    let result: ImportResult;
     try {
-      onImported(await api.importPaths(paths));
+      result = await api.importPaths(paths);
     } catch (cause) {
       setSubmitError(errorMessage(cause));
       setSubmitting(false);
+      return;
     }
+    onImported(result);
   };
 
   return (
