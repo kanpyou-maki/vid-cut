@@ -50,6 +50,7 @@ uv run vidcut serve --dev            # 開発中: Vite の開発サーバー（n
 
 - 待ち受けは 127.0.0.1 だけ。起動のたびにトークンを作り、画面の HTML に埋め込む（[Design Doc](../docs/design.md) 3-5-1）。
   API を直接呼ぶときは、`X-VidCut-Token` ヘッダーにそのトークンを付ける
+- 画面のビルドがなければ、ビルドの手順を書いたページ（503）を返す。このページにもトークンが入る（開発中は、Vite のプラグインがそこから読む。[ADR-006](../docs/adr/ADR-006-frontend-foundation.md)）
 - Ctrl+C（または SIGTERM）で、サーバーと worker の両方が止まる
 - エンドポイントの一覧と入力の上限は Design Doc の 3-5。API を変えたら、frontend の型を作り直す: `npm --prefix ../frontend run gen:api`
 

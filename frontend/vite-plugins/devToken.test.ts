@@ -55,13 +55,86 @@ describe("tokenTags", () => {
     ]);
   });
 
-  it("ビルドの案内のページ（503）からも読む", async () => {
-    const tags = await tokenTags({
+  it.each([200, 503])(
+    "backend が返す状態コード %i のページから読む",
+    async (status) => {
+      const tags = await tokenTags({
+        backend: BACKEND,
+        fetchPage: respondWith(PAGE, status),
+      });
+
+      expect(tags).toHaveLength(1);
+    },
+  );
+
+  it.each([404, 500])(
+    "ほかの状態コード %i のページからは読まない",
+    async (status) => {
+      const warnings: string[] = [];
+      const tags = await tokenTags({
+        backend: BACKEND,
+        fetchPage: respondWith(PAGE, status),
+        warn: (message) => warnings.push(message),
+      });
+
+      expect(tags).toEqual([]);
+      expect(warnings).toHaveLength(1);
+    },
+  );
+
+  it("リダイレクトを追わない（8765 番が backend でないとき、ほかの URL を読みに行かない）", async () => {
+    const inits: (RequestInit | undefined)[] = [];
+    await tokenTags({
       backend: BACKEND,
-      fetchPage: respondWith(PAGE, 503),
+      fetchPage: async (_input, init) => {
+        inits.push(init);
+        return new Response(PAGE);
+      },
     });
 
-    expect(tags).toHaveLength(1);
+    expect(inits).toHaveLength(1);
+    expect(inits[0]?.redirect).toBe("error");
+  });
+
+  it("大きすぎるページは、読むのを途中でやめる", async () => {
+    let pulled = 0;
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024));
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(chunk);
+      },
+    });
+    const warnings: string[] = [];
+
+    const tags = await tokenTags({
+      backend: BACKEND,
+      fetchPage: async () => new Response(endless),
+      warn: (message) => warnings.push(message),
+    });
+
+    expect(tags).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(pulled).toBeLessThan(64);
+  });
+
+  it("上限より先にあるトークンは読まない", async () => {
+    const padding = "x".repeat(1024 * 1024);
+    const tags = await tokenTags({
+      backend: BACKEND,
+      fetchPage: respondWith(`${padding}${PAGE}`),
+    });
+
+    expect(tags).toEqual([]);
+  });
+
+  it("本文のない応答なら、何も足さない", async () => {
+    const tags = await tokenTags({
+      backend: BACKEND,
+      fetchPage: async () => new Response(null, { status: 200 }),
+    });
+
+    expect(tags).toEqual([]);
   });
 
   it("backend が動いていなければ、何も足さずに知らせる", async () => {

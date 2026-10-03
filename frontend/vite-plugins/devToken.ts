@@ -15,6 +15,10 @@ const TOKEN_TAG = new RegExp(
   `<meta\\s+name="${TOKEN_META}"\\s+content="([A-Za-z0-9_-]{32,})"\\s*/?>`,
 );
 const FETCH_TIMEOUT_MS = 2000;
+// backend が画面の HTML を返すときの状態コード（503 は、ビルドがないときの案内のページ）
+const PAGE_STATUSES: readonly number[] = [200, 503];
+// 画面の HTML は数百バイト。これより大きい応答は、backend のものではない
+const MAX_PAGE_BYTES = 256 * 1024;
 const NO_TOKEN_WARNING =
   "backend からトークンを読めませんでした。" +
   "vidcut serve --dev を起動してから、ページを読み込み直してください";
@@ -53,13 +57,44 @@ async function fetchToken(
   fetchPage: typeof fetch,
 ): Promise<string | null> {
   try {
-    // ビルドがなければ案内のページ（503）が返る。そこにもトークンが入っている
     const response = await fetchPage(new URL("/", backend).href, {
+      // 8765 番を使っているのが backend でないとき、ほかの URL を読みに行かない
+      redirect: "error",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    return extractToken(await response.text());
+    if (!PAGE_STATUSES.includes(response.status)) {
+      return null;
+    }
+    const page = await readText(response, MAX_PAGE_BYTES);
+    return page === null ? null : extractToken(page);
   } catch {
     return null; // backend が動いていない。呼び出した側が知らせる
+  }
+}
+
+/** 応答の本文。maxBytes を超えたら、読むのをやめて null を返す。 */
+async function readText(
+  response: Response,
+  maxBytes: number,
+): Promise<string | null> {
+  if (response.body === null) {
+    return null;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return text + decoder.decode();
+    }
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
   }
 }
 
