@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）が完了し、M1（domain）が完了し、次は M2（ffmpeg・SQLite・ジョブ）。GitHub: kanpyou-maki/vid-cut（private）。PR #1（ドキュメント）・#2（M0）はマージ待ち。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）・M1（domain）が完了。M2（ffmpeg・SQLite・ジョブ）を `feat/m2-adapters` で実装し、レビュー中。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
 
 ## 完了済み
 
@@ -27,15 +27,17 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土
 - [x] ADR-002（中間素材・60fps）・ADR-003（mlx-whisper + WhisperX）承認 — 2026-10-03
 - [x] 実装計画の承認、M0（backend / frontend の土台）— 2026-10-03
 - [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 80 件 / カバレッジ 100%）— 2026-10-03
+- [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 218 件 / カバレッジ 99%）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0 完了
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M2 完了
+- [ ] M2 の review-loop → PR（`feat/m2-adapters`、マージはユーザー）
 
 ## 次にやること
 
-- [ ] M2: 外部ツールの土台（ffmpeg adapter、可変フレームレートの回帰テスト、SQLite、ジョブと worker）
+- [ ] M3: 解析パイプライン（無音検出・文字起こし・位置合わせ・フィラー・`analyze_recording` / `make_mezzanine` ジョブ・CLI）
 
 ## 決定事項
 
@@ -69,6 +71,9 @@ _なし_
 - スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
-- ブランチは積み重ね: main ← docs/mvp-prd（PR #1）← chore/m0-scaffold（PR #2）← feat/m1-domain。前の PR がマージされたら base を main に変える
+- 開発の流れ: main からマイルストーンごとにブランチ（`feat/m2-adapters` など）→ review-loop（`.claude/skills/review-loop/SKILL.md`）→ PR → ユーザーがマージ
+- master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はユーザーのマージ待ち
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
+- 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
+- SQLite の接続はスレッドをまたげない（`check_same_thread`）。M6 の API サーバーでは接続の持ち方を決める必要がある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）

@@ -137,6 +137,10 @@ class TestJob:
         assert job.progress == 0.0
         assert job.error is None
 
+    def test_mezzanine_jobs_run_after_all_other_kinds(self) -> None:
+        others = [kind for kind in JobKind if kind is not JobKind.MAKE_MEZZANINE]
+        assert all(JobKind.MAKE_MEZZANINE.priority < kind.priority for kind in others)
+
 
 def test_cut_suggestion_requires_reason_for_retake() -> None:
     with pytest.raises(ValueError):

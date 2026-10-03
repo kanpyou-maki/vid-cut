@@ -185,6 +185,11 @@ class JobKind(StrEnum):
     EXPORT_PREMIERE = "export_premiere"
     EXPORT_MP4 = "export_mp4"
 
+    @property
+    def priority(self) -> int:
+        """大きいほど先に処理する。中間素材は時間がかかるため最後に回す（ADR-002）。"""
+        return 0 if self is JobKind.MAKE_MEZZANINE else 10
+
 
 class JobStatus(StrEnum):
     QUEUED = "queued"

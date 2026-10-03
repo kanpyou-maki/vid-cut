@@ -54,10 +54,10 @@
 ```
 backend/src/vidcut/
   domain/      純粋なデータモデルと計算（外部依存なし）
-  pipeline/    処理の各段。ports.py に外部ツールの抽象（Protocol）を定義する
-  adapters/    ports の実装（ffmpeg、ML、claude CLI）と SQLite リポジトリ
+  pipeline/    処理の各段。ports.py に外部ツールと永続化（リポジトリ・ジョブ表）の抽象（Protocol）を定義する
+  adapters/    ports の実装（media/: ffmpeg、sqlite/: リポジトリとジョブ表、ML、claude CLI）
   services/    ユースケース（取り込み、まとめる、編集の保存、書き出しの依頼）
-  jobs/        ジョブ表の操作と worker のループ
+  jobs/        worker のループ（ジョブ表には JobQueue の port を通して触れる）
   api/         FastAPI のルーティングと入出力スキーマ
   cli.py       コマンドライン（serve / analyze / worker / eval）
   bootstrap.py 依存の組み立て（ports に具象 adapters を注入する唯一の場所）
@@ -75,7 +75,7 @@ pipeline と services は adapters を import しない（テストでは偽の�
 | 1   | probe      | ffprobe で長さ・解像度・フレームレート（可変か）・音声形式・録画日時を取る                                                    | `probe.json`              |
 | 2 | mezzanine | 固定フレームレートの中間素材を作る（最後のフレームは音声の終わりまで延ばす）。書き出しはすべてこれを元にする。時間がかかるため**別ジョブ `make_mezzanine`（優先度低）**として登録し、解析の完了を待たせない（[ADR-002](./adr/ADR-002-vfr-mezzanine.md)） | `mezzanine.mp4` |
 | 3   | proxy      | ブラウザでのプレビュー用の軽い動画（長辺 1280px、固定フレームレート、キーフレーム間隔を短く）と、波形のピーク値               | `proxy.mp4`、`peaks.json` |
-| 4   | audio      | 解析用の音声（16kHz モノラル wav）                                                                                            | `audio16k.wav`            |
+| 4   | audio      | 解析用の音声（16kHz モノラル wav）。音声の開始が映像より遅れている素材（実素材で 51ms）があるため、先頭を無音で埋めてタイムラインの 0 秒にそろえる（`aresample=first_pts=0`） | `audio16k.wav`            |
 | 5   | silence    | Silero VAD の発話区間と、音量による無音検出（-40dB・0.3 秒以上）を併用して、無音区間と発話チャンクを決める                    | `silence.json`            |
 | 6   | transcribe | 発話チャンクごとに文字起こしする（一括で起こすと精度が落ち、幻聴が出たため）。ヒント文にフィラーを含める                      | `transcript.raw.json`     |
 | 7   | align      | WhisperX（日本語は wav2vec2）で文字単位のタイミングを合わせる                                                                 | `transcript.json`         |
@@ -195,7 +195,8 @@ EditState:      lecture_id, version,
                 manual_cuts: tuple[ManualCut, ...]             # 人が追加した削除区間（ミリ秒。画面がトークンの選択範囲から求める）
 ReviewMark:     recording_id, span, kind: low_confidence | unrecognized_speech
 Job:            id, kind, target_id, status: queued | running | succeeded | failed,
-                stage, progress(0..1), error            # 作成・更新日時は永続化層（M2）が持つ
+                stage, progress(0..1), error            # 作成・更新日時は永続化層が持つ
+                # 優先度は種類で決まる（JobKind.priority。中間素材が最も低い）。同じ優先度は登録順
 ```
 
 - 実際に削除される区間 = （自動の削除候補 − 戻したもの）∪ 人が追加した削除区間
