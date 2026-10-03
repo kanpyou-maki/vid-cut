@@ -18,12 +18,15 @@ def mezzanine_path(store: ArtifactStore, recording_id: str) -> Path:
 def make_mezzanine(
     recording: Recording, media: MediaTool, store: ArtifactStore, report: ProgressReporter
 ) -> Path:
-    """中間素材を作って場所を返す。同じ録画ファイルから作ったものがあれば作り直さない。"""
-    source = require_source(recording)
+    """中間素材を作って場所を返す。同じ録画ファイルから作ったものがあれば作り直さない。
+
+    作り直さないときは元の録画ファイルを必要としない（書き出しは中間素材だけあればできる）。
+    """
     cache = StageCache(store, recording.id)
     key = stage_key(recording.fingerprint, "mezzanine", _FORMAT_VERSION)
     path = mezzanine_path(store, recording.id)
     if not cache.is_current("mezzanine", key, MEZZANINE_FILE):
+        source = require_source(recording)
         report("mezzanine", 0.0)
         media.make_mezzanine(
             source,
