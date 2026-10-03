@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
 
-from vidcut.api.security import TOKEN_HEADER, ApiGuard, GuardSettings, local_guard
+from vidcut.api.security import TOKEN_HEADER, ApiGuard, GuardSettings, local_guard, new_token
 
 TOKEN = "t0ken-" + "x" * 37
 BASE_URL = "http://127.0.0.1:8765"
@@ -186,8 +186,31 @@ class TestRequestBody:
         )
         assert_refused(response, 400)
 
+    def test_negative_content_length_is_refused(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/echo",
+            content=b"{}",
+            headers={"Content-Type": "application/json", "Content-Length": "-1"},
+        )
+        assert_refused(response, 400)
+
     def test_reading_needs_no_content_type(self, client: TestClient) -> None:
         assert client.get("/api/ping", headers={"Content-Type": "text/plain"}).status_code == 200
+
+
+class TestOtherScopes:
+    def test_startup_and_shutdown_pass_through(self) -> None:
+        # HTTP 以外（アプリの起動と終了の合図）は、確かめずにそのまま渡す
+        with TestClient(make_app(), base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN}) as client:
+            assert client.get("/api/ping").status_code == 200
+
+
+class TestNewToken:
+    def test_tokens_are_long_and_different_each_time(self) -> None:
+        first, second = new_token(), new_token()
+        assert first != second
+        assert len(first) >= 43  # 256 ビットを URL に使える文字で表した長さ
+        assert local_guard(first, port=8765).token == first
 
 
 class TestLocalGuard:
