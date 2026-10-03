@@ -140,7 +140,9 @@ def build_app(
 
     def analyze(job: Job, report: ProgressReporter) -> None:
         analysis.analyze(job.target_id, report)
-        # レクチャーの全ファイルの解析がそろったら、言い直しの判定を積む
+        # レクチャーの全ファイルの解析がそろったら、言い直しの判定を積む。
+        # 積めなかったときは解析ジョブを失敗にする（黙って判定が抜けるより、再実行できるほうがよい。
+        # 解析は生成物のキャッシュがあるので、再実行はすぐ終わる）
         judge.request_for_recording(job.target_id)
 
     handlers: dict[JobKind, JobHandler] = {

@@ -89,7 +89,8 @@ class JudgeService:
             return previous
         report(STAGE, 0.0)
         suggestions = self._suggest(entries, report)
-        # 編集状態を先に直す。途中で止まっても、やり直せば同じ id の候補へ引き継がれる
+        # 編集状態を先に直す。その後で止まっても、やり直せば判定結果が保存され、編集状態も正しい。
+        # ただし 2 つの保存は別々なので、そのときは引き継げなかった id（画面の通知用）が失われる
         dropped = self._carry_over(lecture_id, analyses, previous, suggestions)
         judgement = Judgement(lecture_id, key, suggestions, dropped)
         self._judgements.save(judgement)
@@ -100,6 +101,8 @@ class JudgeService:
         """録画ファイルの解析が終わったときに呼ぶ。レクチャーの全ファイルが解析済みなら判定を積む。
 
         同じレクチャーの判定が既に待機中なら積まない（そのジョブがいまの解析結果を読む）。
+        確認と登録は 1 つの操作ではない（worker は 1 つ。ADR-004）。重なって二重に積まれても、
+        2 本目は入力が同じなので言語モデルを呼ばずに終わる。
         """
         lecture = self._lectures.find_by_recording(recording_id)
         if lecture is None or not all(self._is_analyzed(rid) for rid in lecture.recording_ids):
