@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）は main にマージ済み（PR #1〜#13）。M7（frontend）を 7 本の PR に分けて実装中。次は PR 3（編集状態と文字起こしの基本）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）は main にマージ済み（PR #1〜#13）。M7（frontend）を 7 本の PR に分けて実装中。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）を実装し、review-loop 中。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,11 +37,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は実装済みで、review-loop 中
 
 ## 次にやること
 
-- [ ] M7: frontend。次は PR 3（`feat/m7-editor-state`: 編集状態と文字起こしの基本）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
+- [ ] M7 の PR 3 の review-loop → PR → 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」。問題なければマージ
+- [ ] M7: frontend。PR 3 のあとは PR 4（`feat/m7-transcript-review`: 要確認の印と移動キー、判定理由、`dropped_restored_ids` の通知）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
       波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -123,7 +124,7 @@ _なし_
   ほかのオリジンには CORS のヘッダーを返さない、ビルドの出力と各プロセスの出力にトークンが出ない、本番の画面にインラインのスクリプト・スタイルがない
 - 画面の作り方: 画面は `Api`（`src/api/client.ts`）のメソッドだけを使い、テストでは `src/test/fakeApi.ts` の偽物に差し替える。画面に出す失敗の文は `errorMessage` を通す。
   API クライアントのテストは Node の環境で動かす（jsdom の `AbortSignal` は Node の `Request` に渡せない）。`openapi-fetch` には `baseUrl` に画面のオリジンを渡す（相対パスだと Node で `Request` を作れない）
-- 手動確認の手順: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
+- 手動確認の手順: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」。PR 2・PR 3 の手順も同じファイルにある
 - PR 2（`feat/m7-library`）: 素材一覧。画面の構成はユーザー承認（2026-10-04。Design Doc 3-6 の「素材一覧」）。backend の変更なし。
   `Api` に `listDirectory`・`importPaths`・`mergeLectures`・`reorderLecture`・`splitLecture`・`retryJob` を足した。`usePolling` は `refresh`（すぐに読み直す）を返す。
   ダイアログは `src/shared/Modal.tsx`（`dialog` 要素の `showModal`）。jsdom は `showModal` を持たないので、`src/test/setup.ts` に代わりの実装がある。閉じるときは描くのをやめ、フォーカスを開く前の要素へ戻す。frontend のテスト 232 件 / カバレッジ 99%（分岐 96%）
@@ -132,6 +133,21 @@ _なし_
   実物の解析で、元のファイルを消す → 失敗（`source_missing`）→ 作り直す → 再実行 → 編集待ち、まで進む
 - 画面を自分で確かめる方法: Chrome を `--headless=new --remote-debugging-port` で起動し、Node の `WebSocket` から CDP（`Runtime.evaluate`・`Page.captureScreenshot`）で操作する（依存は増えない）。
   `/api/fs` は隠しフォルダを扱わないので、素材の一時フォルダはホームの直下に作って最後に消す。ビルドは `npx vite build --outDir <一時フォルダ>` と `VIDCUT_FRONTEND_DIST` で、`frontend/dist` を書き換えずに済む
+- PR 3（`feat/m7-editor-state`）: 編集画面の骨組みと編集状態。画面の構成はユーザー承認（2026-10-04。Design Doc 3-6 の「編集画面の骨組みと編集状態」）。backend の変更なし。
+  `Api` に `getLecture`・`saveEdits` を足した。`src/editor/` は、待ち受け（`LectureGate`。編集できる状態になるまで `usePolling` で読み直し、なったら読み直しをやめる）と
+  編集（`EditorWorkspace`。`useReducer` + 履歴、自動保存、文字起こしの操作）に分かれる。読み込み直し（409 のあと）は、待ち受けからやり直して編集の部品ごと作り直す。
+  編集状態は不変のオブジェクトで、自動保存（`autosaver.ts`。React の外で持つ）は「保存済みと同じオブジェクトか」で未保存を判断する（undo で保存済みの内容に戻れば、保存しない）。
+  状態・失敗・時間の文は `src/shared/lectureStatus.ts` に移し、素材一覧と共用する
+- PR 3 で確認済み（`~/VidCut` の DB と解析結果の JSON だけを写した一時ワークスペース。実物の backend を `--no-worker` で起動、ヘッドレスの Chrome）:
+  マウスのドラッグで選択 → Delete → 約 1 秒後に保存（削除区間は最初のトークンの開始〜最後のトークンの終了）、⌘Z / ⇧⌘Z とボタン、「削除」ボタン（押しても選択が外れない）、
+  クリックと Enter での復活、読み込み直しても続きから、別の保存を挟んだあとの 409 のダイアログ（Esc で閉じない）と読み込み直し、未保存のまま素材一覧へ移っても保存される、
+  判定を待つ間の読み取り専用、幅が狭いときの縦積み、暗い配色。コンソールの失敗と CSP の違反なし（わざと起こした 404・409 の記録だけ）。frontend のテスト 376 件 / カバレッジ 99%（分岐 96%）
+- 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。
+  選択範囲とトークンの重なりは、トークンの要素ではなく中の文字（テキストノード）の範囲で比べる（要素で比べると、文字の境目で始まる選択が隣のトークンにも重なって見える）。
+  画面のテストでタイマーを偽物にするときは `vi.useFakeTimers({ shouldAdvanceTime: true })` を使い、描いた直後は `advance(0)` で effect を流してからキーを送る（`src/test/editorPage.tsx`）
+- 編集画面の残り・制限: 無音の候補はトークンを持たないので文字起こしに出ず、波形（PR 6）まで画面から戻せない。編集できる状態になったあとは読み直さない（別のタブでの並べ替えや判定のやり直しは、版が変わらなければ気づかない。PR 4 の通知で扱う）。
+  解析結果が読めない録画ファイルは、解析し直す必要があることを伝えるだけ（再解析は API のみ。決定事項 18）。サーバーを起動し直すとトークンが変わるので、未保存の編集は保存できず、読み込み直すと失われる。
+  編集のたびに文字起こし全体を描き直す（検証素材の 1,505 トークンでは問題なし。長い素材で重ければ、段落ごとに描き直しを抑える）
 - 素材一覧の残り: 判定の進捗（%）は出していない（窓が 1 つだと 0% のまま）。処理中のボタンは `disabled` にするので、キーボードで ↑ ↓ を続けて押すとフォーカスが外れることがある
 
 ### 素材と解析・判定・書き出しの知見
