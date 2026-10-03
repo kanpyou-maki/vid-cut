@@ -8,7 +8,7 @@ export interface Polled<T> {
   error: Error | null;
 }
 
-const INITIAL = { data: null, error: null };
+const INITIAL: Polled<never> = { data: null, error: null };
 
 /**
  * load を一定の間隔で呼び続ける（Design Doc 3-6）。

@@ -8,6 +8,7 @@ import type { HtmlTagDescriptor, Plugin } from "vite";
  * トークンはログに出さない。
  */
 
+// backend の api/frontend.py と、画面の src/api/token.ts の TOKEN_META と同じ値にすること
 const TOKEN_META = "vidcut-token";
 // backend のトークンは secrets.token_urlsafe で作る（英数字と - _）。ほかの形の値は埋め込まない
 const TOKEN_TAG = new RegExp(

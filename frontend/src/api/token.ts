@@ -1,4 +1,8 @@
-/** backend（開発中は Vite のプラグイン）が、画面の HTML にトークンを埋め込む meta 要素の名前。 */
+/**
+ * backend（開発中は Vite のプラグイン）が、画面の HTML にトークンを埋め込む meta 要素の名前。
+ *
+ * backend の `api/frontend.py` と `vite-plugins/devToken.ts` の TOKEN_META と同じ値にすること。
+ */
 export const TOKEN_META = "vidcut-token";
 
 /**

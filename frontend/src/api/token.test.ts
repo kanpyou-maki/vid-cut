@@ -10,6 +10,12 @@ function addMeta(name: string, content: string | null): void {
   document.head.append(meta);
 }
 
+describe("TOKEN_META", () => {
+  it("backend と Vite のプラグインが埋め込む meta 要素の名前と同じ", () => {
+    expect(TOKEN_META).toBe("vidcut-token");
+  });
+});
+
 describe("readToken", () => {
   afterEach(() => {
     document.head.replaceChildren();

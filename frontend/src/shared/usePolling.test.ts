@@ -130,6 +130,18 @@ describe("usePolling", () => {
     expect(result.current.data).toBeNull();
   });
 
+  it("画面から外れたあとの失敗は、無視して次も読まない", async () => {
+    const { calls, load } = controlledLoad<string>();
+    const { result, unmount } = renderHook(() => usePolling(load, INTERVAL_MS));
+
+    unmount();
+    await settle(() => calls[0].reject(new Error("中断")));
+    await advance(INTERVAL_MS * 3);
+
+    expect(calls).toHaveLength(1);
+    expect(result.current.error).toBeNull();
+  });
+
   it("待っている間に画面から外れたら、次を読まない", async () => {
     const { calls, load } = controlledLoad<string>();
     const { unmount } = renderHook(() => usePolling(load, INTERVAL_MS));
