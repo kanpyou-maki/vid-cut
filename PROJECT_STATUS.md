@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。`feat/m7-foundation`）が review-loop を通過し、PR のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。`feat/m7-foundation`）が review-loop を通過し、PR [#12](https://github.com/kanpyou-maki/vid-cut/pull/12) のマージ待ち
 
 ## 次にやること
 
@@ -117,7 +117,7 @@ _なし_
 
 ### M7（frontend）の現状
 
-- PR 1（`feat/m7-foundation`）: 土台。backend は、ビルドの案内のページ（503）にもトークンを埋め込む。frontend は `openapi-fetch` を追加し、
+- PR 1（`feat/m7-foundation`、PR #12）: 土台。backend は、ビルドの案内のページ（503）にもトークンを埋め込む。frontend は `openapi-fetch` を追加し、
   `src/api/`（`Api`・トークン・失敗の種類）、`src/shared/`（画面の切り替え・ポーリング）、`src/app/`（画面の枠）、`src/library/`（名前と状態の一覧まで）、`src/editor/`（準備中の表示だけ）、
   `vite-plugins/devToken.ts`（開発中のトークン）。frontend のテスト 105 件 / カバレッジ 99%
 - 実物の backend と Vite を一時ワークスペースで起動して確認済み: 開発用の HTML に backend と同じトークンが入る、Vite 経由の API が通る、トークンなしは 401、
