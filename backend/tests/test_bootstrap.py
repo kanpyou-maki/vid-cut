@@ -1,10 +1,16 @@
+import sqlite3
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+import pytest
 
 from tests.pipeline.fakes import FakeAligner, FakeMediaTool, FakeTranscriber, FakeVad
 from tests.pipeline.judge_fakes import FakeModel
 from vidcut.bootstrap import (
+    DATABASE_FILE,
     MlTools,
+    build_api,
     build_app,
     judge_workdir,
     media_settings_for,
@@ -131,3 +137,55 @@ def test_merged_lecture_is_judged_edited_and_split_through_the_wired_services(
     assert [part.title for part in parts] == ["S05-12", "S05-12-retake"]
     assert split_cuts == [(), (cut,)]
     assert [job.kind for job in reanalysis] == [JobKind.ANALYZE_RECORDING]
+
+
+class TestBuildApi:
+    def test_each_scope_opens_its_own_connection_and_closes_it(self, tmp_path: Path) -> None:
+        api = build_api(tmp_path / "ws", media=FakeMediaTool())
+        with api.services() as first, api.services() as second:
+            assert first.conn is not second.conn
+            assert first.lecture_views.summaries() == ()
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            first.conn.execute("SELECT 1")
+
+    def test_scope_can_be_used_from_another_thread(self, tmp_path: Path) -> None:
+        # FastAPI は依存の準備と本体を別のスレッドで動かすことがある（Design Doc 3-5-2）
+        api = build_api(tmp_path / "ws", media=FakeMediaTool())
+        with api.services() as services, ThreadPoolExecutor(max_workers=1) as pool:
+            assert pool.submit(services.lecture_views.summaries).result() == ()
+
+    def test_work_requested_through_the_api_is_done_by_the_worker(self, tmp_path: Path) -> None:
+        video = tmp_path / "S05-12.mov"
+        video.write_bytes(b"mov")
+        media = FakeMediaTool()
+        api = build_api(tmp_path / "ws", media=media)
+        with api.services() as services:
+            (recording,) = services.imports.import_paths([video]).added
+            (summary,) = services.lecture_views.summaries()
+        app = build_app(
+            tmp_path / "ws",
+            media=media,
+            ml=MlTools(vad=FakeVad(), transcriber=FakeTranscriber(), aligner=FakeAligner()),
+            model=FakeModel(['{"delete": []}']),
+        )
+        try:
+            app.worker().run_until_idle()
+        finally:
+            app.close()
+        with api.services() as services:
+            detail = services.lecture_views.detail(summary.lecture.id)
+            export = services.exports.request(summary.lecture.id, JobKind.EXPORT_PREMIERE)
+            merged_judgement = services.lecture_service.reanalyze(summary.lecture.id)
+        assert summary.status is LectureStatus.QUEUED
+        assert detail.summary.status is LectureStatus.READY
+        assert list(detail.analyses) == [recording.id]
+        assert detail.judgement is not None
+        assert export.kind is JobKind.EXPORT_PREMIERE
+        assert [job.target_id for job in merged_judgement] == [recording.id]
+
+    def test_schema_is_prepared_once_when_the_api_is_built(self, tmp_path: Path) -> None:
+        api = build_api(tmp_path / "ws", media=FakeMediaTool())
+        (tmp_path / "ws" / DATABASE_FILE).unlink()
+        # リクエストごとの接続はスキーマを作らない（起動時に 1 回だけ移行する）
+        with api.services() as services, pytest.raises(sqlite3.OperationalError, match="no such"):
+            services.lecture_views.summaries()

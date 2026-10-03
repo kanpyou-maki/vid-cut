@@ -106,6 +106,18 @@ def peaks_to(peaks: Peaks) -> Json:
     return {"per_second": peaks.per_second, "values": list(peaks.values)}
 
 
+def peaks_from(data: Json) -> Peaks:
+    per_second = data["per_second"]
+    values = data["values"]
+    if type(per_second) is not int or per_second <= 0:
+        raise ValueError(f"per_second が不正です: {per_second!r}")
+    if not isinstance(values, list):
+        raise TypeError("values は配列である必要があります")
+    if any(isinstance(v, bool) or not isinstance(v, int | float) for v in values):
+        raise TypeError("values は数値の配列である必要があります")
+    return Peaks(per_second=per_second, values=tuple(float(v) for v in values))
+
+
 def decode[T](data: Json, convert: Callable[[Json], T]) -> T:
     """形の合わない JSON は ValueError にそろえる（壊れた生成物は作り直す判断に使う）。"""
     try:

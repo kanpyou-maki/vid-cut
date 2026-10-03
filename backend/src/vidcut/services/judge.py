@@ -49,6 +49,46 @@ def load_lecture_analyses(lecture: Lecture, store: ArtifactStore) -> tuple[Analy
     return tuple(analyses)
 
 
+class JudgeRequests:
+    """判定ジョブの登録。API サーバーは言語モデルを持たないので、JudgeService と分ける。"""
+
+    def __init__(
+        self,
+        *,
+        lectures: LectureRepository,
+        store: ArtifactStore,
+        queue: JobQueue,
+        new_id: Callable[[], str] = lambda: uuid.uuid4().hex,
+    ) -> None:
+        self._lectures = lectures
+        self._store = store
+        self._queue = queue
+        self._new_id = new_id
+
+    def for_recording(self, recording_id: str) -> Job | None:
+        """録画ファイルが属するレクチャーの判定を積む。全ファイルが解析済みのときだけ積む。
+
+        解析が終わったときと、レクチャーをまとめる・並べ替える・解除したときに呼ぶ。
+        同じレクチャーの判定が既に待機中なら積まない（そのジョブがいまの解析結果を読む）。
+        重なって二重に積まれても、2 本目は入力が同じなので言語モデルを呼ばずに終わる。
+        """
+        lecture = self._lectures.find_by_recording(recording_id)
+        if lecture is None or not all(self._is_analyzed(rid) for rid in lecture.recording_ids):
+            return None
+        if find_queued(self._queue, JobKind.JUDGE_LECTURE, lecture.id) is not None:
+            return None
+        job = Job(id=self._new_id(), kind=JobKind.JUDGE_LECTURE, target_id=lecture.id)
+        self._queue.enqueue(job)
+        return job
+
+    def _is_analyzed(self, recording_id: str) -> bool:
+        try:
+            return load_analysis(self._store, recording_id) is not None
+        except ValueError:
+            # 壊れた解析結果は、判定ジョブが失敗として表に出す
+            return True
+
+
 class JudgeService:
     def __init__(
         self,
@@ -69,11 +109,10 @@ class JudgeService:
         self._judgements = judgements
         self._edit_states = edit_states
         self._atomic = atomic
-        self._queue = queue
         self._model = model
         self._settings = settings
         self._prompt = load_prompt() if prompt is None else prompt
-        self._new_id = new_id
+        self._requests = JudgeRequests(lectures=lectures, store=store, queue=queue, new_id=new_id)
 
     def judge(self, lecture_id: str, report: ProgressReporter) -> Judgement:
         """レクチャー全体の発話チャンクを判定し、結果を保存する。
@@ -98,20 +137,8 @@ class JudgeService:
         return judgement
 
     def request_for_recording(self, recording_id: str) -> Job | None:
-        """録画ファイルが属するレクチャーの判定を積む。全ファイルが解析済みのときだけ積む。
-
-        解析が終わったときと、レクチャーをまとめる・並べ替える・解除したときに呼ぶ。
-        同じレクチャーの判定が既に待機中なら積まない（そのジョブがいまの解析結果を読む）。
-        重なって二重に積まれても、2 本目は入力が同じなので言語モデルを呼ばずに終わる。
-        """
-        lecture = self._lectures.find_by_recording(recording_id)
-        if lecture is None or not all(self._is_analyzed(rid) for rid in lecture.recording_ids):
-            return None
-        if find_queued(self._queue, JobKind.JUDGE_LECTURE, lecture.id) is not None:
-            return None
-        job = Job(id=self._new_id(), kind=JobKind.JUDGE_LECTURE, target_id=lecture.id)
-        self._queue.enqueue(job)
-        return job
+        """解析が終わった録画ファイルのレクチャーの判定を積む（JudgeRequests.for_recording）。"""
+        return self._requests.for_recording(recording_id)
 
     def _suggest(
         self, entries: Sequence[JudgeEntry], report: ProgressReporter
@@ -163,10 +190,3 @@ class JudgeService:
         raise VersionConflictError(
             f"編集状態が更新され続けているため、判定結果を反映できませんでした: {lecture_id}"
         )
-
-    def _is_analyzed(self, recording_id: str) -> bool:
-        try:
-            return load_analysis(self._store, recording_id) is not None
-        except ValueError:
-            # 壊れた解析結果は、判定ジョブが失敗として表に出す
-            return True

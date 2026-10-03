@@ -37,7 +37,11 @@ class NothingToExportError(ValueError):
 
 
 class InvalidInputError(ValueError):
-    """利用者の入力を受け付けられない（API では 422 で返す）。"""
+    """利用者の入力を受け付けられない（API では 422 で返す）。
+
+    この例外の文は、そのまま画面に出る。入力のどこが誤りかを説明する文だけを書き、
+    絶対パスや、ほかの例外・外部ツールの文を入れないこと（Design Doc 3-5-2）。
+    """
 
 
 class NotFoundError(LookupError):
