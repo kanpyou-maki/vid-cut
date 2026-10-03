@@ -2,15 +2,18 @@
 
 配信するのはビルドの出力（dist）の中のファイルだけ。ほかのパスには、画面の HTML を返す
 （画面は 1 ページのアプリで、パスは画面の中で解釈する）。
+API のルートの判定（404・405）を横取りしないよう、どのルートにも当たらなかった GET にだけ応える。
 """
 
 import html
 import logging
-from pathlib import Path
+from collections.abc import Callable
+from pathlib import Path, PurePosixPath
 
-from fastapi import FastAPI
-from starlette.exceptions import HTTPException
 from starlette.responses import FileResponse, HTMLResponse, Response
+
+PageFallback = Callable[[str], Response | None]
+"""どのルートにも当たらなかった GET のパスを受け取り、返す応答（なければ None で 404 のまま）。"""
 
 TOKEN_META = "vidcut-token"
 """画面はこの名前の meta 要素からトークンを読み、X-VidCut-Token ヘッダーに付ける。"""
@@ -18,6 +21,11 @@ TOKEN_META = "vidcut-token"
 INDEX_FILE = "index.html"
 _HEAD_END = "</head>"
 _API_ROOT = "api"
+# ビルドの出力に含まれうるファイルの拡張子。これらを求めて見つからなければ 404 にする
+_ASSET_SUFFIXES = frozenset(
+    {".js", ".mjs", ".css", ".map", ".json", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    | {".ico", ".woff", ".woff2", ".ttf", ".txt", ".wasm", ".mp4", ".webm"}
+)
 # トークンは起動ごとに変わる。古いトークンの入ったページをブラウザに残さない
 _NO_STORE = {"Cache-Control": "no-store"}
 _NOT_BUILT = """<!doctype html>
@@ -34,18 +42,26 @@ _NOT_BUILT = """<!doctype html>
 _logger = logging.getLogger(__name__)
 
 
-def install_frontend(app: FastAPI, dist: Path | None, token: str) -> None:
-    """API のルートを登録したあとに呼ぶ（/api 以外のすべての GET を受ける）。"""
+def frontend_fallback(dist: Path | None, token: str) -> PageFallback:
+    """画面のファイルか HTML を返す関数。API のパスと、見つからないファイルには応えない。"""
 
-    @app.get("/{path:path}", include_in_schema=False)
-    def frontend(path: str) -> Response:
+    def respond(route_path: str) -> Response | None:
+        path = route_path.lstrip("/")
         if path == _API_ROOT or path.startswith(_API_ROOT + "/"):
-            # API の知らないパスに、画面の HTML を返さない
-            raise HTTPException(status_code=404)
+            return None  # API の知らないパスに、画面の HTML を返さない
         asset = _asset(dist, path)
         if asset is not None:
             return FileResponse(asset)
+        if PurePosixPath(path).suffix and path != INDEX_FILE and _looks_like_a_file(path):
+            return None  # ファイルを求めた要求に HTML を返すと、画面が壊れた理由が分かりにくい
         return _index(dist, token)
+
+    return respond
+
+
+def _looks_like_a_file(path: str) -> bool:
+    """拡張子が、画面のパス（/lectures/v1.2 など）ではなくファイルのものか。"""
+    return PurePosixPath(path).suffix.lower() in _ASSET_SUFFIXES
 
 
 def _asset(dist: Path | None, path: str) -> Path | None:

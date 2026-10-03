@@ -65,7 +65,7 @@ class TestIndex:
         assert client.get("/").headers["cache-control"] == "no-store"
 
     def test_paths_of_the_single_page_app_get_the_same_page(self, client: TestClient) -> None:
-        for path in ("/lectures/abc123", "/index.html", "/no/such/page"):
+        for path in ("/lectures/abc123", "/index.html", "/no/such/page", "/lectures/v1.2"):
             response = client.get(path)
             assert response.status_code == 200
             assert TOKEN_TAG in response.text
@@ -75,6 +75,14 @@ class TestIndex:
     ) -> None:
         (dist / "index.html").write_text(INDEX.replace("vid-cut", "新しい版"), encoding="utf-8")
         assert "新しい版" in client.get("/").text
+
+    def test_api_route_with_the_wrong_method_is_still_refused_as_such(
+        self, client: TestClient
+    ) -> None:
+        # 画面の配信が、API のルートの判定（405）を横取りしない
+        response = client.get("/api/imports", headers={"X-VidCut-Token": TOKEN})
+        assert response.status_code == 405
+        assert response.json()["success"] is False
 
     def test_unknown_api_path_is_not_answered_with_the_page(self, client: TestClient) -> None:
         response = client.get("/api/nope", headers={"X-VidCut-Token": TOKEN})
@@ -111,10 +119,20 @@ class TestAssets:
     def test_files_outside_the_build_are_not_served(self, client: TestClient, path: str) -> None:
         assert "SECRET" not in client.get(path).text
 
-    def test_path_the_file_system_cannot_handle_gets_the_page(self, client: TestClient) -> None:
-        response = client.get("/assets/a%00b.js")
+    def test_path_the_file_system_cannot_handle_is_not_found(self, client: TestClient) -> None:
+        assert client.get("/assets/a%00b.js").status_code == 404
+        response = client.get("/lectures/a%00b")  # 画面のパスとしては、画面の HTML を返す
         assert response.status_code == 200
         assert TOKEN_TAG in response.text
+
+    @pytest.mark.parametrize("path", ["/assets/missing.js", "/favicon.ico", "/a/b/c.css.map"])
+    def test_missing_file_is_not_answered_with_the_page(
+        self, client: TestClient, path: str
+    ) -> None:
+        # ファイルを求めた要求に HTML を返すと、画面が壊れた理由が分かりにくい
+        response = client.get(path)
+        assert response.status_code == 404
+        assert TOKEN not in response.text
 
     def test_hidden_files_are_not_served(self, client: TestClient) -> None:
         assert "HIDDEN" not in client.get("/.env").text

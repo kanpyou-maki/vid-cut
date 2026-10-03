@@ -38,10 +38,11 @@ class TestErrors:
 
     def test_no_interactive_docs_are_served(self, env: ApiEnv) -> None:
         # 画面の JS を外部の CDN から読むページを、ローカルアプリには置かない。
-        # これらのパスは、ほかの知らないパスと同じ扱い（画面の HTML。ここではビルドがないので 503）
-        for path in ("/docs", "/redoc", "/openapi.json"):
+        # これらのパスは、ほかの知らないパスと同じ扱い
+        # （画面の HTML。ここではビルドがないので 503。ファイルを求めるパスは 404）
+        for path, status in (("/docs", 503), ("/redoc", 503), ("/openapi.json", 404)):
             response = env.client.get(path)
-            assert response.status_code == 503
+            assert response.status_code == status
             assert "swagger" not in response.text.lower()
             assert '"openapi"' not in response.text
 

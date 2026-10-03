@@ -4,6 +4,7 @@ TestClient は HTTP のパーサを通らないので、本文の長さの食い
 パーサが関わる点はここで確かめる（M6 PR 2 のレビューからの持ち越し）。
 """
 
+import contextlib
 import os
 import re
 import signal
@@ -27,6 +28,8 @@ pytestmark = pytest.mark.integration
 
 STARTUP_TIMEOUT_S = 30.0
 SHUTDOWN_TIMEOUT_S = 15.0
+# 環境変数のプロキシ設定（http_proxy など）を使わず、直接つなぐ
+DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 INDEX = "<!doctype html><html><head><title>vid-cut</title></head><body></body></html>"
 
 
@@ -44,7 +47,7 @@ class Server:
     def get(self, path: str, headers: dict[str, str] | None = None) -> tuple[int, str]:
         request = urllib.request.Request(f"http://{self.host}{path}", headers=headers or {})
         try:
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with DIRECT.open(request, timeout=10) as response:
                 return response.status, response.read().decode()
         except urllib.error.HTTPError as error:
             return error.code, error.read().decode()
@@ -65,15 +68,14 @@ def free_port() -> int:
 
 def read_page(port: int) -> str | None:
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=2) as response:
+        with DIRECT.open(f"http://127.0.0.1:{port}/", timeout=2) as response:
             return str(response.read().decode())
     except OSError:
         return None
 
 
-@pytest.fixture(scope="module")
-def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
-    root = tmp_path_factory.mktemp("serve")
+def start_server(root: Path) -> Server:
+    """一時ワークスペースで `vidcut serve` を起動し、画面を返すようになるまで待つ。"""
     dist = root / "dist"
     dist.mkdir()
     (dist / "index.html").write_text(INDEX, encoding="utf-8")
@@ -87,6 +89,7 @@ def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
             stdout=output,
             stderr=subprocess.STDOUT,
             env=env,
+            start_new_session=True,  # 後始末で、worker の子プロセスごと止められるようにする
         )
     try:
         deadline = time.monotonic() + STARTUP_TIMEOUT_S
@@ -98,11 +101,45 @@ def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
             time.sleep(0.1)
         found = re.search(rf'<meta name="{TOKEN_META}" content="([^"]+)"', page)
         assert found is not None
-        yield Server(process=process, port=port, log=log, token=found.group(1))
+    except BaseException:
+        kill_group(process)
+        raise
+    return Server(process=process, port=port, log=log, token=found.group(1))
+
+
+def kill_group(process: subprocess.Popen[bytes]) -> None:
+    """サーバーと、その子プロセス（worker）をまとめて強制終了する。テストの後始末用。"""
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGKILL)
+    process.wait()
+
+
+def worker_pid(server: Server) -> int:
+    children = subprocess.run(
+        ["pgrep", "-P", str(server.process.pid)], capture_output=True, text=True, check=False
+    ).stdout.split()
+    assert len(children) == 1, (children, server.log.read_text(encoding="utf-8"))
+    return int(children[0])
+
+
+def wait_until_gone(pid: int, what: str) -> None:
+    deadline = time.monotonic() + SHUTDOWN_TIMEOUT_S
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return
+        time.sleep(0.1)
+    pytest.fail(what)
+
+
+@pytest.fixture(scope="module")
+def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Server]:
+    started = start_server(tmp_path_factory.mktemp("serve"))
+    try:
+        yield started
     finally:
-        if process.poll() is None:
-            process.kill()
-        process.wait()
+        kill_group(started.process)
 
 
 def status_line(response: bytes) -> str:
@@ -169,20 +206,26 @@ class TestRealServer:
         assert server.token not in server.log.read_text(encoding="utf-8")
 
 
-def test_stopping_the_server_stops_the_worker_too(server: Server) -> None:
-    """このモジュールの最後に実行する（サーバーを止める）。"""
-    children = subprocess.run(
-        ["pgrep", "-P", str(server.process.pid)], capture_output=True, text=True, check=False
-    ).stdout.split()
-    assert len(children) == 1, (children, server.log.read_text(encoding="utf-8"))
-    worker_pid = int(children[0])
-    server.process.send_signal(signal.SIGTERM)
-    server.process.wait(timeout=SHUTDOWN_TIMEOUT_S)
-    deadline = time.monotonic() + SHUTDOWN_TIMEOUT_S
-    while time.monotonic() < deadline:
+class TestShutdown:
+    """止め方ごとに、自分のサーバーを起動して確かめる。"""
+
+    def test_sigterm_stops_the_server_and_the_worker(self, tmp_path: Path) -> None:
+        server = start_server(tmp_path)
         try:
-            os.kill(worker_pid, 0)
-        except ProcessLookupError:
-            return
-        time.sleep(0.1)
-    pytest.fail("サーバーを止めても worker が残っています")
+            worker = worker_pid(server)
+            server.process.send_signal(signal.SIGTERM)
+            assert server.process.wait(timeout=SHUTDOWN_TIMEOUT_S) == 0
+            wait_until_gone(worker, "サーバーを止めても worker が残っています")
+        finally:
+            kill_group(server.process)
+
+    def test_worker_exits_by_itself_when_the_server_is_killed(self, tmp_path: Path) -> None:
+        # 強制終了では後始末が走らない。worker が親の終了に気づいて、自分で止まる
+        server = start_server(tmp_path)
+        try:
+            worker = worker_pid(server)
+            server.process.kill()
+            server.process.wait(timeout=SHUTDOWN_TIMEOUT_S)
+            wait_until_gone(worker, "サーバーを強制終了したあと、worker が残っています")
+        finally:
+            kill_group(server.process)

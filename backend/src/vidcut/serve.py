@@ -9,6 +9,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +30,9 @@ VITE_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 """開発中の Vite の開発サーバー。--dev のときだけ、ここからの要求を受け付ける。"""
 FRONTEND_DIST_ENV = "VIDCUT_FRONTEND_DIST"
 WORKSPACE_ENV = "VIDCUT_WORKSPACE"
+PARENT_PID_FLAG = "--parent-pid"
 _WORKER_STOP_TIMEOUT_S = 10.0
+_PARENT_POLL_INTERVAL_S = 1.0
 
 _logger = logging.getLogger(__name__)
 
@@ -55,7 +58,11 @@ WorkerStarter = Callable[[Path], RunningWorker]
 
 
 def default_frontend_dist(env: Mapping[str, str] = os.environ) -> Path:
-    """ビルド済み frontend の場所。既定はこのリポジトリの frontend/dist。"""
+    """ビルド済み frontend の場所。既定はこのリポジトリの frontend/dist。
+
+    既定の場所は、リポジトリの中で動かしていること（backend/src/vidcut/ にこのファイルがあること）が
+    前提。ほかの場所に導入したときは、環境変数で指定する（なければ、ビルドの案内のページを返す）。
+    """
     configured = env.get(FRONTEND_DIST_ENV)
     if configured:
         return Path(configured).expanduser()
@@ -77,12 +84,16 @@ def serve(
     app = create_app(
         api, ApiSettings(guard=guard, home=options.home, frontend_dist=options.frontend_dist)
     )
-    worker = (
-        (start_worker or start_worker_process)(options.workspace) if options.with_worker else None
-    )
-    print(f"http://{HOST}:{options.port}/ を開いてください（Ctrl+C で止めます）")
-    print(f"ワークスペース: {options.workspace}")
+    # worker を起動する前に設定する。既定の動作のままだと、SIGTERM でこのプロセスがその場で終わり、
+    # 下の後始末（worker の停止）が走らない
+    if threading.current_thread() is threading.main_thread():
+        interrupt_on_sigterm()
+    worker: RunningWorker | None = None
     try:
+        if options.with_worker:
+            worker = (start_worker or start_worker_process)(options.workspace)
+        print(f"http://{HOST}:{options.port}/ を開いてください（Ctrl+C で止めます）")
+        print(f"ワークスペース: {options.workspace}")
         (run_server or run_uvicorn)(app, HOST, options.port)
     except KeyboardInterrupt:
         # Ctrl+C と SIGTERM は「止める」合図。エラーにせず、下で worker を止めて終わる
@@ -97,6 +108,7 @@ def interrupt_on_sigterm() -> None:
     """SIGTERM を Ctrl+C と同じ扱い（KeyboardInterrupt）にする。メインスレッドで呼ぶこと。
 
     既定の動作のままだと、SIGTERM でプロセスがその場で終わり、後始末（worker の停止）が走らない。
+    uvicorn は、止まったあとに受け取ったシグナルを送り直すので、起動の前に設定しておく。
     """
 
     def interrupt(signum: int, frame: FrameType | None) -> None:
@@ -106,12 +118,7 @@ def interrupt_on_sigterm() -> None:
 
 
 def run_uvicorn(app: FastAPI, host: str, port: int) -> None:
-    """アクセスログは出さない（proxy 動画の URL には ?token= が付く）。失敗はアプリがログに出す。
-
-    uvicorn は、止まったあとに受け取ったシグナルを送り直す。そのとき worker を止められるよう、
-    先に SIGTERM を KeyboardInterrupt にしておく。
-    """
-    interrupt_on_sigterm()
+    """アクセスログは出さない（proxy 動画の URL には ?token= が付く）。失敗はアプリがログに出す。"""
     uvicorn.run(app, host=host, port=port, access_log=False, log_level="info")
 
 
@@ -141,10 +148,42 @@ class WorkerProcess:
 
 
 def start_worker_process(workspace: Path) -> WorkerProcess:
-    """同じ Python で `vidcut worker` を起動する。ワークスペースは環境変数で渡す。"""
+    """同じ Python で `vidcut worker` を起動する。ワークスペースは環境変数で渡す。
+
+    このプロセスが強制終了されても worker が残らないよう、親がいなくなったら止まるように起動する。
+    """
     process = subprocess.Popen(
-        [sys.executable, "-m", "vidcut.cli", "worker"],
+        [sys.executable, "-m", "vidcut.cli", "worker", PARENT_PID_FLAG, str(os.getpid())],
         stdin=subprocess.DEVNULL,
         env={**os.environ, WORKSPACE_ENV: str(workspace)},
     )
     return WorkerProcess(process)
+
+
+def stop_when_parent_exits(
+    stop: threading.Event,
+    parent_pid: int,
+    *,
+    get_parent: Callable[[], int] = os.getppid,
+    poll_interval_s: float = _PARENT_POLL_INTERVAL_S,
+) -> threading.Thread:
+    """親プロセス（parent_pid）がいなくなったら stop を立てる見張りを始める（worker 側で使う）。
+
+    親（vidcut serve）が強制終了されると、後始末が走らず worker だけが残る。
+    親がいなくなると、子の親は別のプロセスに変わるので、それを合図に自分で止まる。
+    親の番号は起動した側から受け取る。worker の起動（読み込み）の間に親が終わっていると、
+    自分で調べた「いまの親」は、もう別のプロセスになっているため。
+    処理中のジョブは最後まで行い、次のジョブを取る前に止まる。
+    """
+
+    def watch() -> None:
+        while True:
+            if get_parent() != parent_pid:
+                _logger.warning("親プロセスがいなくなったので、worker を止めます")
+                stop.set()
+            if stop.wait(poll_interval_s):
+                return
+
+    watcher = threading.Thread(target=watch, name="parent-watch", daemon=True)
+    watcher.start()
+    return watcher

@@ -9,16 +9,20 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 from vidcut.api import messages
 from vidcut.api.envelope import failure
+from vidcut.api.frontend import PageFallback
+from vidcut.api.security import route_path
 from vidcut.pipeline.ports import InvalidInputError, NotFoundError, VersionConflictError
 
 _logger = logging.getLogger(__name__)
 
 
-def install_error_handlers(app: FastAPI) -> None:
+def install_error_handlers(app: FastAPI, page_fallback: PageFallback | None = None) -> None:
+    """page_fallback は、どのルートにも当たらなかった GET に画面を返す（frontend.py）。"""
+
     @app.exception_handler(NotFoundError)
     async def not_found(request: Request, error: NotFoundError) -> JSONResponse:
         _logger.info("%s %s: %s", request.method, request.url.path, error)
@@ -42,7 +46,11 @@ def install_error_handlers(app: FastAPI) -> None:
         return failure(422, messages.INVALID_REQUEST)
 
     @app.exception_handler(HTTPException)
-    async def http_error(request: Request, error: HTTPException) -> JSONResponse:
+    async def http_error(request: Request, error: HTTPException) -> Response:
+        if error.status_code == 404 and request.method == "GET" and page_fallback is not None:
+            page = page_fallback(route_path(request.scope))
+            if page is not None:
+                return page
         message = messages.HTTP_ERRORS.get(error.status_code, messages.HTTP_ERROR_FALLBACK)
         return failure(error.status_code, message)
 

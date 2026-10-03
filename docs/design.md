@@ -240,13 +240,17 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
 - 対話式のドキュメント（`/docs`・`/redoc`・`/openapi.json`）は配信しない（画面の JS を外部の CDN から読むため）。スキーマは `vidcut openapi` で取り出す
 - **トークン**: `vidcut serve` が起動のたびに 256 ビットの乱数から作り、画面の HTML の `<meta name="vidcut-token">` に埋め込む。環境変数・引数・ログには出さず、worker にも渡さない。
   画面はこの値を読んで `X-VidCut-Token` に付ける。トークン入りの HTML は `Cache-Control: no-store` で返す
-- **画面の配信**（`api/frontend.py`）: `/api` 以外の GET には、ビルドの出力（`frontend/dist`。環境変数 `VIDCUT_FRONTEND_DIST` で変更可）の中のファイルか、画面の HTML を返す。
-  ビルドの出力の外・隠しファイル・外を指すリンクは返さない。ビルドがなければ、ビルドの手順を書いたページ（503）を返す（API は使える）
+- **画面の配信**（`api/frontend.py`）: どのルートにも当たらなかった GET（404 になる要求）に、ビルドの出力（`frontend/dist`。環境変数 `VIDCUT_FRONTEND_DIST` で変更可）の中のファイルか、画面の HTML を返す。
+  API のルートの判定は変えない（`/api` の知らないパスは 404、メソッドの違いは 405 のまま）。
+  ビルドの出力の外・隠しファイル・外を指すリンクは返さない。ファイルを求めるパス（`.js`・`.css` など）で見つからないものは 404（HTML を返すと、画面が壊れた理由が分かりにくい）。
+  ビルドがなければ、ビルドの手順を書いたページ（503）を返す（API は使える）。
+  CSP は M7 で画面を作るときに見直す（波形の部品が `blob:` を `fetch` するなら `connect-src`、フォントを埋め込むなら `font-src` を足す）
 - **応答のヘッダー**（`api/headers.py`。すべての応答に付ける）: `Content-Security-Policy`（読み込めるのは自分自身のものだけ。スクリプトのインライン実行は不可。ほかのページの枠には入れない）、
   `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`（proxy 動画の `?token=` を外へ送らない）、`X-Frame-Options: DENY`
 - **止め方**: Ctrl+C と SIGTERM のどちらでも、サーバーを止めてから worker の子プロセスを止める。
-  uvicorn は止まったあとに SIGTERM を送り直すので、先に SIGTERM を KeyboardInterrupt に変えておく（そうしないと worker が残る）。
-  強制終了（SIGKILL）した場合は worker が残るので、`pkill -f "vidcut.cli worker"` で止める
+  uvicorn は止まったあとに SIGTERM を送り直すので、worker を起動する前に SIGTERM を KeyboardInterrupt に変えておく（そうしないと worker が残る）。
+  強制終了（SIGKILL）では後始末が走らないので、worker が自分で止まる: `vidcut serve` は worker に自分のプロセス番号を渡し（`--parent-pid`）、
+  worker は 1 秒ごとに親がそのプロセスのままかを確かめ、変わっていたら、処理中のジョブを終えてから止まる
 - **開発中**（`vidcut serve --dev`）: Vite の開発サーバー（`http://localhost:5173`）からの要求を受け付ける。Vite は `/api` を転送するとき、Host を転送先に合わせる（`changeOrigin`）。
   開発中は HTML を Vite が配信するので、トークンを埋め込めない。渡し方は M7 で決める（7 章の D-6）
 

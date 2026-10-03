@@ -18,9 +18,11 @@ from vidcut.pipeline.judge import JudgeEntry
 from vidcut.pipeline.ports import ExternalToolError
 from vidcut.serve import (
     DEFAULT_PORT,
+    PARENT_PID_FLAG,
     ServeOptions,
     default_frontend_dist,
     interrupt_on_sigterm,
+    stop_when_parent_exits,
 )
 from vidcut.serve import serve as run_serve
 from vidcut.services.imports import ImportResult
@@ -60,7 +62,7 @@ def main(
             return _analyze(app, [Path(p) for p in args.paths], wait=args.wait)
         if args.command == "eval":
             return _eval_judge(app, args)
-        return _worker(app, stop or threading.Event())
+        return _worker(app, stop or threading.Event(), parent_pid=args.parent_pid)
     finally:
         app.close()
 
@@ -71,7 +73,12 @@ def _parser() -> argparse.ArgumentParser:
     analyze = commands.add_parser("analyze", help="録画ファイル（またはフォルダ）を解析に回す")
     analyze.add_argument("paths", nargs="+", help="録画ファイルまたはフォルダ")
     analyze.add_argument("--wait", action="store_true", help="この場で解析が終わるまで処理する")
-    commands.add_parser("worker", help="ジョブを待って処理し続ける")
+    worker = commands.add_parser("worker", help="ジョブを待って処理し続ける")
+    worker.add_argument(
+        PARENT_PID_FLAG,
+        type=int,
+        help="このプロセスが親でなくなったら止まる（vidcut serve が自分の番号を渡す）",
+    )
     serve = commands.add_parser("serve", help="画面と API のサーバー、worker を起動する")
     serve.add_argument("--port", type=_port, default=DEFAULT_PORT, help="待ち受けるポート")
     serve.add_argument(
@@ -207,10 +214,12 @@ def _print_eval_run(index: int, run: EvalRun, entries: Sequence[JudgeEntry]) -> 
         print(f"  見逃し {number} {texts[number]}")
 
 
-def _worker(app: App, stop: threading.Event) -> int:
+def _worker(app: App, stop: threading.Event, *, parent_pid: int | None) -> int:
     # SIGTERM でも Ctrl+C と同じく止める。処理中のジョブは次の起動時に待機中へ戻る
     if threading.current_thread() is threading.main_thread():
         interrupt_on_sigterm()
+    if parent_pid is not None:
+        stop_when_parent_exits(stop, parent_pid)
     print(f"ジョブを待っています（ワークスペース: {app.workspace}）。Ctrl+C で止めます")
     try:
         app.worker().run_forever(stop)

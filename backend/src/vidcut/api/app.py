@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from vidcut.api.envelope import ErrorOut
 from vidcut.api.errors import install_error_handlers
-from vidcut.api.frontend import install_frontend
+from vidcut.api.frontend import frontend_fallback
 from vidcut.api.headers import SecurityHeaders
 from vidcut.api.routes import fs, imports, jobs, lectures, recordings
 from vidcut.api.security import ApiGuard, GuardSettings
@@ -40,8 +40,7 @@ def create_app(api: Api, settings: ApiSettings) -> FastAPI:
     app = _api_app()
     app.state.api = api
     app.state.browser = FileBrowser(settings.home)
-    install_frontend(app, settings.frontend_dist, settings.guard.token)
-    install_error_handlers(app)
+    install_error_handlers(app, frontend_fallback(settings.frontend_dist, settings.guard.token))
     # 後に足したものが外側になる。断る応答にもヘッダーが付くよう、SecurityHeaders を外に置く
     app.add_middleware(ApiGuard, settings=settings.guard)
     app.add_middleware(SecurityHeaders)

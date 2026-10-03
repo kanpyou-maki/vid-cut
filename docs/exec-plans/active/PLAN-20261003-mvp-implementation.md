@@ -112,7 +112,7 @@ PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 
 M6 で分かった制限（PR 1）:
 
-- `vidcut serve` を SIGKILL で止めると worker が残る（`pkill -f "vidcut.cli worker"` で止める）。SIGTERM と Ctrl+C では一緒に止まる
+- `vidcut serve` を SIGKILL で止めた場合、worker は親がいなくなったことに気づいて自分で止まる（処理中のジョブがあれば、それが終わってから）。SIGTERM と Ctrl+C では一緒に止まる
 - 開発中（Vite の開発サーバー）のトークンの渡し方は未決（Design Doc D-6。M7 の最初に決める）
 - まとめる・解除のとき、元のレクチャーを処理中のジョブ（判定・書き出し）は、レクチャーがなくなったことで失敗として残る（待機中のものは消す）
 - 引き継げなかった戻し候補の記録（`dropped_restored_ids`）は、次に判定をやり直すまで残る。画面で通知を閉じる仕組みは M7 で決める

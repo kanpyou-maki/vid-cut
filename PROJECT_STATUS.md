@@ -101,7 +101,8 @@ _なし_
 - 結合テストで見つけた不具合（修正済み）: SIGTERM で止めると、uvicorn がシグナルを送り直してプロセスがその場で終わり、worker が残った → SIGTERM を KeyboardInterrupt に変えてから起動する
 - `openapi-typescript` 7.13 は peer 依存が TypeScript 5 で、このプロジェクトの TypeScript 6 と衝突する → `frontend/package.json` の `overrides` でプロジェクトの TypeScript を使わせた（生成と型チェックは通る）。ユーザーに報告すること
 - 未決（M7 の最初に決める）: 開発中（Vite の開発サーバー）のトークンの渡し方（Design Doc D-6）。`vidcut serve --dev` は Vite のオリジンを受け付けるところまで
-- 制限: `vidcut serve` を SIGKILL で止めると worker が残る（`pkill -f "vidcut.cli worker"`）
+- `vidcut serve` を SIGKILL で止めても worker は残らない: serve が worker に自分のプロセス番号を渡し（`--parent-pid`）、worker は親が変わったら自分で止まる（処理中のジョブがあれば、それが終わってから）。
+  実物のサーバーを起動するテスト（`tests/test_serve_integration.py`）は、後始末でプロセスグループごと止める。開発中に worker が残っていないかは `pgrep -fl "vidcut.cli"` で確かめられる
 - PR 2 のセキュリティレビューで受け入れたもの: ワークスペース `~/VidCut/` がホーム配下にあり、生成物（`proxy.mp4` など）を録画として取り込める（事故の二重解析はありうる）。フォルダの取り込みは件数を打ち切らない（巨大なフォルダでは時間がかかる）
 - 制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
 - M7 で API に足すもの: 書き出し先のパスの表示（Design Doc 3-4。いまは返す項目がない）、`dropped_restored_ids` の通知を閉じる仕組み

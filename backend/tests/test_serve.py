@@ -4,7 +4,9 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -25,6 +27,7 @@ from vidcut.serve import (
     interrupt_on_sigterm,
     serve,
     start_worker_process,
+    stop_when_parent_exits,
 )
 
 
@@ -142,7 +145,29 @@ class TestServe:
         assert client.get("/api/fs", params={"path": "/etc"}, headers=headers).status_code == 422
 
 
+@pytest.fixture(autouse=True)
+def restore_sigterm() -> Iterator[None]:
+    """serve は SIGTERM の扱いを変える。ほかのテストに残さない。"""
+    previous = signal.getsignal(signal.SIGTERM)
+    yield
+    signal.signal(signal.SIGTERM, previous)
+
+
 class TestWorkerProcess:
+    def test_sigterm_is_handled_before_the_worker_starts(self, tmp_path: Path, dist: Path) -> None:
+        # worker を起動してからサーバーが動くまでの間に止められても、worker を残さない
+        handlers = []
+
+        def start(workspace: Path) -> FakeWorker:
+            handlers.append(signal.getsignal(signal.SIGTERM))
+            return FakeWorker()
+
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        serve(options(tmp_path, dist), run_server=FakeServer(), start_worker=start)
+        assert handlers[0] is not signal.SIG_DFL
+        with pytest.raises(KeyboardInterrupt):
+            signal.raise_signal(signal.SIGTERM)
+
     def test_worker_runs_while_the_server_does(self, tmp_path: Path, dist: Path) -> None:
         worker = FakeWorker()
 
@@ -258,3 +283,32 @@ def test_worker_process_serves_the_given_workspace(tmp_path: Path) -> None:
             time.sleep(0.1)
     finally:
         worker.stop()
+
+
+class TestStopWhenParentExits:
+    def test_stops_once_the_parent_changes(self) -> None:
+        # 親（vidcut serve）が強制終了されると、子の親は別のプロセス（launchd）に変わる
+        parents = iter([100, 100, 1])
+        stop = threading.Event()
+        watcher = stop_when_parent_exits(
+            stop, 100, get_parent=lambda: next(parents, 1), poll_interval_s=0.01
+        )
+        watcher.join(timeout=5)
+        assert stop.is_set()
+        assert not watcher.is_alive()
+
+    def test_stops_at_once_if_the_parent_is_already_gone(self) -> None:
+        # worker の起動（読み込みに数秒かかる）の間に親が終わっていても、気づけること
+        stop = threading.Event()
+        watcher = stop_when_parent_exits(stop, 100, get_parent=lambda: 1, poll_interval_s=60)
+        watcher.join(timeout=5)
+        assert stop.is_set()
+
+    def test_keeps_running_while_the_parent_is_alive(self) -> None:
+        stop = threading.Event()
+        watcher = stop_when_parent_exits(stop, 100, get_parent=lambda: 100, poll_interval_s=0.01)
+        time.sleep(0.1)
+        assert not stop.is_set()
+        stop.set()  # worker が別の理由で止まれば、見張りも終わる
+        watcher.join(timeout=5)
+        assert not watcher.is_alive()

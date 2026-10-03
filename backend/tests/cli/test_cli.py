@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -251,6 +252,26 @@ class TestEvalJudge:
         with pytest.raises(SystemExit) as exit_info:
             main(args)
         assert exit_info.value.code == 2
+
+
+class TestWorkerWithParent:
+    def test_worker_stops_when_the_given_parent_is_not_its_parent(self, tmp_path: Path) -> None:
+        # vidcut serve は自分のプロセス番号を渡す。それが親でなくなっていたら、worker は止まる
+        not_my_parent = os.getppid() + 1
+        code = main(
+            ["worker", "--parent-pid", str(not_my_parent)], build=fake_build(tmp_path / "ws")
+        )
+        assert code == 0
+
+    def test_worker_keeps_running_while_the_given_parent_is_alive(self, tmp_path: Path) -> None:
+        stop = threading.Event()
+        threading.Timer(0.3, stop.set).start()
+        code = main(
+            ["worker", "--parent-pid", str(os.getppid())],
+            build=fake_build(tmp_path / "ws"),
+            stop=stop,
+        )
+        assert code == 0
 
 
 class TestServe:
