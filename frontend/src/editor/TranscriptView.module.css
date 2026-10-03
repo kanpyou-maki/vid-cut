@@ -81,10 +81,25 @@
   user-select: none;
 }
 
-/* 言い直し先・要確認の箇所へ移動したときの目印 */
-.chunk:focus {
+/* 要確認の箇所へ移動したときの目印（未認識の発話は、選択できる文字がないのでフォーカスで示す） */
+.unrecognized:focus {
   outline: 2px solid var(--color-review);
   outline-offset: 2px;
+}
+
+/* 言い直し先へ移動したときの目印。しばらく背景色を付けて、消す */
+.flash {
+  animation: flash 1.5s ease-out;
+}
+
+@keyframes flash {
+  from {
+    background: var(--color-flash);
+  }
+
+  to {
+    background: transparent;
+  }
 }
 
 .retake {

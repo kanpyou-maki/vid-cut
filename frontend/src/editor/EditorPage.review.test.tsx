@@ -289,13 +289,26 @@ describe("EditorPage: 判定理由", () => {
     expect(reason()).toHaveTextContent("言い直し（削除）");
   });
 
-  it("「言い直し先へ移動」で、言い直した段落へフォーカスを移す", async () => {
+  it("「言い直し先へ移動」で、言い直した段落を画面に出して目印を付け、理由を消す", async () => {
     const { user } = await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
     fireEvent.mouseOver(screen.getByRole("button", { name: RETAKE_NAME }));
 
     await user.click(screen.getByRole("button", { name: "言い直し先へ移動" }));
 
-    expect(document.activeElement).toHaveTextContent("0:02さしす");
+    const target = screen.getByText("さ").closest("p") as HTMLElement;
+    expect(scrolled.mock.contexts).toEqual([target]);
+    expect(target.className).toMatch(/flash/);
+    expect(reason()).not.toBeInTheDocument();
+    scrolled.mockRestore();
+  });
+
+  it("段落はクリックしてもフォーカスされない（移動先の目印と紛れない）", async () => {
+    const { user } = await openEditor();
+
+    await user.click(screen.getByText("さ"));
+
+    expect(document.activeElement).toBe(document.body);
   });
 
   it("カーソルを外すと、少し待ってから消える（理由の上に移す間は消えない）", async () => {
@@ -303,12 +316,13 @@ describe("EditorPage: 判定理由", () => {
     const cut = screen.getByRole("button", { name: RETAKE_NAME });
     fireEvent.mouseOver(cut);
 
+    // ブラウザは、対象から出た → 理由に入った、の順に知らせる
     fireEvent.mouseOver(screen.getByText("あ"));
-    fireEvent.mouseEnter(reason() as HTMLElement);
+    fireEvent.mouseOver(reason() as HTMLElement);
     await advance(SECOND_MS);
     expect(reason()).toBeInTheDocument();
 
-    fireEvent.mouseLeave(reason() as HTMLElement);
+    fireEvent.mouseOver(screen.getByRole("region", { name: "プレビュー" }));
     await advance(SECOND_MS);
     expect(reason()).not.toBeInTheDocument();
   });
@@ -367,13 +381,22 @@ describe("EditorPage: 判定理由", () => {
     expect(reason()).not.toBeInTheDocument();
   });
 
-  it("候補を戻したら、出していた理由は消える", async () => {
-    const { user } = await openEditor();
+  it("カーソルを合わせたまま候補を戻すと、出している理由が「戻し済み」に変わる", async () => {
+    await openEditor();
     const cut = screen.getByRole("button", { name: RETAKE_NAME });
     fireEvent.mouseOver(cut);
 
-    await user.click(cut);
-    fireEvent.mouseOver(screen.getByText("あ"));
+    fireEvent.click(cut);
+
+    expect(reason()).toHaveTextContent("言い直し（戻し済み）");
+    expect(reason()).toHaveTextContent("クリックで削除に戻せます");
+  });
+
+  it("カーソルが画面の外へ出たら消える", async () => {
+    await openEditor();
+    fireEvent.mouseOver(screen.getByRole("button", { name: RETAKE_NAME }));
+
+    fireEvent.mouseLeave(document.documentElement);
     await advance(SECOND_MS);
 
     expect(reason()).not.toBeInTheDocument();

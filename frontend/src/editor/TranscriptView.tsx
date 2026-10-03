@@ -29,9 +29,8 @@ const RESTORED_LABEL = "戻し済み";
 const REVIEW_LABEL = "要確認";
 const MS_PER_SECOND = 1000;
 
-/** 判定の理由を出す対象（自動の削除候補）の id と、削除済みか戻し済みか。CutReason が読む。 */
+/** 判定の理由を出す対象（自動の削除候補。削除済み・戻し済み）の id。CutReason が読む。 */
 export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
-export const SUGGESTION_STATE_ATTRIBUTE = "data-suggestion-state";
 /** 段落のチャンクの id（言い直し先への移動に使う） */
 export const CHUNK_ID_ATTRIBUTE = "data-chunk-id";
 /** 未認識の発話の印の id（要確認の箇所への移動に使う） */
@@ -108,7 +107,6 @@ export const TranscriptView = memo(function TranscriptView({
               <p
                 key={row.chunk.id}
                 className={styles.chunk}
-                tabIndex={-1}
                 {...{ [CHUNK_ID_ATTRIBUTE]: row.chunk.id }}
               >
                 <span className={styles.time}>
@@ -241,7 +239,7 @@ function RunView({
         className={styles.restored}
         label={label}
         action={`「${text}」を削除に戻す（${label}）`}
-        suggestion={{ id: suggestion.id, state: "restored" }}
+        suggestionId={suggestion.id}
         onActivate={onReapply && (() => onReapply(suggestion.id))}
       >
         {tokens}
@@ -258,7 +256,7 @@ function RunView({
       // 自動の候補は、理由と一緒に操作の説明を出す（CutReason）。手動の削除は、ここで説明する
       hint={isSuggestion ? undefined : `${label}（クリックで元に戻す）`}
       action={`「${text}」を元に戻す（${label}）`}
-      suggestion={isSuggestion ? { id: cut.id, state: "cut" } : undefined}
+      suggestionId={isSuggestion ? cut.id : undefined}
       onActivate={onRestore && (() => onRestore(cut))}
       deleted
     >
@@ -276,7 +274,7 @@ function Toggle({
   label,
   hint,
   action,
-  suggestion,
+  suggestionId,
   onActivate,
   deleted = false,
   children,
@@ -288,7 +286,8 @@ function Toggle({
   hint?: string;
   /** 押したときに起きること（読み上げ用の名前） */
   action: string;
-  suggestion?: { id: string; state: "cut" | "restored" };
+  /** 自動の削除候補なら、その id（理由を出す対象になる） */
+  suggestionId?: string;
   onActivate?: () => void;
   deleted?: boolean;
   children: ReactNode;
@@ -318,9 +317,8 @@ function Toggle({
       className={`${className} ${styles.toggle}`}
       title={hint}
       aria-label={action}
-      {...(suggestion && {
-        [SUGGESTION_ID_ATTRIBUTE]: suggestion.id,
-        [SUGGESTION_STATE_ATTRIBUTE]: suggestion.state,
+      {...(suggestionId !== undefined && {
+        [SUGGESTION_ID_ATTRIBUTE]: suggestionId,
       })}
       onClick={() => {
         // ドラッグで選んでいる途中のクリックでは切り替えない

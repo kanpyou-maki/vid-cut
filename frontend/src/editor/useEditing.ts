@@ -51,6 +51,8 @@ export interface Editing extends EditActions {
   cuts: readonly (TokenCut | null)[];
   /** トークンごとの戻した候補（transcript.tokens と同じ並び） */
   restored: readonly (RestoredSuggestion | null)[];
+  /** 戻した候補の id */
+  restoredIds: readonly string[];
   /** まだ確認が要る箇所の間の移動 */
   review: ReviewNavigation;
   /** 文字起こしの要素に付ける（選択範囲をトークンの範囲に直すのに使う） */
@@ -123,6 +125,7 @@ export function useEditing(detail: LectureDetail): Editing {
     transcript,
     cuts,
     restored,
+    restoredIds: draft.restoredIds,
     review,
     transcriptRoot,
     hasSelection,

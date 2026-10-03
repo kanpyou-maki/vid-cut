@@ -15,6 +15,7 @@
 
   /* 要確認の印と、移動先の目印の色 */
   --color-review: light-dark(#8a5a00, #f0c060);
+  --color-flash: light-dark(#ffe9a8, #6b5410);
 }
 
 body {

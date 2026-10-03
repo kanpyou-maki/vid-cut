@@ -150,12 +150,18 @@ PR 3（`feat/m7-editor-state`）:
 - [x] 文字起こしの基本: トークン表示、選択 → 削除、復活、種類ごとの色
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（選択 → 削除 → 保存 → undo / redo → 復活 → 読み込み直し → 409 → 読み取り専用。コンソールの失敗なし）
 - [x] review-loop（Stage 0〜2 すべて PASS）→ PR #14
-- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」
+- [x] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」→ ユーザーがマージ（PR #14、2026-10-04）
 
 PR 4（`feat/m7-transcript-review`）:
 
-- [ ] 要確認の印と移動キー、判定理由の表示と移動
-- [ ] `dropped_restored_ids` の通知と、閉じる API（backend。画面が表示した id だけを消す）
+- [x] backend: 通知を閉じる API（`POST /api/lectures/{id}/dropped-restorations/dismiss`。画面が表示した id だけを消す）
+- [x] 要確認の印（波線、未認識の発話の行）と移動（ボタン、N / Shift+N）
+- [x] 判定理由の表示（カーソルを合わせた候補の近くに出す）と、言い直し先への移動。戻した候補の表示と、採否の切り替え
+- [x] `dropped_restored_ids` の通知（件数と「閉じる」）
+- [x] 実物の backend と、ヘッドレスの Chrome での確認（通知 → 要確認の移動 → 判定理由 → 言い直し先への移動 → 採否の切り替え。コンソールの失敗なし）
+- [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「要確認・判定理由・通知」）
+- [ ] review-loop → PR
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」
 
 PR 5（`feat/m7-preview`）:
 

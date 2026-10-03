@@ -66,6 +66,7 @@ export function EditorWorkspace({
       <CutReason
         root={editing.transcriptRoot}
         transcript={editing.transcript}
+        restoredIds={editing.restoredIds}
       />
       {saveStatus.name === "conflict" && <ConflictDialog onReload={onReload} />}
     </EditorLayout>
