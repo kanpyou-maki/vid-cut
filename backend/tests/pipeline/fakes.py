@@ -74,11 +74,12 @@ class FakeMediaTool:
 class FakeVad:
     def __init__(self) -> None:
         self.calls = 0
+        # 6.5〜8.5 秒は発話だが、文字起こしでは何も割り当たらない
+        self.speech = (Interval(1_000, 4_000), Interval(5_000, 6_000), Interval(6_500, 8_500))
 
     def detect_speech(self, audio: Path) -> tuple[Interval, ...]:
         self.calls += 1
-        # 6.5〜8.5 秒は発話だが、文字起こしでは何も割り当たらない
-        return (Interval(1_000, 4_000), Interval(5_000, 6_000), Interval(6_500, 8_500))
+        return self.speech
 
 
 class FakeTranscriber:
@@ -89,6 +90,7 @@ class FakeTranscriber:
         self.calls = 0
         self.hints: list[str] = []
         self.model_id = "fake-whisper"
+        self.error: Exception | None = None
 
     def transcribe(
         self,
@@ -100,12 +102,11 @@ class FakeTranscriber:
     ) -> tuple[ChunkTranscript, ...]:
         self.calls += 1
         self.hints.append(hint)
+        if self.error is not None:
+            raise self.error
         if on_progress:
             on_progress(1.0)
-        return tuple(
-            ChunkTranscript(text, logprob)
-            for text, logprob, _ in zip(self.TEXTS, self.LOGPROBS, spans, strict=True)
-        )
+        return tuple(ChunkTranscript(self.TEXTS[i], self.LOGPROBS[i]) for i in range(len(spans)))
 
 
 class FakeAligner:

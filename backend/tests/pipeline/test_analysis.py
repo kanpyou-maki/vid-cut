@@ -222,3 +222,38 @@ def test_broken_stage_manifest_redoes_everything(
     tools.store.path(recording.id, "stages.json").write_text("{broken")
     run(recording, tools)
     assert counts(tools)["transcribe"] == 2
+
+
+def test_recording_without_speech_has_no_chunks(recording: Recording, tools: AnalysisTools) -> None:
+    assert isinstance(tools.media, FakeMediaTool)
+    assert isinstance(tools.vad, FakeVad)
+    tools.media.silences = (Interval(0, 10_000),)
+    tools.vad.speech = ()
+    analysis = analyze_recording(recording, tools, AnalysisSettings(), lambda s, p: None)
+    assert analysis.chunks == ()
+    assert analysis.tokens == ()
+    assert [s.span for s in analysis.suggestions] == [Interval(0, 10_000)]
+
+
+def test_failure_keeps_finished_stages_for_the_retry(
+    recording: Recording, tools: AnalysisTools
+) -> None:
+    assert isinstance(tools.transcriber, FakeTranscriber)
+    tools.transcriber.error = RuntimeError("model crashed")
+    with pytest.raises(RuntimeError):
+        run(recording, tools)
+    assert load_analysis(tools.store, recording.id) is None
+    tools.transcriber.error = None
+    run(recording, tools)
+    assert counts(tools)["audio"] == 1
+    assert counts(tools)["proxy"] == 1
+    assert counts(tools)["transcribe"] == 2
+
+
+def test_transcript_with_wrong_number_of_chunks_is_recomputed(
+    recording: Recording, tools: AnalysisTools
+) -> None:
+    run(recording, tools)
+    tools.store.write_json(recording.id, "transcript.raw.json", [])
+    run(recording, tools)
+    assert counts(tools)["transcribe"] == 2
