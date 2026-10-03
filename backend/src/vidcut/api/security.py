@@ -26,6 +26,15 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost")
 _QUERY_TOKEN_PATH = re.compile(r"/api/recordings/[^/]+/proxy")
 _WRITING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _JSON = "application/json"
+# この確認が読むヘッダー。1 つの要求に 1 本だけを受け付ける
+_SINGLE_HEADERS = (
+    "host",
+    "origin",
+    TOKEN_HEADER.lower(),
+    "content-length",
+    "content-type",
+    "transfer-encoding",
+)
 
 
 @dataclass(frozen=True)
@@ -79,6 +88,10 @@ class ApiGuard:
         await failure(status, message)(scope, receive, send)
 
     def _check(self, scope: Scope) -> tuple[int, str] | None:
+        names = [name.decode("latin-1") for name, _ in scope["headers"]]
+        # 同じヘッダーが 2 本あると、どちらを見るかがサーバー・この確認・アプリで食い違いうる
+        if any(names.count(name) > 1 for name in _SINGLE_HEADERS):
+            return 400, messages.REPEATED_HEADER
         headers = {name.decode("latin-1"): value for name, value in scope["headers"]}
         # DNS rebinding: 攻撃者の名前が 127.0.0.1 を指しても、Host は攻撃者の名前のまま届く
         if _text(headers, "host") not in self._settings.hosts:
@@ -86,7 +99,7 @@ class ApiGuard:
         # Origin が付くのは別のページからの要求か、書き込みの要求。CORS は許可しない
         if "origin" in headers and _text(headers, "origin") not in self._settings.origins:
             return 403, messages.REFUSED_ORIGIN
-        path: str = scope["path"]
+        path = _route_path(scope)
         if not path.startswith(API_PREFIX):
             return None
         if not self._has_token(path, headers, scope["query_string"]):
@@ -120,6 +133,19 @@ class ApiGuard:
         if length > 0 and media_type != _JSON:
             return 415, messages.BODY_NOT_JSON
         return None
+
+
+def _route_path(scope: Scope) -> str:
+    """ルーターが照合するのと同じパス（アプリが接頭辞つきで動くときは、接頭辞を除いたもの）。
+
+    scope["path"] のまま判定すると、root_path つきで動かしたときに /api/ で始まらないと
+    みなして、トークンを確かめずに通してしまう。
+    """
+    path: str = scope["path"]
+    root_path: str = scope.get("root_path", "")
+    if root_path and path.startswith(root_path + "/"):
+        return path[len(root_path) :]
+    return path
 
 
 def _text(headers: Mapping[str, bytes], name: str) -> str:

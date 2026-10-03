@@ -86,6 +86,17 @@ class TestList:
         with pytest.raises(InvalidInputError, match="隠し"):
             browser.list(home / "Movies" / "keys")
 
+    def test_link_is_judged_by_what_it_points_to_not_by_its_name(
+        self, browser: FileBrowser, home: Path
+    ) -> None:
+        # 動画の名前を付けたリンクで、動画以外のファイルを取り込ませない
+        (home / "Movies" / "disguised.mov").symlink_to(home / "Movies" / "notes.txt")
+        (home / "Movies" / "shortcut").symlink_to(home / "Movies" / "a.mp4")
+        names = [e.name for e in browser.list(home / "Movies").entries]
+        assert names == ["course", "a.mp4", "b.MOV", "shortcut"]
+        targets = [t.name for t in browser.import_targets(home / "Movies")]
+        assert targets == ["a.mp4", "b.MOV", "a.mp4"]
+
     def test_symlink_inside_home_is_followed(self, browser: FileBrowser, home: Path) -> None:
         (home / "shortcut").symlink_to(home / "Movies" / "course", target_is_directory=True)
         listing = browser.list(home / "shortcut")

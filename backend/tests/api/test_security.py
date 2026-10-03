@@ -5,6 +5,7 @@ Content-Length と実際の本文の食い違いなど、パーサが関わる�
 （M6 の PR 3 の `vidcut serve`）。
 """
 
+import asyncio
 from collections.abc import Iterator
 
 import httpx
@@ -12,6 +13,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
+from starlette.types import Message, Receive, Scope, Send
 
 from vidcut.api.security import TOKEN_HEADER, ApiGuard, GuardSettings, local_guard, new_token
 
@@ -204,6 +206,99 @@ class TestRequestBody:
 
     def test_reading_needs_no_content_type(self, client: TestClient) -> None:
         assert client.get("/api/ping", headers={"Content-Type": "text/plain"}).status_code == 200
+
+
+class TestRootPath:
+    """アプリが接頭辞（root_path）つきで動かされても、ルーターと同じパスで判定する。"""
+
+    def test_api_under_a_root_path_still_needs_the_token(self) -> None:
+        anonymous = TestClient(make_app(), base_url=BASE_URL, root_path="/x")
+        assert_refused(anonymous.get("/x/api/ping"), 401)
+        assert_refused(anonymous.get("/x/api/recordings/r1/proxy"), 401)
+
+    def test_api_under_a_root_path_is_served_with_the_token(self) -> None:
+        client = TestClient(
+            make_app(), base_url=BASE_URL, root_path="/x", headers={TOKEN_HEADER: TOKEN}
+        )
+        assert client.get("/x/api/ping").status_code == 200
+        anonymous = TestClient(make_app(), base_url=BASE_URL, root_path="/x")
+        response = anonymous.get("/x/api/recordings/r1/proxy", params={"token": TOKEN})
+        assert response.status_code == 200
+
+
+class TestDuplicateHeaders:
+    """同じヘッダーが 2 本あると、どちらを見るかがサーバーとアプリで食い違いうるので断る。"""
+
+    def status(self, headers: list[tuple[bytes, bytes]], method: str = "GET") -> int:
+        sent: list[int] = []
+
+        async def app(scope: Scope, receive: Receive, send: Send) -> None:
+            raise AssertionError("アプリに渡してはいけない")
+
+        async def receive() -> Message:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                sent.append(message["status"])
+
+        scope = {
+            "type": "http",
+            "method": method,
+            "path": "/api/ping",
+            "query_string": b"",
+            "headers": headers,
+        }
+        guard = ApiGuard(app, local_guard(TOKEN, port=8765))
+        asyncio.run(guard(scope, receive, send))
+        return sent[0]
+
+    @pytest.mark.parametrize(
+        ("name", "first", "second"),
+        [
+            (b"host", b"evil.example:8765", b"127.0.0.1:8765"),
+            (b"origin", b"http://evil.example", b"http://127.0.0.1:8765"),
+            (b"x-vidcut-token", b"wrong", TOKEN.encode()),
+            (b"content-length", b"999999999", b"2"),
+            (b"content-type", b"text/plain", b"application/json"),
+        ],
+    )
+    def test_request_with_a_repeated_header_is_refused(
+        self, name: bytes, first: bytes, second: bytes
+    ) -> None:
+        base = {b"host": b"127.0.0.1:8765", b"x-vidcut-token": TOKEN.encode()}
+        headers = [(key, value) for key, value in base.items() if key != name]
+        headers += [(name, first), (name, second)]
+        assert self.status(headers, method="POST") == 400
+
+    def test_other_headers_may_repeat(self) -> None:
+        async def app(scope: Scope, receive: Receive, send: Send) -> None:
+            await send({"type": "http.response.start", "status": 204, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+
+        sent: list[int] = []
+
+        async def receive() -> Message:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                sent.append(message["status"])
+
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/api/ping",
+            "query_string": b"",
+            "headers": [
+                (b"host", b"127.0.0.1:8765"),
+                (b"x-vidcut-token", TOKEN.encode()),
+                (b"accept", b"text/html"),
+                (b"accept", b"application/json"),
+            ],
+        }
+        asyncio.run(ApiGuard(app, local_guard(TOKEN, port=8765))(scope, receive, send))
+        assert sent == [204]
 
 
 class TestOtherScopes:

@@ -102,7 +102,8 @@ class FileBrowser:
         except (OSError, NotFoundError, InvalidInputError):
             # 切れたリンク、循環するリンク、外・隠しフォルダを指すリンクは、選べないので見せない
             return None
-        if not is_directory and child.suffix.lower() not in VIDEO_SUFFIXES:
+        # リンクは、名前ではなく指している先で判定する（動画の名前を付けたリンクを通さない）
+        if not is_directory and resolved.suffix.lower() not in VIDEO_SUFFIXES:
             return None
         return Entry(name=child.name, path=resolved, is_directory=is_directory)
 
