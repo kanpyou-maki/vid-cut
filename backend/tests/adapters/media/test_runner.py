@@ -119,6 +119,20 @@ class TestWriteAtomically:
         assert seen[0].suffix == ".mp4"  # ffmpeg は拡張子で形式を決める
         assert not seen[0].exists()
 
+    def test_each_call_writes_to_its_own_temporary_file(self, tmp_path: Path) -> None:
+        # 2 つの worker が同じ生成物を同時に作っても、互いの書きかけを壊さない
+        seen: list[Path] = []
+
+        def produce(partial: Path) -> None:
+            seen.append(partial)
+            partial.write_bytes(b"data")
+
+        write_atomically(tmp_path / "mezzanine.mp4", produce)
+        write_atomically(tmp_path / "mezzanine.mp4", produce)
+        assert seen[0] != seen[1]
+        assert all(p.name.startswith(".mezzanine.") and p.suffix == ".mp4" for p in seen)
+        assert [p.name for p in tmp_path.iterdir()] == ["mezzanine.mp4"]
+
     def test_leaves_no_file_when_production_fails(self, tmp_path: Path) -> None:
         dest = tmp_path / "proxy.mp4"
 

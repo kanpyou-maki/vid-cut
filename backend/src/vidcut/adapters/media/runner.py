@@ -4,6 +4,7 @@ import os
 import subprocess
 import tempfile
 import threading
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
@@ -79,8 +80,10 @@ def write_atomically(dest: Path, produce: Callable[[Path], None]) -> None:
     """produce に一時ファイルへ書かせ、成功したときだけ dest に置く。
 
     途中で止まった生成物を完成品と誤認しないため（段の再開は生成物の有無で判断する）。
+    一時ファイルの名前は呼び出しごとに変える（同じ生成物を同時に作っても、互いの書きかけを壊さない）。
+    拡張子は dest と同じにする（ffmpeg は拡張子で形式を決める）。
     """
-    partial = dest.with_name(f".{dest.stem}.partial{dest.suffix}")
+    partial = dest.with_name(f".{dest.stem}.{uuid.uuid4().hex[:8]}.partial{dest.suffix}")
     try:
         produce(partial)
         if not partial.exists():

@@ -9,6 +9,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TextIO
 
+from vidcut.domain.titles import strip_invisible
+
 _SAFE_NAME = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9_.-]*")
 _SAMPLE_BYTES = 1024 * 1024
 _EXPORTS_DIRECTORY = "exports"
@@ -66,7 +68,12 @@ class FileExportStore:
         if not _EXPORT_SUFFIX.fullmatch(suffix):
             raise ValueError(f"使えない拡張子です: {suffix!r}")
         name = _export_name(title)
-        directory = self._root / _EXPORTS_DIRECTORY / name
+        exports = self._root / _EXPORTS_DIRECTORY
+        directory = exports / name
+        # シンボリックリンクをたどると、ワークスペースの外に書き出してしまう
+        for candidate in (exports, directory):
+            if candidate.is_symlink():
+                raise ValueError(f"書き出し先がシンボリックリンクです: {candidate}")
         directory.mkdir(parents=True, exist_ok=True)
         return directory / f"{name}{suffix}"
 
@@ -101,8 +108,11 @@ def _write_atomically(path: Path, write: Callable[[TextIO], object]) -> None:
 
 
 def _export_name(title: str) -> str:
-    """レクチャー名をファイル名に使える形に直す。区切り文字は置き換え、先頭と末尾の「.」は落とす。"""
-    cleaned = _UNSAFE_TITLE_CHARS.sub("_", title).strip().strip(" .")
+    """レクチャー名をファイル名に使える形に直す。区切り文字は置き換え、先頭と末尾の「.」は落とす。
+
+    見えない文字（双方向制御文字など）は除き、NFC にそろえる（見た目の違う同じ名前を作らない）。
+    """
+    cleaned = strip_invisible(_UNSAFE_TITLE_CHARS.sub("_", title)).strip().strip(" .")
     # 切り詰めた結果の末尾に「.」や空白が残らないよう、もう一度落とす
     return cleaned[:_MAX_TITLE_CHARS].strip(" .") or _FALLBACK_TITLE
 
