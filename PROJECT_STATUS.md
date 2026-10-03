@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）は main にマージ済み（PR #1〜#12）。M7（frontend）を 7 本の PR に分けて実装中。PR 2（素材一覧）は実装済みで、ユーザーの手動確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）は main にマージ済み（PR #1〜#12）。M7（frontend）を 7 本の PR に分けて実装中。PR 2（素材一覧）は review-loop を通過し、ユーザーの手動確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。PR #12）までマージ済み。PR 2（素材一覧。`feat/m7-library`）は実装済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 1（土台。PR #12）までマージ済み。PR 2（素材一覧。`feat/m7-library`）は review-loop を通過し、PR のマージ待ち
 
 ## 次にやること
 
