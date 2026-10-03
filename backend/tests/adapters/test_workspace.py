@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from vidcut.adapters.workspace import FileArtifactStore, file_fingerprint
+from vidcut.adapters.workspace import FileArtifactStore, FileExportStore, file_fingerprint
 
 
 class TestFileArtifactStore:
@@ -38,6 +38,16 @@ class TestFileArtifactStore:
         store.write_json("r1", "a.json", [2])
         assert [p.name for p in (tmp_path / "recordings" / "r1").iterdir()] == ["a.json"]
 
+    def test_failed_write_keeps_the_previous_file_and_no_temporary_files(
+        self, tmp_path: Path
+    ) -> None:
+        store = FileArtifactStore(tmp_path)
+        store.write_json("r1", "a.json", [1])
+        with pytest.raises(TypeError):
+            store.write_json("r1", "a.json", {"not json": object()})
+        assert store.read_json("r1", "a.json") == [1]
+        assert [p.name for p in (tmp_path / "recordings" / "r1").iterdir()] == ["a.json"]
+
     @pytest.mark.parametrize(
         ("recording_id", "name"),
         [("../x", "a.json"), ("r1", "../../etc"), ("", "a.json"), ("r1", ".hidden"), ("r/1", "a")],
@@ -47,6 +57,56 @@ class TestFileArtifactStore:
     ) -> None:
         with pytest.raises(ValueError):
             FileArtifactStore(tmp_path).path(recording_id, name)
+
+
+class TestFileExportStore:
+    def test_path_is_named_after_the_lecture(self, tmp_path: Path) -> None:
+        path = FileExportStore(tmp_path).path("S05-12 環境構築", ".xml")
+        assert path == tmp_path / "exports" / "S05-12 環境構築" / "S05-12 環境構築.xml"
+        assert path.parent.is_dir()
+
+    def test_write_text_replaces_the_previous_export(self, tmp_path: Path) -> None:
+        store = FileExportStore(tmp_path)
+        store.write_text("L", ".xml", "<old/>")
+        path = store.write_text("L", ".xml", "<新しい/>")
+        assert path == store.path("L", ".xml")
+        assert path.read_text(encoding="utf-8") == "<新しい/>"
+        assert [p.name for p in path.parent.iterdir()] == ["L.xml"]
+
+    @pytest.mark.parametrize(
+        ("title", "name"),
+        [
+            ("../../etc/passwd", "_.._etc_passwd"),
+            ("a/b\\c:d", "a_b_c_d"),
+            ("..", "untitled"),
+            ("  . ", "untitled"),
+            ("", "untitled"),
+            ("line\nbreak\x00", "line_break_"),
+            (".hidden", "hidden"),
+            ("-rf", "-rf"),
+        ],
+    )
+    def test_titles_cannot_escape_the_exports_directory(
+        self, tmp_path: Path, title: str, name: str
+    ) -> None:
+        path = FileExportStore(tmp_path).path(title, ".mp4")
+        assert path == tmp_path / "exports" / name / f"{name}.mp4"
+
+    def test_long_titles_are_shortened_to_fit_a_file_name(self, tmp_path: Path) -> None:
+        path = FileExportStore(tmp_path).path("あ" * 300, ".mp4")
+        assert len(path.name.encode()) <= 200
+        assert path.parent.is_dir()
+
+    def test_shortened_title_does_not_end_with_a_dot_or_space(self, tmp_path: Path) -> None:
+        path = FileExportStore(tmp_path).path("あ" * 59 + ". 続き", ".mp4")
+        assert path.parent.name == "あ" * 59
+
+    @pytest.mark.parametrize("suffix", ["", "xml", ".x/y", "../.xml", ".mp4 "])
+    def test_rejects_suffixes_that_are_not_a_plain_extension(
+        self, tmp_path: Path, suffix: str
+    ) -> None:
+        with pytest.raises(ValueError):
+            FileExportStore(tmp_path).path("L", suffix)
 
 
 class TestFileFingerprint:

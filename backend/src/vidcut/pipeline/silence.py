@@ -4,6 +4,30 @@ from collections.abc import Iterable
 
 from vidcut.domain.intervals import Interval, merge, subtract
 
+# probe の長さは、音声の先頭の空白（AAC の priming。約 44ms）を二重に数えるぶん長い
+END_TOLERANCE_MS = 100
+
+
+def extend_to_end(
+    silences: Iterable[Interval], duration_ms: int, tolerance_ms: int = END_TOLERANCE_MS
+) -> tuple[Interval, ...]:
+    """音声の終わりまで続く無音を、録画ファイルの終わりまで延ばす。
+
+    解析用の音声は録画ファイルの長さ（probe の値）より少し早く終わる。延ばさないと、最後の無音と
+    録画ファイルの終わりの間に、発話でも無音でもない数十 ms の断片が残り、書き出しに入ってしまう。
+    """
+    if duration_ms <= 0:
+        raise ValueError(f"duration_ms は正である必要があります: {duration_ms}")
+    if tolerance_ms < 0:
+        raise ValueError(f"tolerance_ms は 0 以上である必要があります: {tolerance_ms}")
+    spans = merge(silences)
+    if not spans:
+        return ()
+    last = spans[-1]
+    if duration_ms - tolerance_ms <= last.end_ms < duration_ms:
+        return (*spans[:-1], Interval(last.start_ms, duration_ms))
+    return spans
+
 
 def find_silences(
     volume_silences: Iterable[Interval], speech: Iterable[Interval], min_ms: int

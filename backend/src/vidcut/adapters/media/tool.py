@@ -1,11 +1,14 @@
 """MediaTool の ffmpeg による実装。"""
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 from vidcut.adapters.media.commands import (
     MediaSettings,
     audio_args,
+    export_args,
+    export_decoded_ms,
     mezzanine_args,
     probe_args,
     proxy_args,
@@ -17,7 +20,13 @@ from vidcut.adapters.media.runner import run_capture, run_with_progress, write_a
 from vidcut.adapters.media.silence import parse_silences
 from vidcut.adapters.media.waveform import compute_peaks, wav_duration_ms
 from vidcut.domain.intervals import Interval
-from vidcut.pipeline.ports import Peaks, ProbeResult, ProgressCallback, UnsupportedMediaError
+from vidcut.pipeline.ports import (
+    MediaClip,
+    Peaks,
+    ProbeResult,
+    ProgressCallback,
+    UnsupportedMediaError,
+)
 
 _PROBE_TIMEOUT_S = 60.0
 # 音声だけの処理は速い（6 分の素材で 1 秒未満）。長さが分からない段の上限
@@ -82,6 +91,25 @@ class FfmpegMediaTool:
                 total_ms=duration_ms,
                 on_progress=on_progress,
                 timeout_s=timeout_for(duration_ms),
+            ),
+        )
+
+    def export_mp4(
+        self,
+        clips: Sequence[MediaClip],
+        dest: Path,
+        *,
+        fps: int,
+        on_progress: ProgressCallback | None,
+    ) -> None:
+        output_frames = sum(clip.frames.duration_frames for clip in clips)
+        write_atomically(
+            dest,
+            lambda partial: run_with_progress(
+                export_args(self._ffmpeg, clips, partial, fps=fps, settings=self._settings),
+                total_ms=output_frames * 1000 // fps,
+                on_progress=on_progress,
+                timeout_s=timeout_for(export_decoded_ms(clips, fps=fps)),
             ),
         )
 

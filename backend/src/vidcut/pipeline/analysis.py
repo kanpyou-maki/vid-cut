@@ -20,7 +20,7 @@ from vidcut.pipeline.ports import (
     VoiceActivityDetector,
 )
 from vidcut.pipeline.review import review_marks
-from vidcut.pipeline.silence import find_silences, split_chunks
+from vidcut.pipeline.silence import extend_to_end, find_silences, split_chunks
 from vidcut.pipeline.stages import StageCache, require_source, stage_key
 from vidcut.pipeline.transcript import build_tokens
 
@@ -33,7 +33,8 @@ PROXY_FILE = "proxy.mp4"
 PEAKS_FILE = "peaks.json"
 # 段の作り方を変えたら上げる（キーが変わり、その段から作り直す）
 _FORMAT_VERSION = 1  # ffmpeg の引数・生成物の形
-_SEGMENT_VERSION = 2  # 無音と発話チャンクの決め方（2: 端にかかる VAD の区間を使わない）
+# 無音と発話チャンクの決め方（2: 端にかかる VAD の区間を使わない。3: 無音を録画の終わりまで延ばす）
+_SEGMENT_VERSION = 3
 _TOKEN_VERSION = 2  # 文字のトークンの作り方（2: 位置合わせが空でも文字起こしの文字を残す）
 
 # 段ごとの進捗の重み（検証素材の実測: proxy 38 秒、文字起こし 99 秒、位置合わせ 21 秒）
@@ -169,9 +170,10 @@ class _Run:
 
     def _detect(self) -> ser.Json:
         s = self.settings
-        volume = self.tools.media.detect_silences(
+        detected = self.tools.media.detect_silences(
             self.audio_path, threshold_db=s.silence_threshold_db, min_ms=s.silence_min_ms
         )
+        volume = extend_to_end(detected, self.recording.duration_ms)
         speech = self.tools.vad.detect_speech(self.audio_path)
         silences = find_silences(volume, speech, s.silence_min_ms)
         chunks = split_chunks(self.recording.duration_ms, silences, s.min_chunk_ms)

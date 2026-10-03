@@ -11,6 +11,7 @@ from vidcut.domain.models import MediaInfo, Recording
 from vidcut.pipeline.ports import (
     AlignedChar,
     ChunkTranscript,
+    MediaClip,
     Peaks,
     ProbeResult,
     ProgressCallback,
@@ -36,6 +37,7 @@ class FakeMediaTool:
 
     def __init__(self) -> None:
         self.calls: Counter[str] = Counter()
+        self.exported: list[tuple[tuple[MediaClip, ...], int]] = []
         self.silences = (Interval(0, 1_000), Interval(4_000, 5_000), Interval(9_000, 10_000))
 
     def probe(self, source: Path) -> ProbeResult:
@@ -59,6 +61,20 @@ class FakeMediaTool:
         if on_progress:
             on_progress(0.5)
         dest.write_bytes(b"mezzanine")
+
+    def export_mp4(
+        self,
+        clips: Sequence[MediaClip],
+        dest: Path,
+        *,
+        fps: int,
+        on_progress: ProgressCallback | None,
+    ) -> None:
+        self.calls["export_mp4"] += 1
+        self.exported.append((tuple(clips), fps))
+        if on_progress:
+            on_progress(0.5)
+        dest.write_bytes(b"mp4")
 
     def compute_peaks(self, audio: Path, per_second: int) -> Peaks:
         self.calls["compute_peaks"] += 1

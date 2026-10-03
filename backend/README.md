@@ -37,3 +37,9 @@ uv run vidcut eval judge --lecture s05-12sample \
 ```
 
 ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。
+
+## 書き出し
+
+Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワークスペースの `exports/<レクチャー名>/` に書き出す
+（`<レクチャー名>.xml` と `<レクチャー名>.mp4`。Premiere XML は `recordings/<id>/mezzanine.mp4` を参照する）。
+書き出しを依頼するコマンドはまだない。M6 の API（`POST /api/lectures/{id}/exports`）と M7 の画面から依頼する。

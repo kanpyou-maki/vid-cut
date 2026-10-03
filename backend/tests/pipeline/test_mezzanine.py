@@ -36,3 +36,15 @@ def test_missing_source_is_reported(source: Path, tmp_path: Path) -> None:
     source.unlink()
     with pytest.raises(FileNotFoundError):
         make_mezzanine(recording, FakeMediaTool(), DirectoryStore(tmp_path), lambda s, p: None)
+
+
+def test_existing_mezzanine_is_reused_even_when_the_source_is_gone(
+    source: Path, tmp_path: Path
+) -> None:
+    # 書き出しは中間素材だけあればできる（元の録画ファイルが外付けディスクにある場合など）
+    media, store = FakeMediaTool(), DirectoryStore(tmp_path / "ws")
+    recording = make_recording(source)
+    made = make_mezzanine(recording, media, store, lambda s, p: None)
+    source.unlink()
+    assert make_mezzanine(recording, media, store, lambda s, p: None) == made
+    assert media.calls["make_mezzanine"] == 1

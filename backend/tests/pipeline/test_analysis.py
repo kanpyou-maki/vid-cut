@@ -191,6 +191,23 @@ class TestResume:
         assert set(counts(tools).values()) == {2}
 
 
+def test_trailing_silence_reaches_the_end_of_the_recording(
+    recording: Recording, tools: AnalysisTools
+) -> None:
+    # 解析用の音声が録画ファイルの長さより 30ms 早く終わる（実素材と同じ）。
+    # 無音を終わりまで延ばさないと、最後の 30ms が「残す区間」として書き出しに残る
+    media = tools.media
+    assert isinstance(media, FakeMediaTool)
+    media.silences = (Interval(0, 1_000), Interval(4_000, 5_000), Interval(9_000, 9_970))
+    run(recording, tools)
+    analysis = load_analysis(tools.store, recording.id)
+    assert analysis is not None
+    assert analysis.silences[-1].span == Interval(9_000, 10_000)
+    silence_cuts = [s.span for s in analysis.suggestions if s.kind is CutKind.SILENCE]
+    assert silence_cuts[-1] == Interval(9_000, 10_000)
+    assert [chunk.span.end_ms for chunk in analysis.chunks] == [4_000, 9_000]
+
+
 def test_missing_source_file_is_reported(recording: Recording, tools: AnalysisTools) -> None:
     Path(recording.source_path).unlink()
     with pytest.raises(FileNotFoundError, match="録画ファイル"):

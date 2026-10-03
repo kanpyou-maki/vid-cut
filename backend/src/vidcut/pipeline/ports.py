@@ -8,6 +8,7 @@ from typing import Protocol
 
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutSuggestion, EditState, Job, Lecture, MediaInfo, Recording
+from vidcut.domain.timeline import FrameRange
 
 
 class ExternalToolError(RuntimeError):
@@ -54,6 +55,14 @@ class Peaks:
     values: tuple[float, ...]
 
 
+@dataclass(frozen=True)
+class MediaClip:
+    """中間素材から切り出す 1 区間。frames は中間素材のフレーム番号。"""
+
+    source: Path
+    frames: FrameRange
+
+
 class MediaTool(Protocol):
     def probe(self, source: Path) -> ProbeResult: ...
 
@@ -71,6 +80,17 @@ class MediaTool(Protocol):
         self, source: Path, dest: Path, *, duration_ms: int, on_progress: ProgressCallback | None
     ) -> None:
         """書き出し用の固定フレームレートの中間素材（ADR-002）。"""
+        ...
+
+    def export_mp4(
+        self,
+        clips: Sequence[MediaClip],
+        dest: Path,
+        *,
+        fps: int,
+        on_progress: ProgressCallback | None,
+    ) -> None:
+        """中間素材（フレームレートは fps）から clips を切り出し、順につないだ MP4 を作る。"""
         ...
 
     def compute_peaks(self, audio: Path, per_second: int) -> Peaks:
@@ -154,6 +174,18 @@ class ArtifactStore(Protocol):
 
     def write_json(self, recording_id: str, name: str, data: object) -> None:
         """書き終えてから置き換える（途中の状態を残さない）。"""
+        ...
+
+
+class ExportStore(Protocol):
+    """書き出し先。ワークスペースの exports/<レクチャー名>/<レクチャー名><suffix>。"""
+
+    def path(self, title: str, suffix: str) -> Path:
+        """書き出すファイルの場所。親のディレクトリは作っておく。"""
+        ...
+
+    def write_text(self, title: str, suffix: str, text: str) -> Path:
+        """書き終えてから置き換え、書いたファイルの場所を返す。"""
         ...
 
 
