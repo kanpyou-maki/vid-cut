@@ -44,9 +44,6 @@ M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確�
 
 - [ ] PR のマージ（ユーザー。順に）: [#9](https://github.com/kanpyou-maki/vid-cut/pull/9)（PR 1）→ [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（PR 2）→ [#11](https://github.com/kanpyou-maki/vid-cut/pull/11)（PR 3）
 - [ ] M6 の手動確認（ユーザー）: `backend/README.md` の「手で確かめる（M6）」。ワークスペースの写しで行う
-- [ ] ADR-005（提案中）の承認（ユーザー）
-- [ ] 判断（ユーザー）: テスト用の依存を `httpx` のままにするか、Starlette が推奨する `httpx2` に替えるか（いまは `httpx` で、非推奨の警告が 1 件出る）
-- [ ] 判断（ユーザー）: `openapi-typescript` 7 に TypeScript 6 を使わせる `overrides`（`frontend/package.json`）でよいか（peer 依存は TypeScript 5。生成と型チェックは通る）
 - [ ] M7（frontend）に入るときに最初に決めること: 開発中（Vite）のトークンの渡し方（Design Doc 7 章の D-6。Vite のプラグインで埋め込む案が推奨）、CSP の見直し（3-5-1。波形の部品を入れたあと、`style-src 'unsafe-inline'` を外せるか試す）、
       書き出し先のパスを API で返す項目（3-4・3-5）、`dropped_restored_ids` の通知を閉じる仕組み。
       画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない
@@ -73,6 +70,9 @@ M6 の実装は 3 本の PR にすべて入った。残りはユーザーの確�
 | 16  | M6 は 3 本の PR に分け、ブランチを積み上げる（下ごしらえ → FastAPI → serve と型生成）                                                                                                                                   | ユーザー承認（2026-10-03）                                     | —                         |
 | 17  | proxy 動画だけ、トークンを `?token=` のクエリで受ける（`<video>` はヘッダーを付けられない）。アクセスログは出さない                                                                                                     | ユーザー決定（2026-10-03）                                     | ADR-005・Design Doc 3-5-1 |
 | 18  | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ | ユーザー承認（2026-10-03）                                     | ADR-005・Design Doc 3-5-2 |
+| 19  | テスト用の依存は `httpx2` を使う（当初は `httpx`。Starlette が `httpx2` を推奨するため）                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                         |
+| 20  | `openapi-typescript` 7 には、`overrides` でプロジェクトの TypeScript 6 を使わせる                                                                                                                                       | ユーザー承認（2026-10-03）                                     | —                         |
+| 21  | ADR-005（API の接続・まとめて確定する保存・トークン）を承認                                                                                                                                                             | ユーザー承認（2026-10-03）                                     | ADR-005                   |
 | 9   | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分                                                                            | ユーザー合意（2026-10-03）                                     | —                         |
 
 ## ブロッカー
@@ -99,12 +99,13 @@ _なし_
 - 守ること: 応答には種別（`error_code`）と定型文だけを入れる（生の `Job.error`・`ImportFailure.message`・例外の文は入れない）。`InvalidInputError` の文だけはそのまま画面に出るので、絶対パスやほかの例外の文を入れない。
   複数のリポジトリにまたがる保存は `Atomic`（ports）で囲む
 - 実物の uvicorn を一時ワークスペースで確認済み（PR 2）: 並行の読み取り 200 件が成功、同じ版での同時保存は 1 件だけ成功して残りは 409、トークンなしは 401、別の Host は 403
-- dev の依存は承認どおり `httpx` を入れた。Starlette 1.7 は `httpx2`（pydantic/httpx2）を推奨しており、テストの実行時に非推奨の警告が 1 件出る（動作には影響なし）。`httpx2` に替えるかはユーザーの判断待ち
+- テスト用の依存は `httpx2`（pydantic/httpx2。Starlette 1.7 のテストクライアントが推奨。決定事項 19）。当初の `httpx` から PR 3 で替え、非推奨の警告はなくなった
+- `uv add` / `uv remove` は、ML の追加依存（`--extra ml`）を外して環境を同期し直す。numpy も外れて backend の読み込みが失敗するので、依存を変えたあとは `uv sync --extra ml` を実行する（M6 で発生）
 - PR 3（`feat/m6-serve`）: `serve.py`（127.0.0.1 に固定、トークンは起動ごとに作って HTML の `<meta name="vidcut-token">` に埋め込む、アクセスログなし、worker の子プロセスの起動と停止）、
   `api/frontend.py`（ビルドの出力の配信）、`api/headers.py`（CSP などのヘッダー）、`vidcut openapi` と `npm --prefix frontend run gen:api`（型は `frontend/src/api/generated/`）、
-  実物のサーバーでの結合テスト（`tests/test_serve_integration.py`）、ADR-005（提案中）。`pip-audit` と `npm audit` は既知の脆弱性なし（2026-10-03）
+  実物のサーバーでの結合テスト（`tests/test_serve_integration.py`）、ADR-005（承認済み）。`pip-audit` と `npm audit` は既知の脆弱性なし（2026-10-03）
 - 結合テストで見つけた不具合（修正済み）: SIGTERM で止めると、uvicorn がシグナルを送り直してプロセスがその場で終わり、worker が残った → SIGTERM を KeyboardInterrupt に変えてから起動する
-- `openapi-typescript` 7.13 は peer 依存が TypeScript 5 で、このプロジェクトの TypeScript 6 と衝突する → `frontend/package.json` の `overrides` でプロジェクトの TypeScript を使わせた（生成と型チェックは通る）。ユーザーに報告すること
+- `openapi-typescript` 7.13 は peer 依存が TypeScript 5 で、このプロジェクトの TypeScript 6 と衝突する → `frontend/package.json` の `overrides` でプロジェクトの TypeScript を使わせている（決定事項 20。生成と型チェックは通る）
 - 未決（M7 の最初に決める）: 開発中（Vite の開発サーバー）のトークンの渡し方（Design Doc D-6）。`vidcut serve --dev` は Vite のオリジンを受け付けるところまで
 - `vidcut serve` を SIGKILL で止めても worker は残らない: serve が worker に自分のプロセス番号を渡し（`--parent-pid`）、worker は親が変わったら自分で止まる（処理中のジョブがあれば、それが終わってから）。
   実物のサーバーを起動するテスト（`tests/test_serve_integration.py`）は、後始末でプロセスグループごと止める。開発中に worker が残っていないかは `pgrep -fl "vidcut.cli"` で確かめられる

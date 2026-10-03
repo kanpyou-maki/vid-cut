@@ -93,7 +93,7 @@ PR 1（`feat/m6-api`。API の下ごしらえ。新しい依存なし）:
 - [x] `LectureService`（まとめる・並べ替え・解除・再解析。編集状態の引き継ぎ、判定ジョブの登録）
 - [x] `EditService`（編集状態の検証と保存）、`LectureQuery`（一覧と状態、編集画面に必要なもの一式）
 
-PR 2（`feat/m6-api-http`。fastapi・uvicorn・pydantic、dev に httpx を追加）:
+PR 2（`feat/m6-api-http`。fastapi・uvicorn・pydantic、dev に httpx を追加。httpx は PR 3 で httpx2 に替えた）:
 
 - [x] FastAPI のアプリと `{success, data, error}` の形（待ち受けを 127.0.0.1 に限るのは PR 3 の `vidcut serve`）
 - [x] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、トークン、Content-Type、パスの正規化。トークンを起動ごとに作って HTML に埋め込むのは PR 3）
