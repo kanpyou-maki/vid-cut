@@ -140,4 +140,32 @@ describe("devToken", () => {
       },
     ]);
   });
+
+  it("backend が動いていなければ、Vite のログに知らせる", async () => {
+    const warnings: string[] = [];
+    const plugin = devToken({
+      backend: BACKEND,
+      fetchPage: async () => {
+        throw new TypeError("fetch failed");
+      },
+    });
+    const { configResolved, transformIndexHtml } = plugin;
+    if (
+      typeof configResolved !== "function" ||
+      typeof transformIndexHtml !== "function"
+    ) {
+      throw new Error("プラグインのフックが関数ではありません");
+    }
+    const config = {
+      logger: { warn: (message: string) => warnings.push(message) },
+    } as unknown as Parameters<typeof configResolved>[0];
+    const context = {} as Parameters<typeof transformIndexHtml>[1];
+
+    await configResolved.call(undefined as never, config);
+    const tags = await transformIndexHtml.call(undefined as never, "", context);
+
+    expect(tags).toEqual([]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("vidcut serve --dev");
+  });
 });
