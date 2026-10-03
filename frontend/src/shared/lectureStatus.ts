@@ -21,7 +21,7 @@ const JUDGE_LABEL = "言い直しの判定";
 const ANALYZE_LABEL = "解析";
 const UNKNOWN_FAILURE_MESSAGE = "失敗しました";
 
-const MS_PER_SECOND = 1000;
+export const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 

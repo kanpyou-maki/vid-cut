@@ -12,7 +12,7 @@
   width: 100%;
   min-height: 0;
   object-fit: contain;
-  background: #000;
+  background: var(--color-video-backdrop);
   border-radius: 0.25rem;
 }
 

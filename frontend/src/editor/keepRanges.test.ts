@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
+import sharedCases from "../../../backend/tests/domain/keep_ranges_cases.json";
 import { keepRanges, mergeSpans, type Span } from "./keepRanges";
 
 /**
- * backend の domain（`keep_ranges`）と同じ入力・同じ結果で確かめる
- * （backend/tests/domain/test_timeline.py の TestKeepRanges と同じ値）。
- * プレビューが、書き出しと同じ区間を残すため。backend の計算を変えたら、ここも合わせること。
+ * backend の domain（`keep_ranges`）と同じ入力から、同じ結果になることを確かめる。
+ * 例は backend のテストと共有している（backend/tests/domain/keep_ranges_cases.json。
+ * backend の test_timeline.py も、同じファイルを読む）。プレビューが、書き出しと同じ区間を残すため。
  */
-const DURATION = 5000;
 const PADDING = { beforeMs: 150, afterMs: 250 };
+
+function spans(pairs: number[][]): Span[] {
+  return pairs.map(([startMs, endMs]) => ({ startMs, endMs }));
+}
 
 function span(startMs: number, endMs: number): Span {
   return { startMs, endMs };
@@ -34,98 +38,25 @@ describe("mergeSpans", () => {
   });
 });
 
-describe("keepRanges（backend と同じ値）", () => {
-  it("削除がなければ、すべて残す", () => {
-    expect(keepRanges(DURATION, [], [], PADDING)).toEqual([span(0, DURATION)]);
-  });
-
-  it("無音の削除の前後には、無音の中に余白を残す", () => {
-    const silence = span(1000, 2000);
-
-    expect(keepRanges(DURATION, [silence], [silence], PADDING)).toEqual([
-      span(0, 1250),
-      span(1850, DURATION),
-    ]);
-  });
-
-  it("余白どうしが重なる短い無音は、残る", () => {
-    const silence = span(1000, 1300);
-
-    expect(keepRanges(DURATION, [silence], [silence], PADDING)).toEqual([
-      span(0, DURATION),
-    ]);
-  });
-
-  it("発話の中の削除には、余白を付けない", () => {
-    expect(keepRanges(DURATION, [span(1000, 1500)], [], PADDING)).toEqual([
-      span(0, 1000),
-      span(1500, DURATION),
-    ]);
-  });
-
-  it("余白は、残す発話の隣の無音の中にだけ伸ばす", () => {
-    const silences = [span(1500, 2000), span(3000, 3600)];
-    // 言い直しのチャンクと、前後の無音
-    const cuts = [...silences, span(2000, 3000)];
-
-    expect(keepRanges(DURATION, cuts, silences, PADDING)).toEqual([
-      span(0, 1750),
-      span(3450, DURATION),
-    ]);
-  });
-
-  it("余白は、無音の端で止まる", () => {
-    const silences = [span(1000, 1100)];
-    const cuts = [span(1000, 1100), span(1100, 2000)];
-
-    expect(keepRanges(DURATION, cuts, silences, PADDING)).toEqual([
-      span(0, 1100),
-      span(2000, DURATION),
-    ]);
-  });
-
-  it("接する無音は、1 つの無音として余白を伸ばす", () => {
-    const silences = [span(0, 1000), span(1000, 2000)];
-    const cuts = [span(0, 1050), span(2000, 3000)];
-
-    expect(keepRanges(DURATION, cuts, silences, PADDING)).toEqual([
-      span(900, 2000),
-      span(3000, DURATION),
-    ]);
-  });
-
-  it("無音の途中から始まる手動の削除は、無音の中にだけ余白を残す", () => {
-    const silences = [span(1000, 2000)];
-
-    expect(keepRanges(DURATION, [span(1500, 3000)], silences, PADDING)).toEqual(
-      [span(0, 1750), span(3000, DURATION)],
+describe("keepRanges（backend と同じ例）", () => {
+  it.each(sharedCases)("$name", (example) => {
+    const kept = keepRanges(
+      example.duration_ms,
+      spans(example.cuts),
+      spans(example.silences),
+      { beforeMs: example.pad_before_ms, afterMs: example.pad_after_ms },
     );
+
+    expect(kept).toEqual(spans(example.expected));
   });
 
-  it("すべて削除なら、残す区間はない", () => {
-    expect(keepRanges(DURATION, [span(0, DURATION)], [], PADDING)).toEqual([]);
-  });
-
-  it("余白の値は、渡したものを使う", () => {
-    const silence = span(1000, 2000);
-
-    expect(
-      keepRanges(DURATION, [silence], [silence], { beforeMs: 0, afterMs: 0 }),
-    ).toEqual([span(0, 1000), span(2000, DURATION)]);
+  it("例が読めている（空のまま通らない）", () => {
+    expect(sharedCases.length).toBeGreaterThanOrEqual(10);
   });
 });
 
 describe("keepRanges", () => {
-  it("重なる削除は、まとめて扱う。録画ファイルの外の分は無視する", () => {
-    const cuts = [span(2000, 3000), span(2500, 4000), span(4800, 9000)];
-
-    expect(keepRanges(DURATION, cuts, [], PADDING)).toEqual([
-      span(0, 2000),
-      span(4000, 4800),
-    ]);
-  });
-
-  it("長さのない録画ファイルには、残す区間がない", () => {
+  it("長さのない録画ファイルには、残す区間がない（backend は、長さが正でなければ受け付けない）", () => {
     expect(keepRanges(0, [], [], PADDING)).toEqual([]);
   });
 });

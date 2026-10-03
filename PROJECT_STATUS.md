@@ -159,14 +159,14 @@ _なし_
 - PR 4 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: `frontend/README.md` の PR 3 の手順に、PR 4 で変わった表示が古いまま残っていた → 修正して PASS）。
   挙動を変えたら、前の PR の手動確認の手順も、いまの挙動に合わせて直す。セキュリティの指摘なし
 - PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案（**ユーザー確認待ち**。Design Doc 3-6 の「プレビュー」）。
-  backend は、レクチャーの詳細に `keep_padding`（書き出しの設定の余白）を足した。frontend は、`Api.proxyUrl`、残す区間の計算（`keepRanges.ts`。backend の `keep_ranges` と同じ値で確かめる）、
+  backend は、レクチャーの詳細に `keep_padding`（書き出しの設定の余白）を足した。frontend は、`Api.proxyUrl`、残す区間の計算（`keepRanges.ts`。backend の `keep_ranges` と同じ計算。両側のテストが、同じ例 `backend/tests/domain/keep_ranges_cases.json` を読む）、
   カット後のタイムライン（`timeline.ts`）、再生（`usePlayer.ts`。1 つの `video` を切り替え、フレームごとに確かめて飛ぶ）、表示と操作（`PreviewPane.tsx`）、文字起こしとの同期（`usePlaybackSync.ts`）。
   余白の値（M8 の「間の調整」で変える）は backend から受け取るので、画面には持たない。ただし、残す区間の計算そのものを変えたら、`keepRanges.ts` も合わせる
 - PR 5 で確認済み（一時ワークスペースに proxy 動画も写した。ヘッドレスの Chrome で実際に再生）: 最初の残す区間の頭（8.1 秒）が出る、文字のクリックで移る、再生中に言い直しの区間を飛ばす
   （フレームごとの記録で、削除区間の中のフレームが 1 つ以下）、再生位置の文字の印、Space での一時停止、「削除した部分も再生する」で削除区間も再生、段落の時刻のクリック、バーの中央のクリック。
-  PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 494 件 / カバレッジ 98%（分岐 94%）、backend 1,031 件
+  PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 500 件 / カバレッジ 98%（分岐 94%）、backend 1,043 件
 - PR 5 の残り・制限: 録画ファイルの切り替えは `src` の差し替えなので、切り替えのときに短い間が空く。複数の録画ファイルのレクチャーは、テストでだけ確かめた（実物では M8 で確かめる）。
-  jsdom は再生を実装していないので、テストでは再生の状態と位置だけをまねている（`src/test/setup.ts`）。プレビューは proxy 動画なので、書き出し（中間素材、60fps）とは 1 フレーム未満のずれがありうる
+  jsdom は再生を実装していないので、テストでは再生の状態と位置だけをまねている（`src/test/setup.ts`。`src` を替えると止まって頭に戻る、まで。読み込めたこと（`loadedmetadata`）は、テストが知らせる）。プレビューは proxy 動画なので、書き出し（中間素材、60fps）とは 1 フレーム未満のずれがありうる
 - PR 4 で踏んだこと: 要素ごとの `mouseenter` / `mouseleave`（React の `onMouseEnter` と、要素に直接付けたリスナー）を混ぜると、「対象から出た」と「理由に入った」の順序が食い違い、理由の上に移ったときに消える
   （jsdom のテストでは見つからず、実物の Chrome で見つけた。カーソルの出入りは `document` の `mouseover` 1 か所で受ける。再発を防ぐテストを足し、旧い受け方に戻すと落ちることを確かめた）。段落に `tabIndex={-1}` を付けると、クリックでフォーカスの枠が付く（移動先の目印は、クラスの付け外しによる一時的な背景色にした）
 - 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。

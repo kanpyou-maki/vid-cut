@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { MS_PER_SECOND } from "../shared/lectureStatus";
 import {
   nextStep,
   outputTime,
@@ -14,7 +15,8 @@ import {
   type Timeline,
 } from "./timeline";
 
-const MS_PER_SECOND = 1000;
+const PLAY = { type: "play" } as const;
+
 /** 再生位置を画面に知らせる間隔。フレームごとに知らせると、編集画面をフレームごとに描き直すことになる */
 const REPORT_INTERVAL_MS = 50;
 
@@ -78,7 +80,8 @@ export function usePlayer(
   const [playing, setPlaying] = useState(false);
   const [skipCuts, setSkipCuts] = useState(true);
   const [failed, setFailed] = useState(false);
-  // 通知の受け口は描くたびに作り直さないので、最新の値は ref から読む
+  // 通知の受け口（tick・toggle など）は描くたびに作り直さない。動画からの通知は、描いた直後の
+  // effect より先に届くことがあるので、最新の値は、描くときに ref へ書いておく
   const latest = useRef({ timeline, current, skipCuts });
   latest.current = { timeline, current, skipCuts };
   // 最初の読み込みでも、最初の残す区間の頭を出す
@@ -140,22 +143,7 @@ export function usePlayer(
     }
   }, [moveTo]);
 
-  // 再生中は、フレームごとに確かめる
-  useEffect(() => {
-    const element = video.current;
-    if (
-      !playing ||
-      element === null ||
-      !("requestVideoFrameCallback" in element)
-    ) {
-      return;
-    }
-    let handle = element.requestVideoFrameCallback(function onFrame() {
-      tick();
-      handle = element.requestVideoFrameCallback(onFrame);
-    });
-    return () => element.cancelVideoFrameCallback(handle);
-  }, [playing, tick]);
+  useFrameTick(video, playing, tick);
 
   const toggle = useCallback(() => {
     const element = video.current;
@@ -168,12 +156,7 @@ export function usePlayer(
       return;
     }
     const first = positionAt(now, 0);
-    // 最後まで再生したあとは、最初から。削除した部分も再生しているときは、最後の残す区間のあとにも
-    // 再生するものがあるので、最後の録画ファイルの終わりまで行ったときだけ
-    const finished = skip
-      ? nextStep(now, at).type === "end"
-      : element.ended && at.recordingId === now.recordingIds.at(-1);
-    if (first !== null && finished) {
+    if (first !== null && isFinished(now, at, skip, element.ended)) {
       moveTo(first, true);
     } else {
       start(element);
@@ -254,12 +237,52 @@ export function usePlayer(
   };
 }
 
-const PLAY = { type: "play" } as const;
-
 /**
  * 再生を始める。始められなかったとき（読み込みの失敗）は video 要素の error で分かるので、ここでは何もしない
  * （動画を切り替えた直後の中断も、ここに来る）。
  */
 function start(element: HTMLVideoElement): void {
   element.play().catch(() => {});
+}
+
+/**
+ * 最後まで再生したか（そのあとの「再生」は、最初から始める）。
+ * 削除した部分も再生しているときは、最後の残す区間のあとにも再生するものがあるので、
+ * 最後の録画ファイルの終わりまで行ったときだけ。
+ */
+function isFinished(
+  timeline: Timeline,
+  position: Position,
+  skipCuts: boolean,
+  ended: boolean,
+): boolean {
+  return skipCuts
+    ? nextStep(timeline, position).type === "end"
+    : ended && position.recordingId === timeline.recordingIds.at(-1);
+}
+
+/**
+ * 再生中は、フレームごとに tick を呼ぶ（requestVideoFrameCallback を持つブラウザだけ。
+ * 持たなければ、video 要素の timeupdate で呼ばれる分だけになる）。
+ */
+function useFrameTick(
+  video: RefObject<HTMLVideoElement | null>,
+  playing: boolean,
+  tick: () => void,
+): void {
+  useEffect(() => {
+    const element = video.current;
+    if (
+      !playing ||
+      element === null ||
+      !("requestVideoFrameCallback" in element)
+    ) {
+      return;
+    }
+    let handle = element.requestVideoFrameCallback(function onFrame() {
+      tick();
+      handle = element.requestVideoFrameCallback(onFrame);
+    });
+    return () => element.cancelVideoFrameCallback(handle);
+  }, [video, playing, tick]);
 }

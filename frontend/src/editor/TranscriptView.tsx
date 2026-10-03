@@ -1,5 +1,5 @@
 import { type KeyboardEvent, memo, type ReactNode, type Ref } from "react";
-import { formatDuration } from "../shared/lectureStatus";
+import { formatDuration, MS_PER_SECOND } from "../shared/lectureStatus";
 import { KIND_LABELS, type Kind, RESTORED_LABEL } from "./cutKinds";
 import type { RestoredSuggestion, TokenCut } from "./edits";
 import { type Run, runsOf } from "./runs";
@@ -32,7 +32,6 @@ const MIN_RECORDINGS_FOR_HEADINGS = 2;
 
 const LOW_CONFIDENCE_TITLE = "要確認（確信度が低い）";
 const REVIEW_LABEL = "要確認";
-const MS_PER_SECOND = 1000;
 
 /** 段落（チャンク）か、未認識の発話の印。時刻の順に並べる。 */
 type Row =

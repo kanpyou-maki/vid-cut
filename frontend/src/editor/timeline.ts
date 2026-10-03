@@ -74,18 +74,17 @@ export function buildTimeline(
       (span) => ({ recordingId: recording.id, ...span }),
     );
   });
-  const segments = kept.map((span, position) => ({
-    ...span,
-    outputStartMs: kept
-      .slice(0, position)
-      .reduce((total, before) => total + before.endMs - before.startMs, 0),
-  }));
-  const last = segments.at(-1);
+  // 出力での開始時刻は、それまでの残す区間の長さの合計
+  let outputMs = 0;
+  const segments = kept.map((span) => {
+    const segment = { ...span, outputStartMs: outputMs };
+    outputMs += span.endMs - span.startMs;
+    return segment;
+  });
   return {
     recordingIds: detail.recordings.map((recording) => recording.id),
     segments,
-    durationMs:
-      last === undefined ? 0 : last.outputStartMs + last.endMs - last.startMs,
+    durationMs: outputMs,
   };
 }
 

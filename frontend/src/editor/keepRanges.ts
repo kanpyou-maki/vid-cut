@@ -2,7 +2,7 @@
  * 録画ファイルの残す区間の計算（Design Doc 3-4・4 章）。backend の domain（`keep_ranges`・`merge`・`subtract`）と
  * 同じ計算を、プレビューのために持つ（編集のたびに、サーバーに問い合わせずに求める）。
  *
- * backend の計算を変えたら、ここも合わせること（keepRanges.test.ts は、backend のテストと同じ値で確かめている）。
+ * backend の計算を変えたら、ここも合わせること。両側のテストが、同じ例（backend/tests/domain/keep_ranges_cases.json）を読んで確かめている。
  * 余白の値は、レクチャーの詳細（`keep_padding`）が伝える。フレームへの丸めは行わない（プレビューでは 1 フレーム未満の差）。
  */
 

@@ -152,13 +152,13 @@ describe("EditorPage: プレビュー", () => {
 
     playTo(video, 9990);
     expect(video).toHaveAttribute("src", "/proxy/r2");
+    // 動画を替えると、読み込めるまで止まる
+    expect(video.paused).toBe(true);
 
-    act(() => {
-      video.currentTime = 0;
-    });
     fireEvent.loadedMetadata(video);
     expect(video.currentTime).toBe(0);
     expect(video.paused).toBe(false);
+    expect(playButton()).toHaveTextContent("一時停止");
     expect(clock()).toBe("0:07 / 0:11");
   });
 
@@ -321,7 +321,7 @@ describe("EditorPage: プレビュー（フレームごとの確認と、録画�
 
       await user.click(playButton());
 
-      expect(frames.cancelled).toEqual([1]);
+      expect(frames.cancelled).toHaveLength(1);
     } finally {
       frames.restore();
     }
@@ -441,6 +441,67 @@ describe("EditorPage: プレビューと文字起こしの同期", () => {
     playTo(video, 250);
     expect(screen.getByText("い").className).not.toMatch(/playing/);
     expect(screen.getByText("う").className).toMatch(/playing/);
+  });
+
+  it("再生位置の印は、50ms 未満の動きでは付け替えない（フレームごとに画面を描き直さない）", async () => {
+    const { user, video } = await openEditor();
+    await user.click(playButton());
+    playTo(video, 160);
+
+    // 「う」（200ms〜）に入ったが、前に知らせてから 45ms しかたっていない
+    playTo(video, 205);
+    expect(screen.getByText("い").className).toMatch(/playing/);
+
+    playTo(video, 215);
+    expect(screen.getByText("う").className).toMatch(/playing/);
+  });
+
+  it("再生中は、再生位置の文字が見える範囲の外に出たら、見える位置へスクロールする", async () => {
+    const { user, video } = await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    // 「う」だけが、文字起こしの見える範囲（jsdom では高さ 0）の下にある
+    vi.spyOn(screen.getByText("う"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+    await user.click(playButton());
+
+    playTo(video, 150);
+    expect(scrolled).not.toHaveBeenCalled();
+
+    playTo(video, 250);
+    expect(scrolled.mock.contexts).toEqual([screen.getByText("う")]);
+  });
+
+  it("止まっている間は、再生位置を移しても、文字起こしをスクロールしない", async () => {
+    const { video } = await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    vi.spyOn(screen.getByText("う"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+
+    playTo(video, 250);
+
+    expect(screen.getByText("う").className).toMatch(/playing/);
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it("再生中に編集で削除が増えたら、次の確認から、新しい削除区間を飛ばす", async () => {
+    const { user, video } = await openEditor({
+      ...PREVIEW,
+      edit_state: { ...PREVIEW.edit_state, restored_suggestion_ids: ["j1"] },
+    });
+    await user.click(playButton());
+    playTo(video, 5050);
+    expect(video.currentTime).toBe(5.05);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "「かき」を削除に戻す（言い直し・戻し済み）",
+      }),
+    );
+    playTo(video, 5060);
+
+    expect(video.currentTime).toBe(6);
   });
 
   it("Space キーで、再生と一時停止を切り替える", async () => {
