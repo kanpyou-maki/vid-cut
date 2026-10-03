@@ -84,14 +84,29 @@ def open_database(path: Path) -> sqlite3.Connection:
 
     自動コミットで開く。複数の文をまとめるときは transaction() を使う。
     """
+    conn = connect_database(path)
+    try:
+        _migrate(conn)
+    except Exception:
+        conn.close()
+        raise
+    return conn
+
+
+def connect_database(path: Path, *, check_same_thread: bool = True) -> sqlite3.Connection:
+    """スキーマには触れずに接続だけを開く（open_database で移行を済ませたあとに使う）。
+
+    API サーバーはリクエストごとにこれで接続を開く。FastAPI は依存の準備と本体を別のスレッドで
+    動かすことがあるので、そのときは check_same_thread=False にし、1 つのリクエストの中で
+    直列に使う（Design Doc 3-5-2）。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path, isolation_level=None)
+    conn = sqlite3.connect(path, isolation_level=None, check_same_thread=check_same_thread)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute(f"PRAGMA busy_timeout = {_BUSY_TIMEOUT_MS}")
         conn.execute("PRAGMA journal_mode = WAL")
-        _migrate(conn)
     except Exception:
         conn.close()
         raise

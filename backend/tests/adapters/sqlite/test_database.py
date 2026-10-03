@@ -1,4 +1,5 @@
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from vidcut.adapters.sqlite.database import (
     MIGRATIONS,
     SCHEMA_VERSION,
+    connect_database,
     open_database,
     transaction,
 )
@@ -42,6 +44,32 @@ class TestOpenDatabase:
         conn.close()
         with pytest.raises(RuntimeError, match="新しい"):
             open_database(db_path)
+
+
+class TestConnectDatabase:
+    def test_uses_the_same_settings_without_touching_the_schema(self, db_path: Path) -> None:
+        open_database(db_path).close()
+        conn = connect_database(db_path)
+        assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+        assert conn.execute("PRAGMA busy_timeout").fetchone()[0] >= 1000
+        assert conn.execute("SELECT count(*) FROM lectures").fetchone()[0] == 0
+        conn.close()
+
+    def test_does_not_create_the_schema(self, db_path: Path) -> None:
+        conn = connect_database(db_path)
+        assert tables(conn) == set()
+        conn.close()
+
+    def test_connection_is_bound_to_its_thread_unless_asked(self, db_path: Path) -> None:
+        open_database(db_path).close()
+        bound = connect_database(db_path)
+        free = connect_database(db_path, check_same_thread=False)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with pytest.raises(sqlite3.ProgrammingError):
+                pool.submit(bound.execute, "SELECT 1").result()
+            assert pool.submit(lambda: free.execute("SELECT 1").fetchone()[0]).result() == 1
+        bound.close()
+        free.close()
 
 
 class TestMigration:

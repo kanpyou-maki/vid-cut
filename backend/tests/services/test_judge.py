@@ -26,7 +26,7 @@ from vidcut.pipeline.ports import (
     NotFoundError,
     VersionConflictError,
 )
-from vidcut.services.judge import JudgeService
+from vidcut.services.judge import JudgeRequests, JudgeService
 
 
 @dataclass
@@ -302,6 +302,20 @@ class _UnwritableJudgements:
 
     def save(self, judgement: Judgement) -> None:
         raise sqlite3.OperationalError("database or disk is full")
+
+
+class TestJudgeRequests:
+    def test_enqueues_without_a_language_model(self, env: Env) -> None:
+        # API サーバーは判定を積むだけで、言語モデルを持たない
+        env.analyzed("r1", ("a",))
+        env.analyzed("r2", ("b",))
+        requests = JudgeRequests(
+            lectures=env.lectures, store=env.store, queue=env.queue, new_id=lambda: "job-api"
+        )
+        job = requests.for_recording("r2")
+        assert job is not None
+        assert (job.id, job.kind, job.target_id) == ("job-api", JobKind.JUDGE_LECTURE, "l1")
+        assert requests.for_recording("r1") is None  # 待機中なら積まない
 
 
 class TestRequestForRecording:

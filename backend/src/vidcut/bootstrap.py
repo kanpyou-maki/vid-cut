@@ -2,8 +2,8 @@
 
 import os
 import sqlite3
-from collections.abc import Mapping
-from contextlib import AbstractContextManager
+from collections.abc import Iterator, Mapping
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,7 +13,7 @@ from vidcut.adapters.media.tool import FfmpegMediaTool
 from vidcut.adapters.ml.aligner import WhisperxAligner
 from vidcut.adapters.ml.transcriber import MlxWhisperTranscriber
 from vidcut.adapters.ml.vad import SileroVad
-from vidcut.adapters.sqlite.database import open_database, transaction
+from vidcut.adapters.sqlite.database import connect_database, open_database, transaction
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
@@ -27,12 +27,14 @@ from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.judge import JudgeSettings
 from vidcut.pipeline.ports import (
     Aligner,
+    ArtifactStore,
     JobQueue,
     JudgementRepository,
     LanguageModel,
     LectureRepository,
     MediaTool,
     ProgressReporter,
+    RecordingRepository,
     Transcriber,
     VoiceActivityDetector,
 )
@@ -40,7 +42,7 @@ from vidcut.services.analysis import AnalysisService
 from vidcut.services.edits import EditService
 from vidcut.services.export import ExportService
 from vidcut.services.imports import ImportService
-from vidcut.services.judge import JudgeService
+from vidcut.services.judge import JudgeRequests, JudgeService
 from vidcut.services.judge_eval import JudgeEvalService
 from vidcut.services.lecture_views import LectureQuery
 from vidcut.services.lectures import LectureService
@@ -78,7 +80,150 @@ def default_ml_tools() -> MlTools:
 
 
 @dataclass(frozen=True)
+class _Stores:
+    """1 本の接続の上のリポジトリとジョブ表、ワークスペースの生成物。"""
+
+    conn: sqlite3.Connection
+    recordings: SqliteRecordingRepository
+    lectures: SqliteLectureRepository
+    judgements: SqliteJudgementRepository
+    edit_states: SqliteEditStateRepository
+    queue: SqliteJobQueue
+    store: FileArtifactStore
+
+    def atomic(self) -> AbstractContextManager[None]:
+        # リポジトリはすべて同じ接続を使うので、この接続のトランザクションでまとめられる
+        return transaction(self.conn)
+
+
+def _stores(conn: sqlite3.Connection, workspace: Path) -> _Stores:
+    return _Stores(
+        conn=conn,
+        recordings=SqliteRecordingRepository(conn),
+        lectures=SqliteLectureRepository(conn),
+        judgements=SqliteJudgementRepository(conn),
+        edit_states=SqliteEditStateRepository(conn),
+        queue=SqliteJobQueue(conn),
+        store=FileArtifactStore(workspace),
+    )
+
+
+@dataclass(frozen=True)
+class ApiServices:
+    """API の 1 リクエストが使う services。接続はこのリクエストだけのもの（Design Doc 3-5-2）。
+
+    ML のモデルと言語モデルは持たない（解析と判定は worker プロセスが行う）。
+    exports は依頼（request）だけに使う。
+    """
+
+    conn: sqlite3.Connection
+    queue: JobQueue
+    recordings: RecordingRepository
+    store: ArtifactStore
+    imports: ImportService
+    lecture_service: LectureService
+    lecture_views: LectureQuery
+    edits: EditService
+    exports: ExportService
+
+
+def _api_services(
+    stores: _Stores, workspace: Path, media: MediaTool, export_settings: ExportSettings
+) -> ApiServices:
+    judge_requests = JudgeRequests(lectures=stores.lectures, store=stores.store, queue=stores.queue)
+    return ApiServices(
+        conn=stores.conn,
+        queue=stores.queue,
+        recordings=stores.recordings,
+        store=stores.store,
+        imports=ImportService(
+            recordings=stores.recordings,
+            lectures=stores.lectures,
+            queue=stores.queue,
+            media=media,
+            fingerprint=file_fingerprint,
+        ),
+        lecture_service=LectureService(
+            lectures=stores.lectures,
+            recordings=stores.recordings,
+            edit_states=stores.edit_states,
+            judgements=stores.judgements,
+            store=stores.store,
+            queue=stores.queue,
+            atomic=stores.atomic,
+            request_judge=judge_requests.for_recording,
+        ),
+        lecture_views=LectureQuery(
+            lectures=stores.lectures,
+            recordings=stores.recordings,
+            edit_states=stores.edit_states,
+            judgements=stores.judgements,
+            store=stores.store,
+            queue=stores.queue,
+        ),
+        edits=EditService(
+            lectures=stores.lectures,
+            recordings=stores.recordings,
+            edit_states=stores.edit_states,
+        ),
+        exports=ExportService(
+            lectures=stores.lectures,
+            recordings=stores.recordings,
+            store=stores.store,
+            judgements=stores.judgements,
+            edit_states=stores.edit_states,
+            queue=stores.queue,
+            media=media,
+            exports=FileExportStore(workspace),
+            settings=export_settings,
+        ),
+    )
+
+
+@dataclass(frozen=True)
+class Api:
+    """API サーバーの組み立て。services() をリクエストごとに呼ぶ。"""
+
+    workspace: Path
+    media: MediaTool
+    export_settings: ExportSettings
+
+    @contextmanager
+    def services(self) -> Iterator[ApiServices]:
+        """このリクエストだけの接続を開き、終わったら閉じる。
+
+        FastAPI は依存の準備と本体を別のスレッドで動かすことがあるので、接続はスレッドに縛らない。
+        1 つのリクエストの中では直列に使う。
+        """
+        conn = connect_database(self.workspace / DATABASE_FILE, check_same_thread=False)
+        try:
+            yield _api_services(
+                _stores(conn, self.workspace), self.workspace, self.media, self.export_settings
+            )
+        finally:
+            conn.close()
+
+
+def build_api(
+    workspace: Path,
+    *,
+    media: MediaTool | None = None,
+    export_settings: ExportSettings | None = None,
+) -> Api:
+    """API サーバーの起動時に 1 回呼ぶ。スキーマの移行はここで済ませる。"""
+    open_database(workspace / DATABASE_FILE).close()
+    resolved_export_settings = export_settings or ExportSettings()
+    return Api(
+        workspace=workspace,
+        media=media or FfmpegMediaTool(settings=media_settings_for(resolved_export_settings)),
+        export_settings=resolved_export_settings,
+    )
+
+
+@dataclass(frozen=True)
 class App:
+    """worker と CLI の組み立て。接続を 1 本持ち、解析・判定・書き出しの本体も動かせる。"""
+
     workspace: Path
     conn: sqlite3.Connection
     queue: JobQueue
@@ -112,102 +257,55 @@ def build_app(
     export_settings: ExportSettings | None = None,
 ) -> App:
     """media / ml / model はテストや E2E で偽の実装に差し替えるための引数。"""
-    conn = open_database(workspace / DATABASE_FILE)
+    stores = _stores(open_database(workspace / DATABASE_FILE), workspace)
     resolved_export_settings = export_settings or ExportSettings()
     media_tool = media or FfmpegMediaTool(settings=media_settings_for(resolved_export_settings))
     ml_tools = ml or default_ml_tools()
     language_model = model or ClaudeCli(judge_workdir(workspace))
-    recordings = SqliteRecordingRepository(conn)
-    lectures = SqliteLectureRepository(conn)
-    judgements = SqliteJudgementRepository(conn)
-    queue = SqliteJobQueue(conn)
-    store = FileArtifactStore(workspace)
+    resolved_judge_settings = judge_settings or JudgeSettings()
+    shared = _api_services(stores, workspace, media_tool, resolved_export_settings)
     analysis = AnalysisService(
-        recordings,
+        stores.recordings,
         AnalysisTools(
             media=media_tool,
             vad=ml_tools.vad,
             transcriber=ml_tools.transcriber,
             aligner=ml_tools.aligner,
-            store=store,
+            store=stores.store,
         ),
         settings or AnalysisSettings(),
     )
-    imports = ImportService(
-        recordings=recordings,
-        lectures=lectures,
-        queue=queue,
-        media=media_tool,
-        fingerprint=file_fingerprint,
-    )
-    resolved_judge_settings = judge_settings or JudgeSettings()
-    edit_states = SqliteEditStateRepository(conn)
-
-    def atomic() -> AbstractContextManager[None]:
-        # リポジトリはすべて同じ接続を使うので、この接続のトランザクションでまとめられる
-        return transaction(conn)
-
     judge = JudgeService(
-        lectures=lectures,
-        store=store,
-        judgements=judgements,
-        edit_states=edit_states,
-        atomic=atomic,
-        queue=queue,
+        lectures=stores.lectures,
+        store=stores.store,
+        judgements=stores.judgements,
+        edit_states=stores.edit_states,
+        atomic=stores.atomic,
+        queue=stores.queue,
         model=language_model,
         settings=resolved_judge_settings,
     )
     judge_eval = JudgeEvalService(
-        lectures=lectures,
-        store=store,
+        lectures=stores.lectures,
+        store=stores.store,
         model=language_model,
         settings=resolved_judge_settings,
     )
-    lecture_service = LectureService(
-        lectures=lectures,
-        recordings=recordings,
-        edit_states=edit_states,
-        judgements=judgements,
-        store=store,
-        queue=queue,
-        atomic=atomic,
-        request_judge=judge.request_for_recording,
-    )
-    lecture_views = LectureQuery(
-        lectures=lectures,
-        recordings=recordings,
-        edit_states=edit_states,
-        judgements=judgements,
-        store=store,
-        queue=queue,
-    )
-    edits = EditService(lectures=lectures, recordings=recordings, edit_states=edit_states)
-    exports = ExportService(
-        lectures=lectures,
-        recordings=recordings,
-        store=store,
-        judgements=judgements,
-        edit_states=edit_states,
-        queue=queue,
-        media=media_tool,
-        exports=FileExportStore(workspace),
-        settings=resolved_export_settings,
-    )
     return App(
         workspace=workspace,
-        conn=conn,
-        queue=queue,
-        lectures=lectures,
-        judgements=judgements,
-        imports=imports,
+        conn=stores.conn,
+        queue=stores.queue,
+        lectures=stores.lectures,
+        judgements=stores.judgements,
+        imports=shared.imports,
         analysis=analysis,
         judge=judge,
         judge_eval=judge_eval,
-        lecture_service=lecture_service,
-        lecture_views=lecture_views,
-        edits=edits,
-        exports=exports,
-        handlers=_job_handlers(analysis, judge, exports),
+        lecture_service=shared.lecture_service,
+        lecture_views=shared.lecture_views,
+        edits=shared.edits,
+        exports=shared.exports,
+        handlers=_job_handlers(analysis, judge, shared.exports),
     )
 
 
