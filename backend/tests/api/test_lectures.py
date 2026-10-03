@@ -1,10 +1,12 @@
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from tests.api.conftest import ApiEnv
+from tests.api.conftest import ApiEnv, build_env
 from tests.pipeline.judge_fakes import delete_output
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
+from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.ports import Judgement
 
 RETAKE = delete_output({"id": 0, "kind": "retake", "reason": "<b>言い直し</b>", "superseded_by": 1})
@@ -75,6 +77,19 @@ class TestDetail:
             "restored_suggestion_ids": [],
             "manual_cuts": [],
         }
+
+    def test_tells_the_padding_that_the_export_keeps_around_speech(self, env: ApiEnv) -> None:
+        """プレビューが、書き出しと同じ区間を残せるようにする（余白の値を画面に持たせない）。"""
+        (lecture,) = env.imported("a.mov")
+        detail = env.data("GET", f"/api/lectures/{lecture['id']}")
+        assert detail["keep_padding"] == {"before_ms": 150, "after_ms": 250}
+
+    def test_padding_follows_the_export_settings(self, tmp_path: Path) -> None:
+        settings = ExportSettings(pad_before_ms=40, pad_after_ms=900)
+        env = build_env(tmp_path, export_settings=settings)
+        (lecture,) = env.imported("a.mov")
+        detail = env.data("GET", f"/api/lectures/{lecture['id']}")
+        assert detail["keep_padding"] == {"before_ms": 40, "after_ms": 900}
 
     def test_before_analysis_there_is_nothing_to_edit_yet(self, env: ApiEnv) -> None:
         env.data("POST", "/api/imports", json={"paths": [str(env.video("a.mov"))]})

@@ -961,8 +961,27 @@
         "title": "JobStatus",
         "type": "string"
       },
+      "KeepPaddingOut": {
+        "description": "書き出しが、残す発話の前後に付ける余白（隣の無音の中にだけ伸ばす。Design Doc 3-4）。",
+        "properties": {
+          "after_ms": {
+            "title": "After Ms",
+            "type": "integer"
+          },
+          "before_ms": {
+            "title": "Before Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "before_ms",
+          "after_ms"
+        ],
+        "title": "KeepPaddingOut",
+        "type": "object"
+      },
       "LectureDetailOut": {
-        "description": "編集画面に必要なもの一式。\n\n実際に削除される区間は、recordings[].suggestions と judged_suggestions から\n戻したものを除き、manual_cuts を足したもの。\njudged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。\ndropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。",
+        "description": "編集画面に必要なもの一式。\n\n実際に削除される区間は、recordings[].suggestions と judged_suggestions から\n戻したものを除き、manual_cuts を足したもの。\njudged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。\ndropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。\nkeep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。",
         "properties": {
           "dropped_restored_ids": {
             "items": {
@@ -996,6 +1015,9 @@
             "title": "Judged Suggestions",
             "type": "array"
           },
+          "keep_padding": {
+            "$ref": "#/components/schemas/KeepPaddingOut"
+          },
           "recordings": {
             "items": {
               "$ref": "#/components/schemas/RecordingDetailOut"
@@ -1020,6 +1042,7 @@
           "judged",
           "judged_suggestions",
           "dropped_restored_ids",
+          "keep_padding",
           "edit_state"
         ],
         "title": "LectureDetailOut",

@@ -114,9 +114,12 @@ class ApiServices:
 
     ML のモデルと言語モデルは持たない（解析と判定は worker プロセスが行う）。
     exports は依頼（request）だけに使う。
+    export_settings は、書き出しが残す区間の余白を画面に伝えるために持つ
+    （プレビューが、書き出しと同じ区間を残す）。
     """
 
     conn: sqlite3.Connection
+    export_settings: ExportSettings
     imports: ImportService
     lecture_service: LectureService
     lecture_views: LectureQuery
@@ -132,6 +135,7 @@ def _api_services(
     judge_requests = JudgeRequests(lectures=stores.lectures, store=stores.store, queue=stores.queue)
     return ApiServices(
         conn=stores.conn,
+        export_settings=export_settings,
         jobs=JobControl(stores.queue),
         artifacts=RecordingArtifacts(recordings=stores.recordings, store=stores.store),
         imports=ImportService(

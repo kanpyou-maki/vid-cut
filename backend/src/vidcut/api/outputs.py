@@ -138,6 +138,13 @@ class EditStateOut(BaseModel):
     manual_cuts: list[ManualCutOut]
 
 
+class KeepPaddingOut(BaseModel):
+    """書き出しが、残す発話の前後に付ける余白（隣の無音の中にだけ伸ばす。Design Doc 3-4）。"""
+
+    before_ms: int
+    after_ms: int
+
+
 class DroppedRestoredOut(BaseModel):
     """通知を閉じたあとに残っている、引き継げなかった「戻した候補」。"""
 
@@ -151,6 +158,7 @@ class LectureDetailOut(BaseModel):
     戻したものを除き、manual_cuts を足したもの。
     judged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。
     dropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。
+    keep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。
     """
 
     id: str
@@ -161,6 +169,7 @@ class LectureDetailOut(BaseModel):
     judged: bool
     judged_suggestions: list[SuggestionOut]
     dropped_restored_ids: list[str]
+    keep_padding: KeepPaddingOut
     edit_state: EditStateOut
 
 

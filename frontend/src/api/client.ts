@@ -13,6 +13,8 @@ import type {
 } from "./types";
 
 const TOKEN_HEADER = "X-VidCut-Token";
+// proxy 動画だけが受け付ける、クエリのトークンの名前（Design Doc 3-5-1）
+const TOKEN_QUERY = "token";
 
 const UNREACHABLE_MESSAGE =
   "サーバーに接続できません。vidcut serve が起動しているか確認してください";
@@ -59,6 +61,12 @@ export interface Api {
     lectureId: string,
     shownIds: readonly string[],
   ): Promise<string[]>;
+  /**
+   * 録画ファイルのプレビュー用の動画（proxy）の URL。video 要素の src に渡す。
+   * video 要素はヘッダーを付けられないので、この URL だけは、トークンをクエリに持つ（ADR-005）。
+   * 画面の URL・ログ・保存領域には入れないこと
+   */
+  proxyUrl(recordingId: string): string;
 }
 
 export interface ApiOptions {
@@ -133,6 +141,14 @@ export function createApi(options: ApiOptions): Api {
         }),
       );
       return remaining.dropped_restored_ids;
+    },
+    proxyUrl: (recordingId) => {
+      const url = new URL(
+        `/api/recordings/${encodeURIComponent(recordingId)}/proxy`,
+        options.baseUrl,
+      );
+      url.searchParams.set(TOKEN_QUERY, options.token);
+      return url.toString();
     },
   };
 }

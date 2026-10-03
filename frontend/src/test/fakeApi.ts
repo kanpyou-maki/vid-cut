@@ -29,6 +29,7 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     getLecture: () => pending(),
     saveEdits: () => pending(),
     dismissDroppedRestorations: () => pending(),
+    proxyUrl: (recordingId) => `/proxy/${recordingId}`,
     ...overrides,
   };
 }
@@ -166,6 +167,7 @@ export function lectureDetail(
     judged: true,
     judged_suggestions: [],
     dropped_restored_ids: [],
+    keep_padding: { before_ms: 150, after_ms: 250 },
     edit_state: editState(),
     ...overrides,
   };
