@@ -9,6 +9,7 @@ function handlers(deleted = true) {
     onRedo: vi.fn(),
     onNextReview: vi.fn(),
     onPreviousReview: vi.fn(),
+    onTogglePlay: vi.fn(),
   };
 }
 

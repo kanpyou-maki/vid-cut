@@ -13,6 +13,7 @@ import type {
 } from "./transcript";
 import {
   CHUNK_ID_ATTRIBUTE,
+  CHUNK_TIME_ATTRIBUTE,
   REVIEW_MARKER_ATTRIBUTE,
   SUGGESTION_ID_ATTRIBUTE,
 } from "./transcriptDom";
@@ -94,7 +95,10 @@ export const TranscriptView = memo(function TranscriptView({
                 className={styles.chunk}
                 {...{ [CHUNK_ID_ATTRIBUTE]: row.chunk.id }}
               >
-                <span className={styles.time}>
+                <span
+                  className={styles.time}
+                  {...{ [CHUNK_TIME_ATTRIBUTE]: "" }}
+                >
                   {formatDuration(row.startMs)}
                 </span>
                 {runsOf(row.chunk.tokens, cuts, restored).map((run) => (

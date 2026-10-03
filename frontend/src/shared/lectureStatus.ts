@@ -46,6 +46,11 @@ export function formatDuration(durationMs: number): string {
     : `${minutes}:${padded(seconds)}`;
 }
 
+/** 再生位置の表記。`formatDuration` と同じ形で、秒未満は切り捨てる（0.9 秒は `0:00`）。 */
+export function formatClock(timeMs: number): string {
+  return formatDuration(Math.floor(timeMs / MS_PER_SECOND) * MS_PER_SECOND);
+}
+
 /**
  * 状態の名前。解析中は、動いている解析ジョブの進捗を足す。
  * 判定の進捗は窓の数で進む（窓が 1 つだと最後まで 0%）ので、出さない。

@@ -8,6 +8,7 @@ import { CutReason } from "./CutReason";
 import { DroppedNotice } from "./DroppedNotice";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
 import styles from "./EditorWorkspace.module.css";
+import { PreviewPane } from "./PreviewPane";
 import { TranscriptView } from "./TranscriptView";
 import { type Editing, useEditing } from "./useEditing";
 import type { ReviewNavigation } from "./useReviewNavigation";
@@ -51,6 +52,7 @@ export function EditorWorkspace({
         droppedIds={detail.dropped_restored_ids}
       />
       <EditorPanes
+        preview={<PreviewPane player={editing.player} />}
         transcriptTools={<ReviewTools review={editing.review} />}
         transcript={
           <TranscriptView

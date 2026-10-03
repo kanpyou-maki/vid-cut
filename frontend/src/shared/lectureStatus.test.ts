@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { job, lectureSummary, recording } from "../test/fakeApi";
-import { failedJobs, formatDuration, statusText } from "./lectureStatus";
+import {
+  failedJobs,
+  formatClock,
+  formatDuration,
+  statusText,
+} from "./lectureStatus";
 
 describe("formatDuration", () => {
   it.each([
@@ -14,6 +19,18 @@ describe("formatDuration", () => {
     [7_325_000, "2:02:05"],
   ])("%i ミリ秒を %s と表す", (ms, text) => {
     expect(formatDuration(ms)).toBe(text);
+  });
+});
+
+describe("formatClock", () => {
+  it.each([
+    [0, "0:00"],
+    [999, "0:00"],
+    [3500, "0:03"],
+    [59_999, "0:59"],
+    [3_600_000, "1:00:00"],
+  ])("%i ミリ秒を %s と表す（秒未満は切り捨て）", (ms, text) => {
+    expect(formatClock(ms)).toBe(text);
   });
 });
 

@@ -11,6 +11,42 @@ if (typeof Element !== "undefined") {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
 }
 
+// jsdom は動画の再生を実装していない。再生しているかどうかと再生位置だけをまねる
+// （play・pause の通知は出す。時間は進まないので、テストが currentTime を書いて timeupdate を起こす）
+if (typeof HTMLMediaElement !== "undefined") {
+  const playing = new WeakSet<HTMLMediaElement>();
+  const times = new WeakMap<HTMLMediaElement, number>();
+  Object.defineProperty(HTMLMediaElement.prototype, "paused", {
+    configurable: true,
+    get(this: HTMLMediaElement) {
+      return !playing.has(this);
+    },
+  });
+  Object.defineProperty(HTMLMediaElement.prototype, "currentTime", {
+    configurable: true,
+    get(this: HTMLMediaElement) {
+      return times.get(this) ?? 0;
+    },
+    set(this: HTMLMediaElement, seconds: number) {
+      times.set(this, seconds);
+    },
+  });
+  HTMLMediaElement.prototype.play = function play() {
+    if (!playing.has(this)) {
+      playing.add(this);
+      this.dispatchEvent(new Event("play"));
+    }
+    return Promise.resolve();
+  };
+  HTMLMediaElement.prototype.pause = function pause() {
+    if (playing.has(this)) {
+      playing.delete(this);
+      this.dispatchEvent(new Event("pause"));
+    }
+  };
+  HTMLMediaElement.prototype.load = function load() {};
+}
+
 // jsdom の dialog 要素は showModal と close を持たない。開く・閉じると close の通知だけをまねる
 // （Node の環境で動かすテストには dialog 要素がない）
 if (typeof HTMLDialogElement !== "undefined") {
