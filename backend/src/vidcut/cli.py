@@ -16,14 +16,8 @@ from vidcut.bootstrap import App, build_app, workspace_from_env
 from vidcut.domain.models import JobStatus
 from vidcut.pipeline.judge import JudgeEntry
 from vidcut.pipeline.ports import ExternalToolError
-from vidcut.serve import (
-    DEFAULT_PORT,
-    PARENT_PID_FLAG,
-    ServeOptions,
-    default_frontend_dist,
-    interrupt_on_sigterm,
-    stop_when_parent_exits,
-)
+from vidcut.process import PARENT_PID_FLAG, interrupt_on_sigterm, stop_when_parent_exits
+from vidcut.serve import DEFAULT_PORT, ServeOptions, default_frontend_dist
 from vidcut.serve import serve as run_serve
 from vidcut.services.imports import ImportResult
 from vidcut.services.judge_eval import (
@@ -111,6 +105,8 @@ def _positive_int(value: str) -> int:
 
 
 def _port(value: str) -> int:
+    if not value.isascii() or not value.isdigit():
+        raise argparse.ArgumentTypeError(f"ポートは数字で指定してください: {value}")
     number = int(value)
     if not _MIN_PORT <= number <= _MAX_PORT:
         raise argparse.ArgumentTypeError(f"{_MIN_PORT}〜{_MAX_PORT} を指定してください")
@@ -216,8 +212,7 @@ def _print_eval_run(index: int, run: EvalRun, entries: Sequence[JudgeEntry]) -> 
 
 def _worker(app: App, stop: threading.Event, *, parent_pid: int | None) -> int:
     # SIGTERM でも Ctrl+C と同じく止める。処理中のジョブは次の起動時に待機中へ戻る
-    if threading.current_thread() is threading.main_thread():
-        interrupt_on_sigterm()
+    interrupt_on_sigterm()
     if parent_pid is not None:
         stop_when_parent_exits(stop, parent_pid)
     print(f"ジョブを待っています（ワークスペース: {app.workspace}）。Ctrl+C で止めます")

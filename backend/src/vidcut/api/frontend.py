@@ -23,8 +23,11 @@ _HEAD_END = "</head>"
 _API_ROOT = "api"
 # ビルドの出力に含まれうるファイルの拡張子。これらを求めて見つからなければ 404 にする
 _ASSET_SUFFIXES = frozenset(
-    {".js", ".mjs", ".css", ".map", ".json", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"}
-    | {".ico", ".woff", ".woff2", ".ttf", ".txt", ".wasm", ".mp4", ".webm"}
+    {
+        *(".js", ".mjs", ".css", ".map", ".json", ".txt", ".wasm"),
+        *(".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"),
+        *(".woff", ".woff2", ".ttf", ".mp4", ".webm"),
+    }
 )
 # トークンは起動ごとに変わる。古いトークンの入ったページをブラウザに残さない
 _NO_STORE = {"Cache-Control": "no-store"}
@@ -52,7 +55,7 @@ def frontend_fallback(dist: Path | None, token: str) -> PageFallback:
         asset = _asset(dist, path)
         if asset is not None:
             return FileResponse(asset)
-        if PurePosixPath(path).suffix and path != INDEX_FILE and _looks_like_a_file(path):
+        if path != INDEX_FILE and _looks_like_a_file(path):
             return None  # ファイルを求めた要求に HTML を返すと、画面が壊れた理由が分かりにくい
         return _index(dist, token)
 

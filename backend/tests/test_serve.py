@@ -7,8 +7,9 @@ import sys
 import threading
 import time
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -16,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from vidcut.api.frontend import TOKEN_META
 from vidcut.api.security import TOKEN_HEADER
+from vidcut.process import interrupt_on_sigterm, stop_when_parent_exits
 from vidcut.serve import (
     DEFAULT_PORT,
     FRONTEND_DIST_ENV,
@@ -24,10 +26,8 @@ from vidcut.serve import (
     ServeOptions,
     WorkerProcess,
     default_frontend_dist,
-    interrupt_on_sigterm,
     serve,
     start_worker_process,
-    stop_when_parent_exits,
 )
 
 
@@ -72,14 +72,9 @@ def dist(tmp_path: Path) -> Path:
     return dist
 
 
-def options(tmp_path: Path, dist: Path, **changes: object) -> ServeOptions:
-    values: dict[str, object] = {
-        "workspace": tmp_path / "ws",
-        "home": tmp_path,
-        "frontend_dist": dist,
-        **changes,
-    }
-    return ServeOptions(**values)  # type: ignore[arg-type]
+def options(tmp_path: Path, dist: Path, **changes: Any) -> ServeOptions:
+    base = ServeOptions(workspace=tmp_path / "ws", home=tmp_path, frontend_dist=dist)
+    return replace(base, **changes)
 
 
 def page_token(client: TestClient) -> str:
@@ -192,6 +187,14 @@ class TestWorkerProcess:
         assert code == 0
         assert worker.events == ["start", "stop"]
 
+    def test_signal_handling_is_left_alone_outside_the_main_thread(self) -> None:
+        # シグナルの扱いはメインスレッドでしか変えられない。ほかのスレッドでは何もしない
+        before = signal.getsignal(signal.SIGTERM)
+        thread = threading.Thread(target=interrupt_on_sigterm)
+        thread.start()
+        thread.join(timeout=5)
+        assert signal.getsignal(signal.SIGTERM) is before
+
     def test_sigterm_is_turned_into_an_interrupt(self) -> None:
         # uvicorn は止まったあとに SIGTERM を送り直す。既定の動作のままだと、その場でプロセスが
         # 終わって worker を止められない
@@ -202,6 +205,31 @@ class TestWorkerProcess:
                 signal.raise_signal(signal.SIGTERM)
         finally:
             signal.signal(signal.SIGTERM, previous)
+
+    def test_server_is_not_started_if_the_worker_cannot_start(
+        self, tmp_path: Path, dist: Path
+    ) -> None:
+        def failing_start(workspace: Path) -> FakeWorker:
+            raise OSError("worker を起動できません")
+
+        server = FakeServer()
+        with pytest.raises(OSError, match="worker"):
+            serve(options(tmp_path, dist), run_server=server, start_worker=failing_start)
+        assert server.calls == []
+
+    def test_nothing_is_started_if_the_workspace_cannot_be_opened(
+        self, tmp_path: Path, dist: Path
+    ) -> None:
+        blocked = tmp_path / "file"
+        blocked.write_text("ワークスペースの場所にファイルがある")
+        server, worker = FakeServer(), FakeWorker()
+        with pytest.raises(OSError):
+            serve(
+                options(tmp_path, dist, workspace=blocked / "ws"),
+                run_server=server,
+                start_worker=worker.start,
+            )
+        assert (server.calls, worker.events) == ([], [])
 
     def test_server_can_run_without_a_worker(self, tmp_path: Path, dist: Path) -> None:
         server, worker = FakeServer(), FakeWorker()
@@ -234,6 +262,10 @@ class TestDefaultFrontendDist:
         dist = default_frontend_dist({})
         assert dist.parts[-2:] == ("frontend", "dist")
         assert (dist.parent / "package.json").is_file()
+
+    def test_home_in_the_environment_value_is_expanded(self) -> None:
+        dist = default_frontend_dist({FRONTEND_DIST_ENV: "~/vidcut-dist"})
+        assert dist == Path.home() / "vidcut-dist"
 
     def test_can_be_changed_by_the_environment(self, tmp_path: Path) -> None:
         assert default_frontend_dist({FRONTEND_DIST_ENV: str(tmp_path)}) == tmp_path

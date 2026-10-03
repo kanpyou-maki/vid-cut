@@ -90,6 +90,19 @@ class TestIndex:
         assert response.json()["success"] is False
         assert client.get("/api").status_code == 404
 
+    def test_page_is_served_under_a_root_path_too(self, tmp_path: Path, dist: Path) -> None:
+        client = make_client(tmp_path, dist)
+        prefixed = TestClient(client.app, base_url=BASE_URL, root_path="/x")
+        assert TOKEN_TAG in prefixed.get("/x/lectures/abc").text
+        assert prefixed.get("/x/api/nope", headers={"X-VidCut-Token": TOKEN}).status_code == 404
+
+    def test_only_get_is_answered_with_the_page(self, client: TestClient) -> None:
+        for method in ("HEAD", "POST"):
+            response = client.request(method, "/")
+            assert response.status_code in (404, 405)
+            assert TOKEN not in response.text
+            assert response.headers["x-content-type-options"] == "nosniff"
+
     def test_page_is_not_served_to_another_host(self, client: TestClient) -> None:
         # トークン入りの HTML を、DNS rebinding で読ませない
         response = client.get("/", headers={"Host": "evil.example:8765"})

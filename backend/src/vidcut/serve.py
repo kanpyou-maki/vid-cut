@@ -6,14 +6,11 @@
 
 import logging
 import os
-import signal
 import subprocess
 import sys
-import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from types import FrameType
 from typing import Protocol
 
 import uvicorn
@@ -22,6 +19,7 @@ from fastapi import FastAPI
 from vidcut.api.app import ApiSettings, create_app
 from vidcut.api.security import local_guard, new_token
 from vidcut.bootstrap import build_api
+from vidcut.process import PARENT_PID_FLAG, interrupt_on_sigterm
 
 HOST = "127.0.0.1"
 """待ち受けるアドレス。ほかの機器から届かないよう、ループバックに固定する。"""
@@ -30,9 +28,7 @@ VITE_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 """開発中の Vite の開発サーバー。--dev のときだけ、ここからの要求を受け付ける。"""
 FRONTEND_DIST_ENV = "VIDCUT_FRONTEND_DIST"
 WORKSPACE_ENV = "VIDCUT_WORKSPACE"
-PARENT_PID_FLAG = "--parent-pid"
 _WORKER_STOP_TIMEOUT_S = 10.0
-_PARENT_POLL_INTERVAL_S = 1.0
 
 _logger = logging.getLogger(__name__)
 
@@ -86,8 +82,7 @@ def serve(
     )
     # worker を起動する前に設定する。既定の動作のままだと、SIGTERM でこのプロセスがその場で終わり、
     # 下の後始末（worker の停止）が走らない
-    if threading.current_thread() is threading.main_thread():
-        interrupt_on_sigterm()
+    interrupt_on_sigterm()
     worker: RunningWorker | None = None
     try:
         if options.with_worker:
@@ -102,19 +97,6 @@ def serve(
         if worker is not None:
             worker.stop()
     return 0
-
-
-def interrupt_on_sigterm() -> None:
-    """SIGTERM を Ctrl+C と同じ扱い（KeyboardInterrupt）にする。メインスレッドで呼ぶこと。
-
-    既定の動作のままだと、SIGTERM でプロセスがその場で終わり、後始末（worker の停止）が走らない。
-    uvicorn は、止まったあとに受け取ったシグナルを送り直すので、起動の前に設定しておく。
-    """
-
-    def interrupt(signum: int, frame: FrameType | None) -> None:
-        raise KeyboardInterrupt
-
-    signal.signal(signal.SIGTERM, interrupt)
 
 
 def run_uvicorn(app: FastAPI, host: str, port: int) -> None:
@@ -158,32 +140,3 @@ def start_worker_process(workspace: Path) -> WorkerProcess:
         env={**os.environ, WORKSPACE_ENV: str(workspace)},
     )
     return WorkerProcess(process)
-
-
-def stop_when_parent_exits(
-    stop: threading.Event,
-    parent_pid: int,
-    *,
-    get_parent: Callable[[], int] = os.getppid,
-    poll_interval_s: float = _PARENT_POLL_INTERVAL_S,
-) -> threading.Thread:
-    """親プロセス（parent_pid）がいなくなったら stop を立てる見張りを始める（worker 側で使う）。
-
-    親（vidcut serve）が強制終了されると、後始末が走らず worker だけが残る。
-    親がいなくなると、子の親は別のプロセスに変わるので、それを合図に自分で止まる。
-    親の番号は起動した側から受け取る。worker の起動（読み込み）の間に親が終わっていると、
-    自分で調べた「いまの親」は、もう別のプロセスになっているため。
-    処理中のジョブは最後まで行い、次のジョブを取る前に止まる。
-    """
-
-    def watch() -> None:
-        while True:
-            if get_parent() != parent_pid:
-                _logger.warning("親プロセスがいなくなったので、worker を止めます")
-                stop.set()
-            if stop.wait(poll_interval_s):
-                return
-
-    watcher = threading.Thread(target=watch, name="parent-watch", daemon=True)
-    watcher.start()
-    return watcher

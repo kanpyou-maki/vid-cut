@@ -1,5 +1,6 @@
 import json
 import os
+import signal
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -274,6 +275,19 @@ class TestWorkerWithParent:
         assert code == 0
 
 
+class TestWorkerInterrupt:
+    def test_sigterm_stops_the_worker_like_ctrl_c(self, tmp_path: Path) -> None:
+        previous = signal.getsignal(signal.SIGTERM)
+        timer = threading.Timer(0.3, lambda: os.kill(os.getpid(), signal.SIGTERM))
+        timer.start()
+        try:
+            code = main(["worker"], build=fake_build(tmp_path / "ws"))
+        finally:
+            timer.cancel()
+            signal.signal(signal.SIGTERM, previous)
+        assert code == 130
+
+
 class TestServe:
     def run(self, argv: list[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> ServeOptions:
         monkeypatch.setenv("VIDCUT_WORKSPACE", str(tmp_path / "ws"))
@@ -307,10 +321,17 @@ class TestServe:
         )
         assert (options.port, options.dev, options.with_worker) == (9123, True, False)
 
-    @pytest.mark.parametrize("port", ["0", "80", "65536", "abc"])
+    @pytest.mark.parametrize("port", ["0", "80", "1023", "65536", "abc", "-1", "８７６５"])
     def test_port_must_be_an_unprivileged_port(self, port: str) -> None:
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exit_info:
             main(["serve", "--port", port], serve=lambda options: 0)
+        assert exit_info.value.code == 2
+
+    @pytest.mark.parametrize("port", [1024, 65535])
+    def test_ports_at_the_ends_of_the_range_are_accepted(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, port: int
+    ) -> None:
+        assert self.run(["serve", "--port", str(port)], monkeypatch, tmp_path).port == port
 
 
 class TestOpenapi:

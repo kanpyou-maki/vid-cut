@@ -57,33 +57,70 @@ uv run vidcut serve --dev            # 開発中: Vite の開発サーバー（n
 
 実データを書き換えないよう、ワークスペースの写しで行う（まとめる・解除・再解析は DB を書き換え、再解析は `claude -p` の判定も走らせる）。
 
+**1. 写しを作って起動する**（このターミナルは起動したままにする）
+
 ```bash
-cp -R ~/VidCut ~/VidCut-check                              # 写しを作る（中間素材を含むので数百 MB）
-VIDCUT_WORKSPACE=~/VidCut-check uv run vidcut serve        # 別のターミナルで起動したままにする
+cp -R ~/VidCut ~/VidCut-check                          # 中間素材を含むので数百 MB
+VIDCUT_WORKSPACE=~/VidCut-check uv run vidcut serve
+```
 
-# 以下は別のターミナルで。トークンは画面の HTML から読む
-TOKEN=$(curl -s http://127.0.0.1:8765/ | sed -n 's/.*name="vidcut-token" content="\([^"]*\)".*/\1/p')
+ブラウザで http://127.0.0.1:8765/ を開くと、画面（いまは土台だけ）が出る。
+
+**2. 別のターミナルで、トークンを読んで API を呼ぶ準備をする**
+
+```bash
+BASE=http://127.0.0.1:8765
+TOKEN=$(curl -s $BASE/ | sed -n 's/.*name="vidcut-token" content="\([^"]*\)".*/\1/p')
 api() { curl -s -H "X-VidCut-Token: $TOKEN" "$@"; }
+show() { python3 -m json.tool | head -${1:-40}; }
+field() { python3 -c "import json,sys; d=json.load(sys.stdin)['data']; print($1)"; }
+```
 
-api http://127.0.0.1:8765/api/lectures | python3 -m json.tool | head -40    # 一覧（s05-12sample が ready）
-LECTURE=$(api http://127.0.0.1:8765/api/lectures | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"][0]["id"])')
-api http://127.0.0.1:8765/api/lectures/$LECTURE | python3 -c 'import json,sys; d=json.load(sys.stdin)["data"]; r=d["recordings"][0]; print(d["status"], len(r["tokens"]), "文字", len(r["suggestions"]), "+", len(d["judged_suggestions"]), "件の削除候補")'
-api http://127.0.0.1:8765/api/jobs | python3 -m json.tool | head -30        # ジョブの一覧
-api "http://127.0.0.1:8765/api/fs" | python3 -m json.tool | head -20        # ホームの一覧（隠しフォルダは出ない）
+**3. 一覧・詳細・ジョブ・フォルダ**
 
-# 動画（Range）。ブラウザでは <video src=".../proxy?token=..."> で再生できる
-RECORDING=$(api http://127.0.0.1:8765/api/lectures | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"][0]["recordings"][0]["id"])')
-curl -s -o /dev/null -w "%{http_code} %{size_download} バイト\n" -H "Range: bytes=0-999" "http://127.0.0.1:8765/api/recordings/$RECORDING/proxy?token=$TOKEN"   # 206 1000 バイト
+```bash
+api $BASE/api/lectures | show                 # s05-12sample が status: ready
+LECTURE=$(api $BASE/api/lectures | field "d[0]['id']")
+RECORDING=$(api $BASE/api/lectures | field "d[0]['recordings'][0]['id']")
+api $BASE/api/lectures/$LECTURE | field "d['status'], len(d['recordings'][0]['tokens']), len(d['judged_suggestions'])"
+                                              # 状態、文字数、言い直しの削除候補の件数
+api $BASE/api/jobs | show 30                  # ジョブの一覧（error_code はあっても、生のエラー文は出ない）
+api $BASE/api/fs | show 20                    # ホームの一覧（隠しフォルダは出ない）
+```
 
-# 書き出し（worker が処理する。終わると ~/VidCut-check/exports/s05-12sample/ にできる）
-api -X POST -H "Content-Type: application/json" -d '{"format": "premiere_xml"}' http://127.0.0.1:8765/api/lectures/$LECTURE/exports | python3 -m json.tool
+**4. 動画（Range）と波形**
 
-# 断られることの確認
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/api/lectures                              # 401（トークンなし）
-curl -s -o /dev/null -w "%{http_code}\n" -H "Host: evil.example" http://127.0.0.1:8765/                   # 403（別の Host）
-api -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:8765/api/fs?path=/etc"                             # 422（ホームの外）
+```bash
+curl -s -o /dev/null -w "%{http_code} %{size_download} バイト\n" -H "Range: bytes=0-999" \
+  "$BASE/api/recordings/$RECORDING/proxy?token=$TOKEN"          # 206 1000 バイト
+api $BASE/api/recordings/$RECORDING/peaks | field "d['per_second'], len(d['values'])"
+```
 
-rm -rf ~/VidCut-check                                      # 確かめ終わったら写しを消す
+**5. 編集の保存と書き出し**
+
+```bash
+VERSION=$(api $BASE/api/lectures/$LECTURE | field "d['edit_state']['version']")
+api -X PUT -H "Content-Type: application/json" \
+  -d "{\"version\": $VERSION, \"restored_suggestion_ids\": [], \"manual_cuts\": []}" \
+  $BASE/api/lectures/$LECTURE/edits | show     # version が 1 つ進む。同じ内容をもう一度送ると 409
+api -X POST -H "Content-Type: application/json" -d '{"format": "premiere_xml"}' \
+  $BASE/api/lectures/$LECTURE/exports | show   # worker が処理し、~/VidCut-check/exports/s05-12sample/ にできる
+```
+
+**6. 断られることの確認**
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" $BASE/api/lectures                     # 401（トークンなし）
+curl -s -o /dev/null -w "%{http_code}\n" -H "Host: evil.example" $BASE/          # 403（別の Host）
+api -o /dev/null -w "%{http_code}\n" "$BASE/api/fs?path=/etc"                    # 422（ホームの外）
+```
+
+**7. 止めて、片付ける**
+
+起動したターミナルで Ctrl+C を押す（worker も一緒に止まる。`pgrep -fl "vidcut.cli"` で何も出なければよい）。
+
+```bash
+rm -rf ~/VidCut-check
 ```
 
 ## 書き出し

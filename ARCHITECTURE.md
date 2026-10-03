@@ -21,6 +21,7 @@
 | `backend/src/vidcut/bootstrap.py` | 依存の組み立て。ports に具象 adapters を注入する唯一の場所。`build_app`（worker と CLI。接続を 1 本持つ）と `build_api`（API。リクエストごとに接続を開く）                                                                                                                                                                                                                                                                                      | `tdd-guide` |
 | `backend/src/vidcut/cli.py`       | コマンドライン（`serve` / `analyze` / `worker` / `openapi` / `eval`）                                                                                                                                                                                                                                                                                                                                                                           | `tdd-guide` |
 | `backend/src/vidcut/serve.py`     | `vidcut serve`: API サーバー（127.0.0.1・起動ごとのトークン）と worker の子プロセスの起動と停止（[ADR-004](./docs/adr/ADR-004-local-app-runtime.md)）                                                                                                                                                                                                                                                                                           | `tdd-guide` |
+| `backend/src/vidcut/process.py`   | プロセスの止め方: SIGTERM の扱いと、親プロセスの見張り（`serve` と `worker` が使う）                                                                                                                                                                                                                                                                                                                                                            | `tdd-guide` |
 | `backend/tests/`                  | pytest（unit / integration）。重い ML とメディア処理はアダプタ境界でモックする                                                                                                                                                                                                                                                                                                                                                                  | `tdd-guide` |
 | `frontend/`                       | TypeScript + React + Vite。プレビュー・文字起こしエディタ・波形タイムライン                                                                                                                                                                                                                                                                                                                                                                     | `tdd-guide` |
 | `frontend/src/api/generated/`     | backend の OpenAPI スキーマ（`openapi.json`）と、そこから作った型（`schema.d.ts`）。手で編集しない（`npm run gen:api` で作り直す）                                                                                                                                                                                                                                                                                                              | 生成        |
@@ -49,7 +50,7 @@
 
 ## 依存方向ルール
 
-### アプリケーション（予定）
+### アプリケーション
 
 ```
 backend:  api / cli / jobs → services → pipeline → domain

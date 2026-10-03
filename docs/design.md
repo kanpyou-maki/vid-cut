@@ -60,6 +60,7 @@ backend/src/vidcut/
   jobs/        worker のループ（ジョブ表には JobQueue の port を通して触れる）
   api/         FastAPI のルーティング、入出力スキーマ（inputs / outputs / presenters）、ローカル API の防御、例外を定型文の応答に直す処理、ビルド済み frontend の配信
   serve.py     `vidcut serve`（API サーバーと worker の子プロセスの起動と停止）
+  process.py   プロセスの止め方（SIGTERM の扱い、親プロセスの見張り）
   cli.py       コマンドライン（serve / analyze / worker / openapi / eval）
   bootstrap.py 依存の組み立て（ports に具象 adapters を注入する唯一の場所）
 ```

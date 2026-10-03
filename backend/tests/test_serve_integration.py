@@ -7,6 +7,7 @@ TestClient は HTTP のパーサを通らないので、本文の長さの食い
 import contextlib
 import os
 import re
+import shutil
 import signal
 import socket
 import subprocess
@@ -24,7 +25,14 @@ from vidcut.api.frontend import TOKEN_META
 from vidcut.api.security import TOKEN_HEADER
 from vidcut.serve import FRONTEND_DIST_ENV, WORKSPACE_ENV
 
-pytestmark = pytest.mark.integration
+pytestmark = [
+    pytest.mark.integration,
+    # 子プロセスの確認に pgrep、待ち受けの確認に lsof を使う（macOS / Linux）
+    pytest.mark.skipif(
+        shutil.which("pgrep") is None or shutil.which("lsof") is None,
+        reason="pgrep と lsof が必要",
+    ),
+]
 
 STARTUP_TIMEOUT_S = 30.0
 SHUTDOWN_TIMEOUT_S = 15.0
@@ -201,9 +209,12 @@ class TestRealServer:
 
     def test_token_in_a_proxy_url_does_not_reach_the_log(self, server: Server) -> None:
         status, _ = server.get(f"/api/recordings/unknown/proxy?token={server.token}")
-        assert status == 404  # トークンは通り、録画ファイルがない
-        time.sleep(0.5)
-        assert server.token not in server.log.read_text(encoding="utf-8")
+        assert status == 404  # トークンは通り、録画ファイルがない（この 404 はログに出る）
+        # 次の要求に応えた時点で、前の要求のログは書き終わっている
+        assert server.get("/api/lectures", {TOKEN_HEADER: server.token})[0] == 200
+        log = server.log.read_text(encoding="utf-8")
+        assert "/api/recordings/unknown/proxy" in log
+        assert server.token not in log
 
 
 class TestShutdown:
