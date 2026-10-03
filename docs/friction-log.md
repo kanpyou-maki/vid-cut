@@ -47,3 +47,16 @@
 - **改善候補:** Design Doc 3-3 に「作業ディレクトリをワークスペースの中立なディレクトリにし、ツールを使わせない」と記載した（対応済み）。
   実装時に adapter のテストで、作業ディレクトリの指定を検証する
 - **Status:** open
+
+### FRIC-003: フックが backend/ ・ frontend/ のサブディレクトリ構成に対応していない
+
+- **日付:** 2026-10-03
+- **状況:** M0 で `frontend/biome.json` を置いたが、quality-gate フックはリポジトリ直下の `biome.json` しか探さず、frontend の `.ts` / `.tsx` / `.css` を `npx prettier` で整形する。
+  CSS の `font-family` の改行規則で Prettier と Biome が衝突し、編集のたびに `npm run lint` が落ちうる。
+  また post-edit-typecheck は最寄りの `tsconfig.json`（Vite のソリューション形式で `files: []`）で `tsc --noEmit` を実行するため、何も検査しない
+- **根本原因の仮説:** ツール不足。フックが単一パッケージ構成（ルート直下に設定ファイル）を前提にしている
+- **改善候補:** quality-gate はファイルから上位へ辿って最寄りの `biome.json` を探し、そのディレクトリのローカル Biome で整形する。
+  post-edit-typecheck は `references` を持つ tsconfig なら `tsc -b` を使う。いずれも汎用的なので sync-upstream で master に還元する。
+  当面の回避策: Biome の整形設定を Prettier の既定に合わせ（2 スペース・80 桁・ダブルクォート・セミコロン）、CSS は両者で結果が同じになる書き方にする
+- **Status:** resolved（フックを修正しテスト 14 件を追加。master: [claude-config-master#3](https://github.com/kanpyou-maki/claude-config-master/pull/3)。vid-cut には同じフックを取り込み済み）
+

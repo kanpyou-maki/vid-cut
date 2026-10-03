@@ -116,7 +116,7 @@ pipeline と services は adapters を import しない（テストでは偽の�
 
 ### 3-5. API（FastAPI）
 
-レスポンスはすべて `{success, data, error}` の形にそろえる（`.claude/rules/common/patterns.md`）。
+待ち受けは `127.0.0.1:8765`（開発中は Vite の開発サーバーが `/api` をここへ転送する）。レスポンスはすべて `{success, data, error}` の形にそろえる（`.claude/rules/common/patterns.md`）。
 frontend の型は OpenAPI スキーマから `openapi-typescript` で生成する。
 
 | メソッド | パス                                      | 用途                                                                                                                               |
@@ -135,6 +135,20 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
 
 ブラウザのファイル選択ではファイルの絶対パスが取れず、数 GB の素材をアップロードしてコピーするのは無駄が大きい。
 そのため、サーバー側でフォルダを辿る簡易ブラウザ（`/api/fs`）で選ぶ方式にする（[ADR-004](./adr/ADR-004-local-app-runtime.md)）。
+
+### 3-5-1. ローカル API の防御
+
+127.0.0.1 で待ち受けるだけでは、ブラウザで開いた悪意あるページからの CSRF や DNS rebinding を防げない（2026-10-03 のセキュリティレビューの指摘）。
+特に `/api/fs` はホーム配下を列挙できるため、次をすべて実装する。
+
+- **Host の検証**: `Host` ヘッダーが `127.0.0.1:8765` / `localhost:8765` 以外なら拒否する（DNS rebinding 対策）
+- **Origin の検証**: `Origin` があり、自分自身（と開発中の Vite のオリジン）以外なら拒否する。CORS は許可しない
+- **起動ごとのトークン**: `vidcut serve` が起動のたびにランダムなトークンを作り、配信する HTML に埋め込む。すべての `/api` で `X-VidCut-Token` ヘッダーを必須にする
+- **Content-Type**: 状態を変える要求は `application/json` だけを受け付ける
+- **パスの正規化**: `/api/fs` と `/api/imports` のパスは `Path.resolve(strict=True)` で実体を解決してから `is_relative_to(Path.home())` で判定する（`..` とシンボリックリンク対策）。
+  隠しファイル・隠しフォルダ（`~/.ssh` など）は返さず、受け付けない
+- **外部コマンドへの入力**: ffmpeg には解決済みの絶対パスだけを渡す（`-` で始まる値をオプションと誤解させない）。
+  `claude -p` の出力に含まれる `id` は、渡したチャンクの範囲内のものだけを受け付ける（文字起こしの内容によるプロンプトインジェクション対策）
 
 ### 3-6. frontend
 

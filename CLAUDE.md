@@ -12,7 +12,7 @@ Claude Code の作業指示。**常に日本語で応答すること。**
 独自の強みは `claude -p` による**言い直しの自動検出**。要件は [PRD](./docs/prd.md)、設計は [Design Doc](./docs/design.md)、経緯は [kickoff](./docs/references/kickoff.md)。
 
 - **技術スタック:** Python 3.12（uv / FastAPI / mlx-whisper・WhisperX・Silero VAD / ffmpeg）+ TypeScript（React / Vite）— [ADR-001](./docs/adr/ADR-001-language-and-stack.md)
-- **構成（予定）:** `backend/`（解析パイプライン + API）、`frontend/`（編集 UI）。実装開始時に作成する
+- **構成:** `backend/`（uv、解析パイプライン + API）、`frontend/`（npm、編集 UI）。各 README に開発コマンド
 - **テスト:** `.claude/harness.json` の `commands.test`（backend は pytest、frontend は vitest）
 - **前提ツール:** ffmpeg、uv、Node.js、ログイン済みの `claude` CLI
 - **検証素材:** `~/Desktop/s05-12sample.mov`。正解データは `docs/references/prototype/`

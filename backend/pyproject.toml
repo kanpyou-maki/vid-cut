@@ -1,0 +1,59 @@
+[project]
+name = "vidcut"
+version = "0.1.0"
+description = "講座録画の無音・フィラー・言い直しを検出してカットし、Premiere XML / MP4 で書き出すローカルアプリ"
+readme = "README.md"
+authors = [
+    { name = "kfukuda-coder", email = "k.fukuda@hibikorelab.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[project.optional-dependencies]
+# 実物の ML モデル（ADR-003）。unit テストでは使わない。`uv sync --extra ml` で導入する
+ml = [
+    "mlx-whisper>=0.4.3",
+    "whisperx>=3.8.6",
+    "silero-vad>=5.1",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15",
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.11",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not ml'"
+markers = [
+    "ml: 実物の ML モデルや claude CLI を使う遅いテスト（既定では除外。`-m ml` で実行）",
+    "integration: ffmpeg や SQLite など実際の外部ツールを使うテスト",
+]
+
+[tool.coverage.run]
+source = ["vidcut"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N"]
+# 日本語の文字列・コメントで全角記号を使うため
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

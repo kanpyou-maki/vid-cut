@@ -21,10 +21,10 @@
 
 ### M0: 土台（`chore/m0-scaffold`）
 
-- [ ] `backend/`: uv プロジェクト（Python 3.12）、`src/vidcut/` の空パッケージ、pytest・pytest-cov・ruff・mypy。ML の依存は extras `ml` に分ける
-- [ ] `frontend/`: Vite + React + TypeScript、vitest・Testing Library・Biome。`test` / `coverage` / `typecheck` / `lint` の npm scripts
-- [ ] `.claude/harness.json` の全コマンドが空のテストで通ることを確認
-- [ ] quality-gate フックが `frontend/biome.json` を見つけられるか確認（ルートにしか探さない場合は摩擦ログに記録）
+- [x] `backend/`: uv プロジェクト（Python 3.12）、`src/vidcut/` の空パッケージ、pytest・pytest-cov・ruff・mypy。ML の依存は extras `ml` に分ける
+- [x] `frontend/`: Vite + React + TypeScript、vitest・Testing Library・Biome。`test` / `coverage` / `typecheck` / `lint` の npm scripts
+- [x] `.claude/harness.json` の全コマンドが空のテストで通ることを確認
+- [x] quality-gate フックが `frontend/biome.json` を見つけられるか確認→ ルートにしか探さないため FRIC-003 に記録。Biome を Prettier 互換の設定にして回避
 
 ### M1: domain（`feat/m1-domain`）
 
@@ -70,6 +70,7 @@
 ### M6: API（`feat/m6-api`）
 
 - [ ] FastAPI のアプリと `{success, data, error}` の形、127.0.0.1 のみ
+- [ ] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、起動ごとのトークン、パスの正規化）
 - [ ] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
 - [ ] `/api/recordings/{id}/proxy`（Range 対応）、`/peaks`
 - [ ] `vidcut serve`（API サーバー + worker の起動、ビルド済み frontend の配信）
@@ -99,6 +100,8 @@
 - [ ] `QUALITY_SCORE.md` が更新されている
 
 ## 進捗メモ
+
+- 2026-10-03: M0 完了（`chore/m0-scaffold`）。backend: Python 3.12・pytest・ruff・mypy（strict）。frontend: React 19・Vite 8・TypeScript 6・vitest 5・Biome 2。テンプレート既定の oxlint は Biome に置き換えた
 
 - スパイクのスクリプト（xmeml の最小実装、ASR の計測）は使い捨て。知見は ADR-002・ADR-003 に記録済み
 - ML の初回実行ではモデルのダウンロード（合計約 3GB、5 分程度）が発生する

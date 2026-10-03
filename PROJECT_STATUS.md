@@ -7,12 +7,12 @@
 
 <!-- 選択肢: 議論中 | ドキュメント作成中 | 実装中 | レビュー中 | メンテナンス中 | 完了 -->
 
-ドキュメント作成中
+実装中
 
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。要件・設計・スパイクが完了（PLAN-20261003-mvp-discovery）。実装計画の承認待ち。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）が完了し、次は M1（domain）。
 
 ## 完了済み
 
@@ -25,15 +25,16 @@ PRD・Design Doc が承認済み。要件・設計・スパイクが完了（PLA
 - [x] uv の導入（0.12.22）— 2026-10-03
 - [x] スパイク S-2・S-3（文字起こし・位置合わせ）→ ADR-003 に結果を記録 — 2026-10-03
 - [x] ADR-002（中間素材・60fps）・ADR-003（mlx-whisper + WhisperX）承認 — 2026-10-03
+- [x] 実装計画の承認、M0（backend / frontend の土台）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)（承認待ち）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0 完了
 
 ## 次にやること
 
-- [ ] 実装計画の承認 → M0（backend / frontend の土台）から着手
+- [ ] M1: domain（データモデル、削除区間・残す区間・フレーム丸め・時刻変換）
 
 ## 決定事項
 
@@ -62,10 +63,9 @@ _なし_
 ## メモ
 
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`
-- harness.json の test/typecheck/lint は `backend/` と `frontend/` を作るまで失敗する（想定どおり）
 - `claude -p` は再ログイン済み。リポジトリ内で呼ぶと開発用設定が読み込まれるので、中立なディレクトリから呼ぶ（FRIC-002）
 - deny ルールの記法を修正済み（FRIC-001）。master へは claude-config-master#2 で PR 中（マージは人が行う）
 - スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
-- quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す
+- quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）
