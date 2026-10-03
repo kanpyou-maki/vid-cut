@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 は main にマージ済み（PR #1〜#5）。次は M4（言い直しの判定）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 と FRIC-004 の解消は main にマージ済み（PR #1〜#6）。次は M4（言い直しの判定）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -35,7 +35,6 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 
 ## 進行中
 
 - [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
-- [ ] FRIC-004 の PR のマージ待ち: vid-cut #6 と claude-config-master#4（マージはユーザー）
 
 ## 次にやること
 
@@ -74,7 +73,7 @@ _なし_
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
 - 開発の流れ: main からマイルストーンごとにブランチ（`feat/m2-adapters` など）→ review-loop（`.claude/skills/review-loop/SKILL.md`）→ PR → ユーザーがマージ
-- master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はマージ済み。#4（FRIC-004）がマージ待ち
+- master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はマージ済み。#4（FRIC-004）もマージ済み
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
 - M5 で確かめること: 中間素材は音声をコピーするので、音声の 51ms の遅れを時刻情報として持ったまま。Premiere がこれをどう扱うか（XML の in / out とずれないか）を検証素材で確認する（M2 の docs-reviewer の指摘）
