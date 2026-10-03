@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は実装済みで、review-loop 中
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR のマージ待ち（画面の構成はユーザー確認待ち）
 
 ## 次にやること
 
@@ -154,6 +154,8 @@ _なし_
 - PR 4 で確認済み（PR 3 と同じ一時ワークスペース。引き継げなかった候補 2 件と、未認識の発話 1 件を足した）: 通知の件数と「閉じる」（サーバーの記録からも消える）、
   要確認の数・波線・未認識の発話の行、ボタンと N / Shift+N での移動（選択されて見える位置に出る）、カーソルを合わせると理由がすぐ下に出る、理由の上へカーソルを移しても消えない、
   「言い直し先へ移動」で段落が出て目印が付く、クリックで「戻し済み」になり理由も切り替わる、もう一度クリックで削除に戻って保存される。PR 3 の項目と合わせて 44 項目 OK。frontend のテスト 423 件 / カバレッジ 99%（分岐 96%）、backend 1,029 件
+- PR 4 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: `frontend/README.md` の PR 3 の手順に、PR 4 で変わった表示が古いまま残っていた → 修正して PASS）。
+  挙動を変えたら、前の PR の手動確認の手順も、いまの挙動に合わせて直す。セキュリティの指摘なし
 - PR 4 で踏んだこと: 要素ごとの `mouseenter` / `mouseleave`（React の `onMouseEnter` と、要素に直接付けたリスナー）を混ぜると、「対象から出た」と「理由に入った」の順序が食い違い、理由の上に移ったときに消える
   （jsdom のテストでは見つからず、実物の Chrome で見つけた。カーソルの出入りは `document` の `mouseover` 1 か所で受ける。再発を防ぐテストを足し、旧い受け方に戻すと落ちることを確かめた）。段落に `tabIndex={-1}` を付けると、クリックでフォーカスの枠が付く（移動先の目印は、クラスの付け外しによる一時的な背景色にした）
 - 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。

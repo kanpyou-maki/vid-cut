@@ -160,7 +160,7 @@ PR 4（`feat/m7-transcript-review`）:
 - [x] `dropped_restored_ids` の通知（件数と「閉じる」）
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（通知 → 要確認の移動 → 判定理由 → 言い直し先への移動 → 採否の切り替え。コンソールの失敗なし）
 - [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「要確認・判定理由・通知」）
-- [ ] review-loop → PR
+- [x] review-loop（Stage 0〜2 すべて PASS。docs-reviewer の BLOCK 1 回: README の PR 3 の手順が古いままだった → 修正して PASS）→ PR
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」
 
 PR 5（`feat/m7-preview`）:
