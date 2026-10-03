@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、PR のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、PR [#14](https://github.com/kanpyou-maki/vid-cut/pull/14) のマージ待ち
 
 ## 次にやること
 
