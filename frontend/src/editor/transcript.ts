@@ -165,12 +165,15 @@ function reviewTargets(
     const indexes = tokens
       .filter((token) => contains(mark, token))
       .map((token) => token.index);
+    if (indexes.length === 0) {
+      return [];
+    }
     const target: ReviewTarget = {
       kind: "tokens",
       first: Math.min(...indexes),
       last: Math.max(...indexes),
     };
-    return indexes.length === 0 ? [] : [{ startMs: mark.start_ms, target }];
+    return [{ startMs: mark.start_ms, target }];
   });
   const markerTargets = unrecognized.map((mark) => {
     const target: ReviewTarget = { kind: "marker", id: mark.id };

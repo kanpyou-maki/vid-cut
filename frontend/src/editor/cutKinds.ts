@@ -11,3 +11,6 @@ export const KIND_LABELS: Readonly<Record<Kind, string>> = {
   silence: "無音",
   manual: "手動",
 };
+
+/** 自動の削除候補を戻した（削除しないと決めた）状態の名前。 */
+export const RESTORED_LABEL = "戻し済み";

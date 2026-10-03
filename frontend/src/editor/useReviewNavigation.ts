@@ -1,7 +1,7 @@
 import { type RefObject, useCallback, useState } from "react";
-import { REVIEW_MARKER_ATTRIBUTE } from "./TranscriptView";
 import { TOKEN_INDEX_ATTRIBUTE } from "./tokenSelection";
 import type { ReviewTarget } from "./transcript";
+import { REVIEW_MARKER_ATTRIBUTE } from "./transcriptDom";
 
 export interface ReviewNavigation {
   /** まだ確認が要る箇所の数 */

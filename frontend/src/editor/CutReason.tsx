@@ -9,18 +9,18 @@ import {
 } from "react";
 import { formatDuration } from "../shared/lectureStatus";
 import styles from "./CutReason.module.css";
-import { KIND_LABELS } from "./cutKinds";
-import { CHUNK_ID_ATTRIBUTE, SUGGESTION_ID_ATTRIBUTE } from "./TranscriptView";
+import { KIND_LABELS, RESTORED_LABEL } from "./cutKinds";
 import transcriptStyles from "./TranscriptView.module.css";
 import type { Transcript } from "./transcript";
+import { CHUNK_ID_ATTRIBUTE, SUGGESTION_ID_ATTRIBUTE } from "./transcriptDom";
 
 /** カーソルを外してから消すまでの猶予（理由の上へカーソルを移す間に、消えないようにする） */
 const CLOSE_DELAY_MS = 200;
 /** 対象と理由の間のすき間 */
-const GAP_PX = 4;
+export const GAP_PX = 4;
 /** 理由の幅（CutReason.module.css の .reason と同じ値）と、画面の端からの余白 */
-const WIDTH_PX = 352;
-const MARGIN_PX = 8;
+export const WIDTH_PX = 352;
+export const MARGIN_PX = 8;
 /** 対象が画面の下のほうにあれば、理由を上に出す */
 const SPACE_BELOW_PX = 180;
 
@@ -34,7 +34,7 @@ interface Shown {
 
 const STATE_LABELS: Readonly<Record<State, string>> = {
   cut: "削除",
-  restored: "戻し済み",
+  restored: RESTORED_LABEL,
 };
 
 const HINTS: Readonly<Record<State, string>> = {

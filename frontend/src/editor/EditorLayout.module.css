@@ -57,7 +57,9 @@
   grid-area: waveform;
 }
 
-/* 凡例と、要確認の箇所への移動。文字起こしをスクロールしても、上に残す */
+/* 凡例と、要確認の箇所への移動。文字起こしをスクロールしても、上に残す。
+   top と margin-top の -0.5rem は、.transcript の上の padding（0.5rem）を覆うための値
+   （padding を変えたら、ここも合わせること） */
 .transcriptHeader {
   position: sticky;
   top: -0.5rem;

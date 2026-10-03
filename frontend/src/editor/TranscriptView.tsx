@@ -1,16 +1,21 @@
 import { type KeyboardEvent, memo, type ReactNode, type Ref } from "react";
 import { formatDuration } from "../shared/lectureStatus";
-import { KIND_LABELS, type Kind } from "./cutKinds";
+import { KIND_LABELS, type Kind, RESTORED_LABEL } from "./cutKinds";
 import type { RestoredSuggestion, TokenCut } from "./edits";
+import { type Run, runsOf } from "./runs";
 import styles from "./TranscriptView.module.css";
 import { TOKEN_INDEX_ATTRIBUTE } from "./tokenSelection";
 import type {
   Transcript,
   TranscriptChunk,
   TranscriptRecording,
-  TranscriptToken,
   UnrecognizedMark,
 } from "./transcript";
+import {
+  CHUNK_ID_ATTRIBUTE,
+  REVIEW_MARKER_ATTRIBUTE,
+  SUGGESTION_ID_ATTRIBUTE,
+} from "./transcriptDom";
 
 // 無音の候補はトークンを持たないので、文字起こしには出ない（凡例に載せない）
 const LEGEND_KINDS: readonly Kind[] = [
@@ -25,28 +30,8 @@ const LEGEND_KINDS: readonly Kind[] = [
 const MIN_RECORDINGS_FOR_HEADINGS = 2;
 
 const LOW_CONFIDENCE_TITLE = "要確認（確信度が低い）";
-const RESTORED_LABEL = "戻し済み";
 const REVIEW_LABEL = "要確認";
 const MS_PER_SECOND = 1000;
-
-/** 判定の理由を出す対象（自動の削除候補。削除済み・戻し済み）の id。CutReason が読む。 */
-export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
-/** 段落のチャンクの id（言い直し先への移動に使う） */
-export const CHUNK_ID_ATTRIBUTE = "data-chunk-id";
-/** 未認識の発話の印の id（要確認の箇所への移動に使う） */
-export const REVIEW_MARKER_ATTRIBUTE = "data-review-marker";
-
-/** トークンの状態: 削除済み、戻し済み（自動の候補を戻した）、どちらでもない（null）。 */
-type RunMark =
-  | { state: "cut"; cut: TokenCut }
-  | { state: "restored"; suggestion: RestoredSuggestion }
-  | null;
-
-/** 同じ状態が続くトークンのまとまり。 */
-interface Run {
-  mark: RunMark;
-  tokens: readonly TranscriptToken[];
-}
 
 /** 段落（チャンク）か、未認識の発話の印。時刻の順に並べる。 */
 type Row =
@@ -157,51 +142,6 @@ function UnrecognizedRow({ mark }: { mark: UnrecognizedMark }) {
       （未認識の発話 {seconds} 秒）
     </p>
   );
-}
-
-function runsOf(
-  tokens: readonly TranscriptToken[],
-  cuts: readonly (TokenCut | null)[],
-  restored: readonly (RestoredSuggestion | null)[],
-): Run[] {
-  const runs: Run[] = [];
-  for (const token of tokens) {
-    const mark = markOf(token, cuts, restored);
-    const last = runs.at(-1);
-    if (last !== undefined && sameMark(last.mark, mark)) {
-      runs[runs.length - 1] = { mark, tokens: [...last.tokens, token] };
-    } else {
-      runs.push({ mark, tokens: [token] });
-    }
-  }
-  return runs;
-}
-
-/** 削除済みが、戻し済みより優先（戻した候補と手動の区間が重なるところは、削除済み）。 */
-function markOf(
-  token: TranscriptToken,
-  cuts: readonly (TokenCut | null)[],
-  restored: readonly (RestoredSuggestion | null)[],
-): RunMark {
-  const cut = cuts[token.index] ?? null;
-  if (cut !== null) {
-    return { state: "cut", cut };
-  }
-  const suggestion = restored[token.index] ?? null;
-  return suggestion === null ? null : { state: "restored", suggestion };
-}
-
-function markKey(mark: RunMark): string {
-  if (mark === null) {
-    return "";
-  }
-  return mark.state === "cut"
-    ? `cut:${mark.cut.source}:${mark.cut.id}`
-    : `restored:${mark.suggestion.id}`;
-}
-
-function sameMark(a: RunMark, b: RunMark): boolean {
-  return markKey(a) === markKey(b);
 }
 
 function RunView({

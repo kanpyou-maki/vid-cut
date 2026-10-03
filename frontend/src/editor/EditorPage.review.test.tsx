@@ -19,6 +19,7 @@ import {
   transcriptPane,
 } from "../test/editorPage";
 import { suggestion, tokens } from "../test/fakeApi";
+import { GAP_PX, MARGIN_PX, WIDTH_PX } from "./CutReason";
 
 /**
  * r1 の「あいうえお」（0〜500ms）、「かきく」（1000〜1300ms。言い直しの候補 j1 で削除。言い直し先は c2）、
@@ -75,6 +76,7 @@ beforeEach(() => {
 
 afterEach(() => {
   window.getSelection()?.removeAllRanges();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
@@ -271,14 +273,21 @@ describe("EditorPage: 判定理由", () => {
       ) as unknown as DOMRectList;
     const rects = vi.spyOn(cut, "getClientRects");
 
-    // 画面は 1024 x 768（jsdom の既定）。2 行にまたがる対象の、カーソルがある 2 行目が基準
+    // 対象は右端（左 900px）にあるので、理由は画面の右端から余白をあけた位置まで左へ寄る
+    const left = `${window.innerWidth - WIDTH_PX - MARGIN_PX}px`;
+
+    // 2 行にまたがる対象の、カーソルがある 2 行目（上端 120px・高さ 20px）が基準
     rects.mockReturnValue(lines(100, 120));
     fireEvent.mouseOver(cut, { clientY: 130 });
-    expect(reason()).toHaveStyle({ top: "144px", left: "664px" });
+    expect(reason()).toHaveStyle({ top: `${120 + 20 + GAP_PX}px`, left });
 
+    // 画面の下のほう（上端 700px）にある対象では、対象の上に出す
     rects.mockReturnValue(lines(700));
     fireEvent.mouseOver(cut, { clientY: 710 });
-    expect(reason()).toHaveStyle({ bottom: "72px", left: "664px" });
+    expect(reason()).toHaveStyle({
+      bottom: `${window.innerHeight - 700 + GAP_PX}px`,
+      left,
+    });
   });
 
   it("フォーカスを移しても出す", async () => {
@@ -300,7 +309,6 @@ describe("EditorPage: 判定理由", () => {
     expect(scrolled.mock.contexts).toEqual([target]);
     expect(target.className).toMatch(/flash/);
     expect(reason()).not.toBeInTheDocument();
-    scrolled.mockRestore();
   });
 
   it("段落はクリックしてもフォーカスされない（移動先の目印と紛れない）", async () => {
@@ -325,6 +333,24 @@ describe("EditorPage: 判定理由", () => {
     fireEvent.mouseOver(screen.getByRole("region", { name: "プレビュー" }));
     await advance(SECOND_MS);
     expect(reason()).not.toBeInTheDocument();
+  });
+
+  it("文字起こしから出た知らせが、理由に入ったあとに届いても消えない", async () => {
+    // 実際のブラウザで起きた不具合の再発を防ぐ: React の onMouseEnter（理由に入った）は、
+    // 要素に直接付けた mouseleave（文字起こしから出た）より先に呼ばれる。別々に受けると、あとから届いた
+    // 「出た」で消えてしまう。カーソルの出入りは、document の mouseover 1 か所で受ける
+    await openEditor();
+    const cut = screen.getByRole("button", { name: RETAKE_NAME });
+    const transcript = cut.closest("p")?.parentElement?.parentElement;
+    fireEvent.mouseOver(cut);
+
+    fireEvent.mouseOver(reason() as HTMLElement);
+    fireEvent.mouseEnter(reason() as HTMLElement);
+    fireEvent.mouseOut(cut, { relatedTarget: reason() });
+    fireEvent.mouseLeave(transcript as HTMLElement);
+    await advance(SECOND_MS);
+
+    expect(reason()).toBeInTheDocument();
   });
 
   it("Esc で消える", async () => {
