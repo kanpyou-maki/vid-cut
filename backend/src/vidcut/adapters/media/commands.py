@@ -7,6 +7,8 @@ _VIDEO_ENCODER = "h264_videotoolbox"
 # 最後のフレームを無限に複製し、-t で音声の終わりに切りそろえる（ADR-002、S-1 の修正）
 _EXTEND_LAST_FRAME = "tpad=stop=-1:stop_mode=clone"
 _COMMON = ("-nostdin", "-v", "error", "-y")
+# 中身がプレイリストのファイルから、ネットワークや他のプロトコルを開かせない
+_LOCAL_ONLY = ("-protocol_whitelist", "file")
 _PROGRESS = ("-progress", "pipe:1", "-nostats")
 
 
@@ -29,13 +31,16 @@ class MediaSettings:
 
 
 def probe_args(ffprobe: str, source: Path) -> list[str]:
-    return [ffprobe, "-v", "error", "-show_streams", "-show_format", "-of", "json", _abs(source)]
+    return [
+        ffprobe, "-v", "error", *_LOCAL_ONLY, "-show_streams", "-show_format", "-of", "json",
+        _abs(source),
+    ]  # fmt: skip
 
 
 def audio_args(ffmpeg: str, source: Path, dest: Path) -> list[str]:
     """解析用の 16kHz モノラル wav。音声の開始の遅れは先頭の無音で埋めてタイムラインにそろえる。"""
     return [
-        ffmpeg, *_COMMON, "-i", _abs(source), "-map", "0:a:0", "-vn",
+        ffmpeg, *_COMMON, *_LOCAL_ONLY, "-i", _abs(source), "-map", "0:a:0", "-vn",
         "-af", "aresample=async=1:first_pts=0", "-ac", "1", "-ar", "16000",
         "-c:a", "pcm_s16le", _abs(dest),
     ]  # fmt: skip
@@ -46,7 +51,7 @@ def mezzanine_args(
 ) -> list[str]:
     video_filter = f"fps={settings.mezzanine_fps},{_EXTEND_LAST_FRAME}"
     return [
-        ffmpeg, *_COMMON, "-i", _abs(source), "-map", "0:v:0", "-map", "0:a:0",
+        ffmpeg, *_COMMON, *_LOCAL_ONLY, "-i", _abs(source), "-map", "0:v:0", "-map", "0:a:0",
         "-vf", video_filter, "-t", _seconds(duration_ms),
         "-c:v", _VIDEO_ENCODER, "-q:v", str(settings.mezzanine_quality),
         "-c:a", "copy", "-movflags", "+faststart", *_PROGRESS, _abs(dest),
@@ -65,7 +70,7 @@ def proxy_args(
         ]
     )
     return [
-        ffmpeg, *_COMMON, "-i", _abs(source), "-map", "0:v:0", "-map", "0:a:0",
+        ffmpeg, *_COMMON, *_LOCAL_ONLY, "-i", _abs(source), "-map", "0:v:0", "-map", "0:a:0",
         "-vf", video_filter, "-t", _seconds(duration_ms),
         "-c:v", _VIDEO_ENCODER, "-q:v", str(settings.proxy_quality),
         "-g", str(settings.proxy_fps),

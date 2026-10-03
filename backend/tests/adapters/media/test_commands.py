@@ -113,3 +113,12 @@ def test_rejects_relative_paths() -> None:
 def test_settings_reject_invalid_values(kwargs: dict[str, int]) -> None:
     with pytest.raises(ValueError):
         MediaSettings(**kwargs)
+
+
+@pytest.mark.parametrize("name", [*sorted(COMMANDS), "probe"])
+def test_inputs_are_restricted_to_local_files(name: str) -> None:
+    # 中身がプレイリストのファイルから、ローカルファイル以外を開かせない
+    args = probe_args("ffprobe", SOURCE) if name == "probe" else COMMANDS[name]()
+    whitelist = args.index("-protocol_whitelist")
+    assert args[whitelist + 1] == "file"
+    assert whitelist < args.index(str(SOURCE))

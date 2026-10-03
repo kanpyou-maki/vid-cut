@@ -27,13 +27,13 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土
 - [x] ADR-002（中間素材・60fps）・ADR-003（mlx-whisper + WhisperX）承認 — 2026-10-03
 - [x] 実装計画の承認、M0（backend / frontend の土台）— 2026-10-03
 - [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 80 件 / カバレッジ 100%）— 2026-10-03
-- [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 218 件 / カバレッジ 99%）— 2026-10-03
+- [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 226 件 / カバレッジ 99%。review-loop 全通過）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
 - [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M2 完了
-- [ ] M2 の review-loop → PR（`feat/m2-adapters`、マージはユーザー）
+- [ ] M2 の PR（`feat/m2-adapters`）のマージ待ち（マージはユーザー）
 
 ## 次にやること
 
@@ -75,5 +75,8 @@ _なし_
 - master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はユーザーのマージ待ち
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
+- M5 で確かめること: 中間素材は音声をコピーするので、音声の 51ms の遅れを時刻情報として持ったまま。Premiere がこれをどう扱うか（XML の in / out とずれないか）を検証素材で確認する（M2 の docs-reviewer の指摘）
+- 実素材での M2 の実測: probe 0.1 秒、解析用 wav 0.4 秒、ピーク値 0.2 秒、proxy 38 秒、中間素材 296 秒（196MB）。proxy の 38 秒は解析時間の目標（5 分）に含まれる
+- M2 のセキュリティレビューの LOW（後のマイルストーンで対応）: ffmpeg のタイムアウトは既定でなし → M3 の bootstrap で録画の長さに応じた上限を渡す。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
 - SQLite の接続はスレッドをまたげない（`check_same_thread`）。M6 の API サーバーでは接続の持ち方を決める必要がある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）
