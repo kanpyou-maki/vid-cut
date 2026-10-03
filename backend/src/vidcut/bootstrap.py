@@ -122,6 +122,7 @@ def build_app(
         media=media_tool,
         fingerprint=file_fingerprint,
     )
+    resolved_judge_settings = judge_settings or JudgeSettings()
     judge = JudgeService(
         lectures=lectures,
         store=store,
@@ -129,27 +130,14 @@ def build_app(
         edit_states=SqliteEditStateRepository(conn),
         queue=queue,
         model=language_model,
-        settings=judge_settings or JudgeSettings(),
+        settings=resolved_judge_settings,
     )
     judge_eval = JudgeEvalService(
         lectures=lectures,
         store=store,
         model=language_model,
-        settings=judge_settings or JudgeSettings(),
+        settings=resolved_judge_settings,
     )
-
-    def analyze(job: Job, report: ProgressReporter) -> None:
-        analysis.analyze(job.target_id, report)
-        # レクチャーの全ファイルの解析がそろったら、言い直しの判定を積む。
-        # 積めなかったときは解析ジョブを失敗にする（黙って判定が抜けるより、再実行できるほうがよい。
-        # 解析は生成物のキャッシュがあるので、再実行はすぐ終わる）
-        judge.request_for_recording(job.target_id)
-
-    handlers: dict[JobKind, JobHandler] = {
-        JobKind.ANALYZE_RECORDING: analyze,
-        JobKind.MAKE_MEZZANINE: lambda job, report: analysis.make_mezzanine(job.target_id, report),
-        JobKind.JUDGE_LECTURE: lambda job, report: judge.judge(job.target_id, report),
-    }
     return App(
         workspace=workspace,
         conn=conn,
@@ -160,5 +148,20 @@ def build_app(
         analysis=analysis,
         judge=judge,
         judge_eval=judge_eval,
-        handlers=handlers,
+        handlers=_job_handlers(analysis, judge),
     )
+
+
+def _job_handlers(analysis: AnalysisService, judge: JudgeService) -> dict[JobKind, JobHandler]:
+    def analyze(job: Job, report: ProgressReporter) -> None:
+        analysis.analyze(job.target_id, report)
+        # レクチャーの全ファイルの解析がそろったら、言い直しの判定を積む。
+        # 積めなかったときは解析ジョブを失敗にする（黙って判定が抜けるより、再実行できるほうがよい。
+        # 解析は生成物のキャッシュがあるので、再実行はすぐ終わる）
+        judge.request_for_recording(job.target_id)
+
+    return {
+        JobKind.ANALYZE_RECORDING: analyze,
+        JobKind.MAKE_MEZZANINE: lambda job, report: analysis.make_mezzanine(job.target_id, report),
+        JobKind.JUDGE_LECTURE: lambda job, report: judge.judge(job.target_id, report),
+    }

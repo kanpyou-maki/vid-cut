@@ -111,10 +111,11 @@ def _eval_judge(app: App, args: argparse.Namespace) -> int:
         else:
             entries = app.judge_eval.lecture_entries(args.lecture)
         print(f"{len(entries)} チャンクを判定します（正解の削除対象: {len(truth)} 件）")
-        runs = []
+        runs: list[EvalRun] = []
         for index in range(args.runs):
-            runs.append(app.judge_eval.run(entries, truth))
-            _print_eval_run(index + 1, runs[-1], entries)
+            run = app.judge_eval.run(entries, truth)
+            _print_eval_run(index + 1, run, entries)
+            runs.append(run)
     except (ExternalToolError, LookupError, ValueError) as e:
         print(f"評価できませんでした: {e}")
         return 1

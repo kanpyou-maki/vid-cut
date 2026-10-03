@@ -19,6 +19,8 @@ _logger = logging.getLogger(__name__)
 
 
 class ClaudeCli:
+    """`claude -p` を子プロセスとして 1 回ずつ呼ぶ。"""
+
     def __init__(
         self, workdir: Path, *, executable: str = "claude", timeout_s: float = DEFAULT_TIMEOUT_S
     ) -> None:
