@@ -130,7 +130,7 @@ PR 1（`feat/m7-foundation`。`openapi-fetch` を追加）:
 - [x] 開発中のトークン: Vite のプラグイン（`vite-plugins/devToken.ts`）、開発サーバーの CORS を無効にする
 - [x] API クライアント（トークンのヘッダー、`{success, data, error}` をほどく、失敗の種類）
 - [x] 画面の切り替え（素材一覧 `/` と編集画面 `/lectures/{id}`）、ポーリング、画面の枠（レクチャーの名前と状態の一覧まで）
-- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
+- [x] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」→ ユーザーがマージ（PR #12、2026-10-04）
 
 PR 2（`feat/m7-library`）:
 
