@@ -77,6 +77,13 @@ export function CutReason({
 
   const suggestion =
     shown === null ? undefined : suggestions.get(shown.suggestionId);
+  const stale = shown !== null && suggestion === undefined;
+  // 出していた候補がなくなったら、閉じておく（あとで同じ id の候補が現れても、カーソルがないのに出さない）
+  useEffect(() => {
+    if (stale) {
+      close();
+    }
+  }, [stale, close]);
   if (shown === null || suggestion === undefined) {
     return null;
   }
