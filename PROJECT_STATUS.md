@@ -36,12 +36,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）を実装済み
 
 ## 次にやること
 
 - [ ] M6 PR 1 の PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ（ユーザー）
-- [ ] M6 PR 2（`feat/m6-api-http`。PR 1 のブランチから切る）: FastAPI のアプリ・ローカル API の防御・入力の上限・各エンドポイント・proxy（Range）と peaks。依存に fastapi・uvicorn・pydantic、dev に httpx を追加（承認済み）
+- [ ] M6 PR 2（`feat/m6-api-http`。PR 1 のブランチに積んでいる）の review-loop と PR 作成
 - [ ] M6 PR 3（`feat/m6-serve`）: `vidcut serve`・ビルド済み frontend の配信・OpenAPI からの型生成（openapi-typescript）・手動確認（`~/VidCut/` の写しで行う）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
@@ -114,4 +114,9 @@ _なし_
 - M6 PR 2 の下調べ（プロジェクト外で確認）: fastapi 0.142 / starlette 1.7 / pydantic 2.13 / uvicorn 0.54。`FileResponse` は Range に対応（206 / 416）。厳格な型（`strict=True`・`extra="forbid"`）は期待どおり 422。
   本文サイズは `Content-Length` で先に弾く（読みながら数えると 400 になる）。JSON 以外の Content-Type は明示的に 415 にする。
   Starlette のテストクライアントは `httpx` ではなく `httpx2`（pydantic/httpx2）を推奨し、`httpx` だと非推奨の警告が出る → 承認済みの一覧（dev に httpx）と違うので、PR 2 の着手時にユーザーに確認する
-
+- M6 PR 2 の構成: `api/app.py` の `create_app(api, settings)`、`api/security.py`（Host・Origin・トークン・本文）、`api/schemas.py`（入力の上限と出力の許可リスト）、`api/errors.py`・`api/messages.py`（定型文）、`api/routes/`。
+  `bootstrap.build_api(workspace)` が起動時に 1 回スキーマを移行し、`Api.services()` がリクエストごとに接続を開く。API は ML も `claude` も組み立てない（判定の登録は `JudgeRequests`）
+- M6 PR 2 で実物の uvicorn を一時ワークスペースで確認済み: 並行の読み取り 200 件が成功、同じ版での同時保存は 1 件だけ成功して残りは 409、トークンなしは 401、別の Host は 403
+- dev の依存は承認どおり `httpx` を入れた。Starlette 1.7 は `httpx2` を推奨しており、テストの実行時に非推奨の警告が 1 件出る（動作には影響なし）。`httpx2` に替えるかはユーザーの判断待ち
+- M6 PR 3 でやること（PR 2 から持ち越し）: 待ち受けを 127.0.0.1 に限る、トークンを起動ごとに作って配信する HTML に埋め込む、アクセスログにクエリを出さない（proxy の `?token=`）、開発中の Vite からの利用（`dev_origins` と、トークンの渡し方）
+- M7 で API に足すもの: 書き出し先のパスの表示（Design Doc 3-4。いまは返す項目がない）、`dropped_restored_ids` の通知を閉じる仕組み

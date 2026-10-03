@@ -38,6 +38,11 @@ uv run vidcut eval judge --lecture s05-12sample \
 
 ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。
 
+## API（M6）
+
+FastAPI のアプリは `vidcut.api.app.create_app`（エンドポイントの一覧と入力の上限は [Design Doc](../docs/design.md) の 3-5、防御は 3-5-1）。
+起動するコマンド `vidcut serve` は M6 の PR 3 で追加する。テストは `uv run pytest tests/api`。
+
 ## 書き出し
 
 Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワークスペースの `exports/<レクチャー名>/` に書き出す

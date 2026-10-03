@@ -95,17 +95,17 @@ PR 1（`feat/m6-api`。API の下ごしらえ。新しい依存なし）:
 
 PR 2（`feat/m6-api-http`。fastapi・uvicorn・pydantic、dev に httpx を追加）:
 
-- [ ] FastAPI のアプリと `{success, data, error}` の形、127.0.0.1 のみ
-- [ ] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、起動ごとのトークン、パスの正規化）
-- [ ] 入力の上限（M1 のセキュリティレビュー）: pydantic の厳格な型（StrictInt）、件数（manual_cuts・suggestions・silences）と JSON サイズ、文字列の長さ、時刻の上限（24 時間）。`reason` / `error` は画面でエスケープする
-- [ ] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
-- [ ] `/api/recordings/{id}/proxy`（Range 対応。トークンは `?token=`）、`/peaks`
-- [ ] `/api/lectures/{id}/reanalyze`
-- [ ] SQLite の接続をリクエストごとに開く（Design Doc 3-5-2）
+- [x] FastAPI のアプリと `{success, data, error}` の形（待ち受けを 127.0.0.1 に限るのは PR 3 の `vidcut serve`）
+- [x] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、トークン、Content-Type、パスの正規化。トークンを起動ごとに作って HTML に埋め込むのは PR 3）
+- [x] 入力の上限（M1 のセキュリティレビュー）: pydantic の厳格な型（StrictInt）、件数（manual_cuts・suggestions・silences）と JSON サイズ、文字列の長さ、時刻の上限（24 時間）。`reason` / `error` は画面でエスケープする
+- [x] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
+- [x] `/api/recordings/{id}/proxy`（Range 対応。トークンは `?token=`）、`/peaks`
+- [x] `/api/lectures/{id}/reanalyze`
+- [x] SQLite の接続をリクエストごとに開く（Design Doc 3-5-2）。実物の uvicorn で、並行の読み取り 200 件と同時保存（1 件だけ成功、残りは 409）を確認
 
 PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
 
-- [ ] `vidcut serve`（API サーバー + worker の起動、ビルド済み frontend の配信）
+- [ ] `vidcut serve`（API サーバー + worker の起動、127.0.0.1 のみ、起動ごとのトークン、アクセスログにクエリを出さない、ビルド済み frontend の配信）
 - [ ] OpenAPI → `openapi-typescript` で frontend の型を生成
 - [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
 
