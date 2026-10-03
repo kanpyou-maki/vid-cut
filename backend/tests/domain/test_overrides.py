@@ -70,3 +70,15 @@ def test_custom_tolerance() -> None:
     loose = carry_over_restorations(BASE.restore("old"), [old], [new], tolerance_ms=300)
     assert strict.dropped_suggestion_ids == ("old",)
     assert loose.state.restored_suggestion_ids == frozenset({"new"})
+
+
+def test_tolerance_boundary_is_inclusive() -> None:
+    old = cut("old", 1000, 2000)
+    at_limit = cut("at", 1200, 1800)
+    beyond = cut("beyond", 1201, 2000)
+    assert carry_over_restorations(BASE.restore("old"), [old], [at_limit]).state == BASE.restore(
+        "at"
+    )
+    assert carry_over_restorations(BASE.restore("old"), [old], [beyond]).dropped_suggestion_ids == (
+        "old",
+    )
