@@ -183,6 +183,29 @@ describe("tokenCuts", () => {
     expect(marks(detail, draft)).toBe("mfm・・");
   });
 
+  it("チャンクのトークンが時刻の上で入り交じっていても、区間に入るトークンだけを削除済みにする", () => {
+    // 段落の順（通し番号）は「あ」「う」「い」。時刻は あ 0〜100、い 100〜200、う 200〜300
+    const [a, u] = tokens("c0", "あう", 0).map((token, position) => ({
+      ...token,
+      start_ms: position * 200,
+      end_ms: position * 200 + 100,
+    }));
+    const [i] = tokens("c1", "い", 100);
+    const detail = lectureDetail({
+      recordings: [recordingDetail({ id: "r1", tokens: [a, i, u] })],
+      judged_suggestions: [
+        suggestion({
+          id: "j1",
+          recording_id: "r1",
+          start_ms: 100,
+          end_ms: 200,
+        }),
+      ],
+    });
+
+    expect(marks(detail, EMPTY)).toBe("・・r");
+  });
+
   it("知らない録画ファイルの候補と区間は無視する", () => {
     const detail = detailWith({
       judged_suggestions: [suggestion({ recording_id: "gone" })],

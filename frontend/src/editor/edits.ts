@@ -82,7 +82,10 @@ export function tokenCuts(
       })),
   ];
   const tokensByRecording = new Map(
-    transcript.recordings.map((recording) => [recording.id, recording.tokens]),
+    transcript.recordings.map((recording) => [
+      recording.id,
+      recording.byCenter,
+    ]),
   );
   const cuts = new Array<TokenCut | null>(transcript.tokens.length).fill(null);
   for (const span of spans) {

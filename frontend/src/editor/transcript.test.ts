@@ -73,6 +73,31 @@ describe("buildTranscript", () => {
     );
   });
 
+  it("チャンクのトークンが時刻の上で入り交じっていても、通し番号は段落に並ぶ順になる", () => {
+    // c0 の「あ」（0ms）と「う」（200ms）の間に、c1 の「い」（100ms）が入っている
+    const [a, u] = tokens("c0", "あう", 0).map((token, position) => ({
+      ...token,
+      start_ms: position * 200,
+      end_ms: position * 200 + 100,
+    }));
+    const [i] = tokens("c1", "い", 100);
+    const detail = lectureDetail({
+      recordings: [recordingDetail({ tokens: [a, i, u] })],
+    });
+
+    const transcript = buildTranscript(detail);
+
+    const shown = transcript.recordings[0].chunks.flatMap(
+      (chunk) => chunk.tokens,
+    );
+    expect(shown.map((token) => token.text).join("")).toBe("あうい");
+    expect(shown.map((token) => token.index)).toEqual([0, 1, 2]);
+    expect(transcript.tokens).toEqual(shown);
+    expect(
+      transcript.recordings[0].byCenter.map((token) => token.text).join(""),
+    ).toBe("あいう");
+  });
+
   it("段落の開始時刻は、チャンクの開始時刻（最初のトークンより前のことがある）", () => {
     const detail = lectureDetail({
       recordings: [

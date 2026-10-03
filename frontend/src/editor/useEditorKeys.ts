@@ -2,7 +2,7 @@ import { type RefObject, useEffect, useState } from "react";
 import { selectedTokenRange } from "./tokenSelection";
 
 export interface EditorKeyHandlers {
-  /** 選んだトークンを削除する。削除するものがあったら true */
+  /** 選んだトークンを削除する。トークンを選んでいたら true（キーの既定の動作を止める） */
   onDelete: () => boolean;
   onUndo: () => void;
   onRedo: () => void;

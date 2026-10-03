@@ -28,7 +28,7 @@ import {
 } from "./useEditorKeys";
 
 export interface EditActions {
-  /** 選んでいるトークンを削除する。削除するものがあったら true */
+  /** 選んでいるトークンを削除して、選択を外す。トークンを選んでいたら true（すべて削除済みで、何も変わらなかったときも） */
   deleteSelection: () => boolean;
   /** 削除のまとまり（候補 1 件か、手動の区間 1 件）を戻す */
   restore: (cut: TokenCut) => void;

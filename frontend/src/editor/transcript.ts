@@ -1,4 +1,9 @@
-import type { LectureDetail, RecordingDetail, Suggestion } from "../api/types";
+import type {
+  LectureDetail,
+  RecordingDetail,
+  Suggestion,
+  Token,
+} from "../api/types";
 
 /**
  * 文字起こしを描くための形（Design Doc 3-6）。読み込んだ詳細から 1 回だけ作る
@@ -27,13 +32,13 @@ export interface TranscriptRecording {
   id: string;
   name: string;
   chunks: readonly TranscriptChunk[];
-  /** この録画ファイルのトークン（Transcript.tokens のうち、連続した一部） */
-  tokens: readonly TranscriptToken[];
+  /** この録画ファイルのトークン。中央の時刻の順（削除区間に入るトークンを二分探索で探すのに使う） */
+  byCenter: readonly TranscriptToken[];
 }
 
 export interface Transcript {
   recordings: readonly TranscriptRecording[];
-  /** 録画ファイルの順、その中は時刻の順 */
+  /** 画面に並ぶ順（録画ファイルの順、段落の順、段落の中は時刻の順）。添字が通し番号 */
   tokens: readonly TranscriptToken[];
   /** 自動の削除候補。録画ファイルの候補（無音・フィラー）、判定の候補の順 */
   suggestions: readonly Suggestion[];
@@ -49,7 +54,9 @@ export function buildTranscript(detail: LectureDetail): Transcript {
   });
   return {
     recordings,
-    tokens: recordings.flatMap((recording) => recording.tokens),
+    tokens: recordings.flatMap((recording) =>
+      recording.chunks.flatMap((chunk) => chunk.tokens),
+    ),
     suggestions: [
       ...detail.recordings.flatMap((recording) => recording.suggestions),
       ...detail.judged_suggestions,
@@ -61,46 +68,59 @@ function buildRecording(
   recording: RecordingDetail,
   firstIndex: number,
 ): TranscriptRecording {
-  // 中央の時刻の順（削除区間に入るかを中央で決めるので、その順にそろえる）
-  const tokens = recording.tokens
-    .toSorted((a, b) => a.start_ms + a.end_ms - (b.start_ms + b.end_ms))
-    .map((token, offset) => ({
-      index: firstIndex + offset,
-      id: token.id,
-      recordingId: recording.id,
-      chunkId: token.chunk_id,
-      text: token.text,
-      startMs: token.start_ms,
-      endMs: token.end_ms,
-    }));
-  return {
-    id: recording.id,
-    name: recording.name,
-    chunks: chunksOf(recording, tokens),
-    tokens,
-  };
-}
-
-/** 同じチャンクのトークンを、出てきた順に段落へまとめる。 */
-function chunksOf(
-  recording: RecordingDetail,
-  tokens: readonly TranscriptToken[],
-): TranscriptChunk[] {
+  // 中央の時刻の順に並べてから、チャンクごとにまとめる
+  const groups = groupsByChunk(
+    recording.tokens.toSorted((a, b) => doubledCenter(a) - doubledCenter(b)),
+  );
   const startTimes = new Map(
     recording.chunks.map((chunk) => [chunk.id, chunk.start_ms]),
   );
-  const grouped = new Map<string, TranscriptToken[]>();
+  // 通し番号は、画面に並ぶ順（段落の順）に振る。選択範囲は画面の順で求めるので、
+  // チャンクのトークンが時刻の上で入り交じっていても、通し番号の範囲とずれない
+  const chunks = groups.map((group, position) => {
+    const offset = groups
+      .slice(0, position)
+      .reduce((count, previous) => count + previous.length, firstIndex);
+    const chunkId = group[0].chunk_id;
+    return {
+      id: chunkId,
+      startMs: startTimes.get(chunkId) ?? group[0].start_ms,
+      tokens: group.map((token, order) => ({
+        index: offset + order,
+        id: token.id,
+        recordingId: recording.id,
+        chunkId,
+        text: token.text,
+        startMs: token.start_ms,
+        endMs: token.end_ms,
+      })),
+    };
+  });
+  return {
+    id: recording.id,
+    name: recording.name,
+    chunks,
+    byCenter: chunks
+      .flatMap((chunk) => chunk.tokens)
+      .toSorted((a, b) => a.startMs + a.endMs - (b.startMs + b.endMs)),
+  };
+}
+
+/** 中央の 2 倍（ミリ秒の整数のまま比べるため）。 */
+function doubledCenter(token: Token): number {
+  return token.start_ms + token.end_ms;
+}
+
+/** 同じチャンクのトークンを、チャンクが最初に出てきた順にまとめる（中の順は変えない）。 */
+function groupsByChunk(tokens: readonly Token[]): Token[][] {
+  const groups = new Map<string, Token[]>();
   for (const token of tokens) {
-    const group = grouped.get(token.chunkId);
+    const group = groups.get(token.chunk_id);
     if (group === undefined) {
-      grouped.set(token.chunkId, [token]);
+      groups.set(token.chunk_id, [token]);
     } else {
       group.push(token);
     }
   }
-  return [...grouped].map(([id, chunkTokens]) => ({
-    id,
-    startMs: startTimes.get(id) ?? chunkTokens[0].startMs,
-    tokens: chunkTokens,
-  }));
+  return [...groups.values()];
 }
