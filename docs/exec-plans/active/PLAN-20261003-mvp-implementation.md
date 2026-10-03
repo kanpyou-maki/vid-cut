@@ -170,7 +170,7 @@ PR 5（`feat/m7-preview`）:
 - [x] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）、文字起こしとの再生位置の同期
 - [x] 実物の backend と proxy 動画、ヘッドレスの Chrome での確認（再生 → 削除区間を飛ばす → 文字の印 → クリック・時刻・バーでの移動 → 削除した部分も再生する。コンソールの失敗なし）
 - [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「プレビュー」）
-- [x] review-loop（Stage 0〜2 すべて PASS。docs-reviewer の BLOCK 1 回: Design Doc の PR 3 の節が古いままだった → 修正して PASS。同じ種類が 2 回目なので FRIC-005 に記録）→ PR（PR 4 の上に積む）
+- [x] review-loop（Stage 0〜2 すべて PASS。docs-reviewer の BLOCK 1 回: Design Doc の PR 3 の節が古いままだった → 修正して PASS。同じ種類が 2 回目なので FRIC-005 に記録）→ PR #16（PR 4 の上に積む。向き先は `feat/m7-transcript-review`）
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」
 
 PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:

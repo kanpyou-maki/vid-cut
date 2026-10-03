@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）・PR 3（編集状態と文字起こしの基本）は main にマージ済み（PR #1〜#14）。M7（frontend）を 7 本の PR に分けて実装中。PR 4（要確認・判定理由・通知。`feat/m7-transcript-review`。PR #15）と PR 5（プレビュー。`feat/m7-preview`。PR 4 の上に積む）を、ユーザー不在の間に推奨案で実装した（どちらも、画面の構成はユーザー確認待ち）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）・PR 3（編集状態と文字起こしの基本）は main にマージ済み（PR #1〜#14）。M7（frontend）を 7 本の PR に分けて実装中。PR 4（要確認・判定理由・通知。`feat/m7-transcript-review`。PR #15）と PR 5（プレビュー。`feat/m7-preview`。PR #16。PR 4 の上に積む）を、ユーザー不在の間に推奨案で実装した（どちらも、画面の構成はユーザー確認待ち）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,7 +37,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）も review-loop を通過し、PR のマージ待ち（PR 4 の上に積んでいる）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）も review-loop を通過し、PR [#16](https://github.com/kanpyou-maki/vid-cut/pull/16) のマージ待ち（PR 4 の上に積んでいる。向き先は `feat/m7-transcript-review`）
 
 ## 次にやること
 
