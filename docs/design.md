@@ -177,27 +177,29 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
 ```python
 # domain（frozen dataclass。変更はすべて新しいオブジェクトを返す）
 
+Interval:       start_ms, end_ms                               # 半開区間 [start, end)。以下の span はすべてこれ
+
 Recording:      id, source_path, fingerprint(サイズ + 更新日時 + 先頭と末尾のハッシュ),
                 duration_ms, recorded_at, media: MediaInfo(width, height, is_vfr, avg_fps, audio_rate)
-SpeechChunk:    id, recording_id, start_ms, end_ms            # 無音で区切った発話のまとまり
-Token:          id, recording_id, chunk_id, text, start_ms, end_ms,
+SpeechChunk:    id, recording_id, span            # 無音で区切った発話のまとまり
+Token:          id, recording_id, chunk_id, text, span,
                 asr_confidence(0..1), align_score(0..1)        # 日本語では 1 文字 = 1 トークンが基本
-Silence:        recording_id, start_ms, end_ms
+Silence:        recording_id, span
 Lecture:        id, title, recording_ids: tuple[str, ...]      # 順序付き。1 本以上
-CutSuggestion:  id, recording_id, start_ms, end_ms,
+CutSuggestion:  id, recording_id, span,
                 kind: silence | filler | retake | misspeak | noise,
-                reason, superseded_by(言い直し後の位置、任意), origin: auto
+                reason（言い直し系は必須）, superseded_by(言い直し後の位置、任意)
 EditState:      lecture_id, version,
-                overrides: {suggestion_id: "restored"},        # 自動の削除候補を戻したもの
-                manual_cuts: tuple[ManualCut, ...]             # 人が追加した削除区間（トークン範囲）
-ReviewMark:     recording_id, start_ms, end_ms, kind: low_confidence | unrecognized_speech
+                restored_suggestion_ids: frozenset[str],       # 自動の削除候補を戻したもの
+                manual_cuts: tuple[ManualCut, ...]             # 人が追加した削除区間（ミリ秒。画面がトークンの選択範囲から求める）
+ReviewMark:     recording_id, span, kind: low_confidence | unrecognized_speech
 Job:            id, kind, target_id, status: queued | running | succeeded | failed,
-                stage, progress(0..1), error, created_at, updated_at
+                stage, progress(0..1), error            # 作成・更新日時は永続化層（M2）が持つ
 ```
 
 - 実際に削除される区間 = （自動の削除候補 − 戻したもの）∪ 人が追加した削除区間
-- 判定をやり直すと `retake` / `misspeak` / `noise` の候補は作り直される。その候補に対する `overrides` は、
-  時刻範囲がほぼ一致する新しい候補へ引き継ぎ、引き継げなかったものは破棄して画面で通知する
+- 判定をやり直すと `retake` / `misspeak` / `noise` の候補は作り直される。戻した候補（`restored_suggestion_ids`）は、
+  同じ録画ファイルで開始・終了の差が 200ms 以内の言い直し系の新しい候補へ引き継ぎ、引き継げなかったものは破棄して画面で通知する
 - 保存先は SQLite（メタデータ・ジョブ・編集状態）とワークスペースのファイル（文字起こし・波形などの大きなもの）
 
 ## 5. トレードオフ

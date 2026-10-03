@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）が完了し、次は M1（domain）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土台）が完了し、M1（domain）が完了し、次は M2（ffmpeg・SQLite・ジョブ）。GitHub: kanpyou-maki/vid-cut（private）。PR #1（ドキュメント）・#2（M0）はマージ待ち。
 
 ## 完了済み
 
@@ -26,6 +26,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土
 - [x] スパイク S-2・S-3（文字起こし・位置合わせ）→ ADR-003 に結果を記録 — 2026-10-03
 - [x] ADR-002（中間素材・60fps）・ADR-003（mlx-whisper + WhisperX）承認 — 2026-10-03
 - [x] 実装計画の承認、M0（backend / frontend の土台）— 2026-10-03
+- [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 69 件 / カバレッジ 100%）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
@@ -34,7 +35,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0（土
 
 ## 次にやること
 
-- [ ] M1: domain（データモデル、削除区間・残す区間・フレーム丸め・時刻変換）
+- [ ] M2: 外部ツールの土台（ffmpeg adapter、可変フレームレートの回帰テスト、SQLite、ジョブと worker）
 
 ## 決定事項
 
@@ -68,4 +69,6 @@ _なし_
 - スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
+- ブランチは積み重ね: main ← docs/mvp-prd（PR #1）← chore/m0-scaffold（PR #2）← feat/m1-domain。前の PR がマージされたら base を main に変える
+- セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）

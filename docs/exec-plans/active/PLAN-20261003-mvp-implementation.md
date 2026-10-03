@@ -28,12 +28,12 @@
 
 ### M1: domain（`feat/m1-domain`）
 
-- [ ] データモデル（Recording, SpeechChunk, Token, Silence, Lecture, CutSuggestion, EditState, ReviewMark, Job）。frozen dataclass、時刻は整数ミリ秒
-- [ ] 実際に削除される区間の計算（自動の候補 − 戻したもの ∪ 手動の削除）
-- [ ] 残す区間の計算（余白 前 150ms・後 250ms を無音の中に収める、重なりの統合）
-- [ ] フレームへの丸め（開始は切り捨て・終了は切り上げ、60fps）
-- [ ] 録画ファイル内の時刻 → 出力の時刻の変換（プレビューと将来の字幕用）
-- [ ] 判定のやり直し時の `overrides` の引き継ぎ
+- [x] データモデル（Recording, SpeechChunk, Token, Silence, Lecture, CutSuggestion, EditState, ReviewMark, Job）。frozen dataclass、時刻は整数ミリ秒
+- [x] 実際に削除される区間の計算（自動の候補 − 戻したもの ∪ 手動の削除）
+- [x] 残す区間の計算（余白 前 150ms・後 250ms を無音の中に収める、重なりの統合）
+- [x] フレームへの丸め（開始は切り捨て・終了は切り上げ、60fps）
+- [x] 録画ファイル内の時刻 → 出力の時刻の変換（プレビューと将来の字幕用）
+- [x] 判定のやり直し時の `overrides` の引き継ぎ
 
 ### M2: 外部ツールの土台（`feat/m2-adapters`）
 
@@ -102,6 +102,7 @@
 ## 進捗メモ
 
 - 2026-10-03: M0 完了（`chore/m0-scaffold`）。backend: Python 3.12・pytest・ruff・mypy（strict）。frontend: React 19・Vite 8・TypeScript 6・vitest 5・Biome 2。テンプレート既定の oxlint は Biome に置き換えた
+- 2026-10-03: M1 完了（`feat/m1-domain`）。domain に intervals / models / cuts / timeline / overrides。テスト 69 件、カバレッジ 100%
 
 - スパイクのスクリプト（xmeml の最小実装、ASR の計測）は使い捨て。知見は ADR-002・ADR-003 に記録済み
 - ML の初回実行ではモデルのダウンロード（合計約 3GB、5 分程度）が発生する
