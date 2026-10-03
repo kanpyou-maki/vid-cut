@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）は main にマージ済み（PR #1〜#13）。M7（frontend）を 7 本の PR に分けて実装中。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）を実装し、review-loop 中。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）は main にマージ済み（PR #1〜#13）。M7（frontend）を 7 本の PR に分けて実装中。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、ユーザーの手動確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,11 +37,11 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は実装済みで、review-loop 中
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、PR のマージ待ち
 
 ## 次にやること
 
-- [ ] M7 の PR 3 の review-loop → PR → 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」。問題なければマージ
+- [ ] M7 の PR 3 の手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」。問題なければマージ
 - [ ] M7: frontend。PR 3 のあとは PR 4（`feat/m7-transcript-review`: 要確認の印と移動キー、判定理由、`dropped_restored_ids` の通知）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
       波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
@@ -142,6 +142,9 @@ _なし_
   マウスのドラッグで選択 → Delete → 約 1 秒後に保存（削除区間は最初のトークンの開始〜最後のトークンの終了）、⌘Z / ⇧⌘Z とボタン、「削除」ボタン（押しても選択が外れない）、
   クリックと Enter での復活、読み込み直しても続きから、別の保存を挟んだあとの 409 のダイアログ（Esc で閉じない）と読み込み直し、未保存のまま素材一覧へ移っても保存される、
   判定を待つ間の読み取り専用、幅が狭いときの縦積み、暗い配色。コンソールの失敗と CSP の違反なし（わざと起こした 404・409 の記録だけ）。frontend のテスト 378 件 / カバレッジ 99%（分岐 96%）
+- PR 3 の review-loop: Stage 0（self）・Stage 1（arch / style / test）・Stage 2（security / docs）すべて PASS。提案を受けて、トークンの通し番号を画面に並ぶ順に振るようにした
+  （削除の判定は、中央の時刻の順の一覧 `byCenter` で行う。チャンクのトークンが時刻の上で入り交じっていても、選択範囲と通し番号がずれない）。
+  セキュリティの LOW（情報）: ジョブの `error_message` は backend の定型文をそのまま出す（素材一覧と同じ）。タブを閉じるときは確認を出すだけで、保存は走らない（承認済みの方針）
 - 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。
   選択範囲とトークンの重なりは、トークンの要素ではなく中の文字（テキストノード）の範囲で比べる（要素で比べると、文字の境目で始まる選択が隣のトークンにも重なって見える）。
   画面のテストでタイマーを偽物にするときは `vi.useFakeTimers({ shouldAdvanceTime: true })` を使い、描いた直後は `advance(0)` で effect を流してからキーを送る（`src/test/editorPage.tsx`）

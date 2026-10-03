@@ -149,7 +149,7 @@ PR 3（`feat/m7-editor-state`）:
 - [x] 編集状態: `useReducer` + 履歴による undo / redo、1 秒遅延の自動保存、409 の扱い
 - [x] 文字起こしの基本: トークン表示、選択 → 削除、復活、種類ごとの色
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（選択 → 削除 → 保存 → undo / redo → 復活 → 読み込み直し → 409 → 読み取り専用。コンソールの失敗なし）
-- [ ] review-loop → PR
+- [x] review-loop（Stage 0〜2 すべて PASS）→ PR
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」
 
 PR 4（`feat/m7-transcript-review`）:
