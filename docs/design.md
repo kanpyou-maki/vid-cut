@@ -116,7 +116,7 @@ pipeline と services は adapters を import しない（テストでは偽の�
 
 ### 3-5. API（FastAPI）
 
-レスポンスはすべて `{success, data, error}` の形にそろえる（`.claude/rules/common/patterns.md`）。
+待ち受けは `127.0.0.1:8765`（開発中は Vite の開発サーバーが `/api` をここへ転送する）。レスポンスはすべて `{success, data, error}` の形にそろえる（`.claude/rules/common/patterns.md`）。
 frontend の型は OpenAPI スキーマから `openapi-typescript` で生成する。
 
 | メソッド | パス                                      | 用途                                                                                                                               |
