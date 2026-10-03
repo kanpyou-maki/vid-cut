@@ -135,6 +135,20 @@ class TestProgressAndCompletion:
             queue.report_progress("j1", None, 0.1)
 
 
+class TestDiscardQueuedFor:
+    def test_removes_only_waiting_jobs_of_the_targets(self, queue: SqliteJobQueue) -> None:
+        for jid, target in [("a", "l1"), ("b", "l1"), ("c", "l2"), ("d", "l3")]:
+            queue.enqueue(Job(id=jid, kind=JobKind.JUDGE_LECTURE, target_id=target))
+        queue.claim_next()  # a は実行中
+        assert queue.discard_queued_for(["l1", "l2"]) == 2
+        assert [s.job.id for s in queue.list_all()] == ["a", "d"]
+
+    def test_no_targets_removes_nothing(self, queue: SqliteJobQueue) -> None:
+        queue.enqueue(job("j1"))
+        assert queue.discard_queued_for([]) == 0
+        assert len(queue.list_all()) == 1
+
+
 class TestRecovery:
     def test_requeue_running_after_crash(self, queue: SqliteJobQueue) -> None:
         for jid in ["j1", "j2", "j3"]:

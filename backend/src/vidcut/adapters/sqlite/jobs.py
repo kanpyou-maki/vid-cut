@@ -2,6 +2,7 @@
 
 import math
 import sqlite3
+from collections.abc import Iterable
 from datetime import datetime
 
 from vidcut.adapters.sqlite.database import NOW
@@ -85,6 +86,16 @@ class SqliteJobQueue:
         if cursor.rowcount == 0:
             self._require_exists(job_id)
             raise ValueError(f"再実行できるのは失敗したジョブだけです: {job_id}")
+
+    def discard_queued_for(self, target_ids: Iterable[str]) -> int:
+        ids = tuple(target_ids)
+        if not ids:
+            return 0
+        placeholders = ", ".join("?" * len(ids))
+        cursor = self._conn.execute(
+            f"DELETE FROM jobs WHERE status = 'queued' AND target_id IN ({placeholders})", ids
+        )
+        return cursor.rowcount
 
     def _update_running(
         self, job_id: str, assignments: str, params: tuple[str | float | None, ...]

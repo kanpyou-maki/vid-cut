@@ -36,6 +36,10 @@ class NothingToExportError(ValueError):
     """書き出そうとしたレクチャーに、残す区間が 1 つもない。"""
 
 
+class InvalidInputError(ValueError):
+    """利用者の入力を受け付けられない（API では 422 で返す）。"""
+
+
 class NotFoundError(LookupError):
     """指定した id のデータが保存されていない。"""
 
@@ -301,4 +305,11 @@ class JobQueue(Protocol):
 
     def retry(self, job_id: str) -> None:
         """失敗したジョブを待機中に戻す。"""
+        ...
+
+    def discard_queued_for(self, target_ids: Iterable[str]) -> int:
+        """target_ids のどれかを対象にした待機中のジョブを消し、その件数を返す。
+
+        レクチャーをまとめる・解除するときに、なくなるレクチャーの判定や書き出しを消すのに使う。
+        """
         ...

@@ -4,7 +4,7 @@ import logging
 import uuid
 from collections.abc import Callable, Sequence
 
-from vidcut.domain.models import CutSuggestion, Job, JobKind, JobStatus, Lecture
+from vidcut.domain.models import CutSuggestion, Job, JobKind, Lecture
 from vidcut.domain.overrides import carry_over_restorations
 from vidcut.pipeline.analysis_result import Analysis, load_analysis
 from vidcut.pipeline.judge import (
@@ -29,6 +29,7 @@ from vidcut.pipeline.ports import (
     ProgressReporter,
     VersionConflictError,
 )
+from vidcut.services.job_requests import find_queued
 
 STAGE = "judge"
 _SAVE_ATTEMPTS = 3
@@ -97,22 +98,16 @@ class JudgeService:
         return judgement
 
     def request_for_recording(self, recording_id: str) -> Job | None:
-        """録画ファイルの解析が終わったときに呼ぶ。レクチャーの全ファイルが解析済みなら判定を積む。
+        """録画ファイルが属するレクチャーの判定を積む。全ファイルが解析済みのときだけ積む。
 
+        解析が終わったときと、レクチャーをまとめる・並べ替える・解除したときに呼ぶ。
         同じレクチャーの判定が既に待機中なら積まない（そのジョブがいまの解析結果を読む）。
-        確認と登録は 1 つの操作ではない（worker は 1 つ。ADR-004）。重なって二重に積まれても、
-        2 本目は入力が同じなので言語モデルを呼ばずに終わる。
+        重なって二重に積まれても、2 本目は入力が同じなので言語モデルを呼ばずに終わる。
         """
         lecture = self._lectures.find_by_recording(recording_id)
         if lecture is None or not all(self._is_analyzed(rid) for rid in lecture.recording_ids):
             return None
-        waiting = any(
-            stored.job.kind is JobKind.JUDGE_LECTURE
-            and stored.job.target_id == lecture.id
-            and stored.job.status is JobStatus.QUEUED
-            for stored in self._queue.list_all()
-        )
-        if waiting:
+        if find_queued(self._queue, JobKind.JUDGE_LECTURE, lecture.id) is not None:
             return None
         job = Job(id=self._new_id(), kind=JobKind.JUDGE_LECTURE, target_id=lecture.id)
         self._queue.enqueue(job)

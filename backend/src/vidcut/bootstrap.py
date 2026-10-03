@@ -41,6 +41,7 @@ from vidcut.services.export import ExportService
 from vidcut.services.imports import ImportService
 from vidcut.services.judge import JudgeService
 from vidcut.services.judge_eval import JudgeEvalService
+from vidcut.services.lectures import LectureService
 
 DATABASE_FILE = "vidcut.sqlite3"
 JUDGE_DIRECTORY = "judge"
@@ -85,6 +86,7 @@ class App:
     analysis: AnalysisService
     judge: JudgeService
     judge_eval: JudgeEvalService
+    lecture_service: LectureService
     exports: ExportService
     handlers: Mapping[JobKind, JobHandler]
 
@@ -157,6 +159,16 @@ def build_app(
         model=language_model,
         settings=resolved_judge_settings,
     )
+    lecture_service = LectureService(
+        lectures=lectures,
+        recordings=recordings,
+        edit_states=edit_states,
+        judgements=judgements,
+        store=store,
+        queue=queue,
+        atomic=atomic,
+        request_judge=judge.request_for_recording,
+    )
     exports = ExportService(
         lectures=lectures,
         recordings=recordings,
@@ -178,6 +190,7 @@ def build_app(
         analysis=analysis,
         judge=judge,
         judge_eval=judge_eval,
+        lecture_service=lecture_service,
         exports=exports,
         handlers=_job_handlers(analysis, judge, exports),
     )

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.pipeline.fakes import DirectoryStore, FakeMediaTool, make_recording
+from tests.pipeline.fakes import DirectoryStore, FakeMediaTool, NoRecordings, make_recording
 from tests.pipeline.judge_fakes import make_analysis
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
@@ -24,7 +24,6 @@ from vidcut.domain.models import (
     JobStatus,
     Lecture,
     ManualCut,
-    Recording,
 )
 from vidcut.domain.timeline import FrameRange
 from vidcut.pipeline.analysis_result import save_analysis
@@ -294,22 +293,6 @@ class TestRequest:
     def test_other_job_kinds_are_rejected(self, env: Env) -> None:
         with pytest.raises(ValueError, match="書き出し"):
             env.service.request("l1", JobKind.JUDGE_LECTURE)
-
-
-class NoRecordings:
-    """録画ファイルが 1 本も登録されていない RecordingRepository。"""
-
-    def add(self, recording: Recording) -> None:
-        raise AssertionError("書き出しは録画ファイルを登録しません")
-
-    def get(self, recording_id: str) -> Recording | None:
-        return None
-
-    def find_by_fingerprint(self, fingerprint: str) -> Recording | None:
-        return None
-
-    def list_all(self) -> tuple[Recording, ...]:
-        return ()
 
 
 def rebuild(
