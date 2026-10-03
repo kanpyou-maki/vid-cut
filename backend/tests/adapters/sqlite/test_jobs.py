@@ -5,7 +5,7 @@ import pytest
 
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
-from vidcut.domain.models import Job, JobKind, JobStatus
+from vidcut.domain.models import ErrorCode, Job, JobKind, JobStatus
 from vidcut.pipeline.ports import NotFoundError
 
 
@@ -111,19 +111,53 @@ class TestProgressAndCompletion:
     def test_mark_failed_records_error(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))
         queue.claim_next()
-        queue.mark_failed("j1", "ffmpeg が失敗しました")
+        queue.mark_failed("j1", "ffmpeg が失敗しました", ErrorCode.TOOL_FAILED)
         stored = queue.get("j1")
         assert stored is not None
         assert (stored.job.status, stored.job.error) == (JobStatus.FAILED, "ffmpeg が失敗しました")
+        assert stored.job.error_code is ErrorCode.TOOL_FAILED
+
+    def test_error_code_from_a_newer_version_reads_as_internal(
+        self, queue: SqliteJobQueue, conn: sqlite3.Connection
+    ) -> None:
+        # 読めない種別が 1 件あるだけで、ジョブの一覧（と素材一覧）が出なくなるのを防ぐ
+        queue.enqueue(job("j1"))
+        queue.claim_next()
+        queue.mark_failed("j1", "boom", ErrorCode.TOOL_FAILED)
+        conn.execute("UPDATE jobs SET error_code = 'added_later' WHERE id = 'j1'")
+        (stored,) = queue.list_all()
+        assert stored.job.error_code is ErrorCode.INTERNAL
+
+    def test_jobs_that_did_not_fail_have_no_error_code(self, queue: SqliteJobQueue) -> None:
+        queue.enqueue(job("j1"))
+        queue.claim_next()
+        queue.mark_succeeded("j1")
+        stored = queue.get("j1")
+        assert stored is not None
+        assert stored.job.error_code is None
 
     def test_only_running_jobs_can_finish(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))
         with pytest.raises(ValueError, match="実行中"):
             queue.mark_succeeded("j1")
         with pytest.raises(ValueError, match="実行中"):
-            queue.mark_failed("j1", "x")
+            queue.mark_failed("j1", "x", ErrorCode.INTERNAL)
         with pytest.raises(ValueError, match="実行中"):
             queue.report_progress("j1", None, 0.1)
+
+
+class TestDiscardQueuedFor:
+    def test_removes_only_waiting_jobs_of_the_targets(self, queue: SqliteJobQueue) -> None:
+        for jid, target in [("a", "l1"), ("b", "l1"), ("c", "l2"), ("d", "l3")]:
+            queue.enqueue(Job(id=jid, kind=JobKind.JUDGE_LECTURE, target_id=target))
+        queue.claim_next()  # a は実行中
+        assert queue.discard_queued_for(["l1", "l2"]) == 2
+        assert [s.job.id for s in queue.list_all()] == ["a", "d"]
+
+    def test_no_targets_removes_nothing(self, queue: SqliteJobQueue) -> None:
+        queue.enqueue(job("j1"))
+        assert queue.discard_queued_for([]) == 0
+        assert len(queue.list_all()) == 1
 
 
 class TestRecovery:
@@ -144,11 +178,11 @@ class TestRecovery:
         queue.enqueue(job("j1"))
         queue.claim_next()
         queue.report_progress("j1", "align", 0.7)
-        queue.mark_failed("j1", "boom")
+        queue.mark_failed("j1", "boom", ErrorCode.INTERNAL)
         queue.retry("j1")
         stored = queue.get("j1")
         assert stored is not None
-        assert stored.job == job("j1")
+        assert stored.job == job("j1")  # エラー文と種別も消える
 
     def test_retry_only_failed_jobs(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))

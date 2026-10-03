@@ -7,7 +7,7 @@ import pytest
 
 from tests.pipeline.fakes import DirectoryStore, make_recording
 from tests.pipeline.judge_fakes import FakeModel, delete_output, make_analysis
-from vidcut.adapters.sqlite.database import open_database
+from vidcut.adapters.sqlite.database import open_database, transaction
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
@@ -20,6 +20,8 @@ from vidcut.pipeline.judge import JudgeOutputError, JudgeSettings
 from vidcut.pipeline.ports import (
     EditStateRepository,
     ExternalToolError,
+    Judgement,
+    JudgementRepository,
     LoginRequiredError,
     NotFoundError,
     VersionConflictError,
@@ -41,14 +43,16 @@ class Env:
         outputs: Sequence[str | Exception] = (),
         settings: JudgeSettings | None = None,
         edit_states: EditStateRepository | None = None,
+        judgements: JudgementRepository | None = None,
     ) -> tuple[JudgeService, FakeModel]:
         model = FakeModel(outputs)
         ids = iter(f"job{i}" for i in range(100))
         service = JudgeService(
             lectures=self.lectures,
             store=self.store,
-            judgements=self.judgements,
+            judgements=judgements or self.judgements,
             edit_states=edit_states or self.edit_states,
+            atomic=lambda: transaction(self.conn),
             queue=self.queue,
             model=model,
             settings=settings or JudgeSettings(),
@@ -251,6 +255,22 @@ class TestCarryOverRestorations:
         service, _ = env.service(['{"delete": []}'], edit_states=conflicts)
         with pytest.raises(VersionConflictError):
             service.judge("l1", ignore)
+        judgement = env.judgements.get("l1")
+        assert judgement is not None
+        assert [s.id for s in judgement.suggestions] == ["r1-c0001-judged"]  # 前回のまま
+
+    def test_edit_state_is_not_changed_when_the_judgement_cannot_be_saved(self, env: Env) -> None:
+        # 編集状態だけが新しくなると、画面は「戻した候補」を古い判定結果と突き合わせてしまう
+        env.analyzed("r1", ("a", "b"))
+        env.analyzed("r2", ("c",))
+        env.service([RETAKE_ACROSS_FILES])[0].judge("l1", ignore)
+        env.edit_states.save(EditState(lecture_id="l1", version=0).restore("r1-c0001-judged"))
+        env.analyzed("r2", ("c", "d"))
+        service, _ = env.service(['{"delete": []}'], judgements=_UnwritableJudgements(env))
+        with pytest.raises(sqlite3.OperationalError):
+            service.judge("l1", ignore)
+        state = env.edit_states.get("l1")
+        assert (state.version, state.restored_suggestion_ids) == (1, {"r1-c0001-judged"})
 
 
 class _ConflictingOnce:
@@ -269,6 +289,19 @@ class _ConflictingOnce:
         if self.attempts <= self._times:
             raise VersionConflictError("別の画面で更新されています")
         return self._inner.save(state)
+
+
+class _UnwritableJudgements:
+    """判定結果の保存だけが失敗する（ディスクがいっぱい、など）。"""
+
+    def __init__(self, env: Env) -> None:
+        self._inner = env.judgements
+
+    def get(self, lecture_id: str) -> Judgement | None:
+        return self._inner.get(lecture_id)
+
+    def save(self, judgement: Judgement) -> None:
+        raise sqlite3.OperationalError("database or disk is full")
 
 
 class TestRequestForRecording:

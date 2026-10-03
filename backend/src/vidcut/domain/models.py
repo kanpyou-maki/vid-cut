@@ -198,8 +198,24 @@ class JobStatus(StrEnum):
     FAILED = "failed"
 
 
+class ErrorCode(StrEnum):
+    """失敗の種別（Design Doc 3-5-2）。画面にはこれと定型文だけを出す。"""
+
+    LOGIN_REQUIRED = "login_required"
+    TOOL_FAILED = "tool_failed"
+    UNSUPPORTED_MEDIA = "unsupported_media"
+    SOURCE_MISSING = "source_missing"
+    NOT_FOUND = "not_found"
+    CONFLICT = "conflict"
+    INVALID_OUTPUT = "invalid_output"
+    NOTHING_TO_EXPORT = "nothing_to_export"
+    INTERNAL = "internal"
+
+
 @dataclass(frozen=True)
 class Job:
+    """error は生のエラー文（絶対パスや外部ツールの出力を含みうる）。画面には error_code を出す。"""
+
     id: str
     kind: JobKind
     target_id: str
@@ -207,6 +223,7 @@ class Job:
     stage: str | None = None
     progress: float = 0.0
     error: str | None = None
+    error_code: ErrorCode | None = None
 
     def __post_init__(self) -> None:
         _require_unit_range("progress", self.progress)

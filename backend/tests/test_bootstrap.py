@@ -10,8 +10,10 @@ from vidcut.bootstrap import (
     media_settings_for,
     workspace_from_env,
 )
-from vidcut.domain.models import JobKind, JobStatus
+from vidcut.domain.intervals import Interval
+from vidcut.domain.models import JobKind, JobStatus, ManualCut
 from vidcut.pipeline.export import ExportSettings
+from vidcut.services.lecture_views import LectureStatus
 
 
 def test_workspace_defaults_to_home_vidcut() -> None:
@@ -89,3 +91,43 @@ def test_export_requested_before_the_mezzanine_job_ran_makes_the_mezzanine_itsel
     mezzanine = tmp_path / "ws" / "recordings" / lecture.recording_ids[0] / "mezzanine.mp4"
     pathurl = ET.parse(exports / "S05-12.xml").getroot().findtext(".//pathurl")
     assert pathurl == f"file://localhost{mezzanine}"
+
+
+def test_merged_lecture_is_judged_edited_and_split_through_the_wired_services(
+    tmp_path: Path,
+) -> None:
+    # M6 の API が使う services（まとめる・編集の保存・一覧と詳細）が、同じ DB でつながること
+    videos = [tmp_path / "S05-12.mov", tmp_path / "S05-12-retake.mov"]
+    for index, video in enumerate(videos):
+        video.write_bytes(b"mov" * (index + 1))
+    app = build_app(
+        tmp_path / "ws",
+        media=FakeMediaTool(),
+        ml=MlTools(vad=FakeVad(), transcriber=FakeTranscriber(), aligner=FakeAligner()),
+        model=FakeModel(['{"delete": []}'] * 5),
+    )
+    try:
+        app.imports.import_paths(videos)
+        app.worker().run_until_idle()
+        first, second = app.lectures.list_all()
+
+        merged = app.lecture_service.merge([first.id, second.id], title="S05-12 まとめ")
+        waiting = app.lecture_views.summaries()
+        app.worker().run_until_idle()
+        detail = app.lecture_views.detail(merged.id)
+
+        cut = ManualCut(id="m1", recording_id=second.recording_ids[0], span=Interval(100, 200))
+        saved = app.edits.save(detail.edit_state.add_manual_cut(cut))
+        parts = app.lecture_service.split(merged.id)
+        split_cuts = [app.lecture_views.detail(part.id).edit_state.manual_cuts for part in parts]
+        reanalysis = app.lecture_service.reanalyze(parts[0].id)
+    finally:
+        app.close()
+    assert [summary.status for summary in waiting] == [LectureStatus.QUEUED]
+    assert detail.summary.status is LectureStatus.READY
+    assert list(detail.analyses) == [first.recording_ids[0], second.recording_ids[0]]
+    assert detail.judgement is not None
+    assert saved.version == 1
+    assert [part.title for part in parts] == ["S05-12", "S05-12-retake"]
+    assert split_cuts == [(), (cut,)]
+    assert [job.kind for job in reanalysis] == [JobKind.ANALYZE_RECORDING]

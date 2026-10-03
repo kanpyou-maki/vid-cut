@@ -3,6 +3,7 @@
 import os
 import sqlite3
 from collections.abc import Mapping
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from vidcut.adapters.media.tool import FfmpegMediaTool
 from vidcut.adapters.ml.aligner import WhisperxAligner
 from vidcut.adapters.ml.transcriber import MlxWhisperTranscriber
 from vidcut.adapters.ml.vad import SileroVad
-from vidcut.adapters.sqlite.database import open_database
+from vidcut.adapters.sqlite.database import open_database, transaction
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
@@ -36,10 +37,13 @@ from vidcut.pipeline.ports import (
     VoiceActivityDetector,
 )
 from vidcut.services.analysis import AnalysisService
+from vidcut.services.edits import EditService
 from vidcut.services.export import ExportService
 from vidcut.services.imports import ImportService
 from vidcut.services.judge import JudgeService
 from vidcut.services.judge_eval import JudgeEvalService
+from vidcut.services.lecture_views import LectureQuery
+from vidcut.services.lectures import LectureService
 
 DATABASE_FILE = "vidcut.sqlite3"
 JUDGE_DIRECTORY = "judge"
@@ -84,6 +88,9 @@ class App:
     analysis: AnalysisService
     judge: JudgeService
     judge_eval: JudgeEvalService
+    lecture_service: LectureService
+    lecture_views: LectureQuery
+    edits: EditService
     exports: ExportService
     handlers: Mapping[JobKind, JobHandler]
 
@@ -135,11 +142,17 @@ def build_app(
     )
     resolved_judge_settings = judge_settings or JudgeSettings()
     edit_states = SqliteEditStateRepository(conn)
+
+    def atomic() -> AbstractContextManager[None]:
+        # リポジトリはすべて同じ接続を使うので、この接続のトランザクションでまとめられる
+        return transaction(conn)
+
     judge = JudgeService(
         lectures=lectures,
         store=store,
         judgements=judgements,
         edit_states=edit_states,
+        atomic=atomic,
         queue=queue,
         model=language_model,
         settings=resolved_judge_settings,
@@ -150,6 +163,25 @@ def build_app(
         model=language_model,
         settings=resolved_judge_settings,
     )
+    lecture_service = LectureService(
+        lectures=lectures,
+        recordings=recordings,
+        edit_states=edit_states,
+        judgements=judgements,
+        store=store,
+        queue=queue,
+        atomic=atomic,
+        request_judge=judge.request_for_recording,
+    )
+    lecture_views = LectureQuery(
+        lectures=lectures,
+        recordings=recordings,
+        edit_states=edit_states,
+        judgements=judgements,
+        store=store,
+        queue=queue,
+    )
+    edits = EditService(lectures=lectures, recordings=recordings, edit_states=edit_states)
     exports = ExportService(
         lectures=lectures,
         recordings=recordings,
@@ -171,6 +203,9 @@ def build_app(
         analysis=analysis,
         judge=judge,
         judge_eval=judge_eval,
+        lecture_service=lecture_service,
+        lecture_views=lecture_views,
+        edits=edits,
         exports=exports,
         handlers=_job_handlers(analysis, judge, exports),
     )

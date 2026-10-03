@@ -5,7 +5,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from vidcut.domain.models import Job, JobKind, JobStatus, Lecture, Recording
+from vidcut.domain.models import Job, JobKind, Lecture, Recording
 from vidcut.pipeline.export import ExportPlan, ExportSettings, mezzanine_frame_count, plan_export
 from vidcut.pipeline.mezzanine import make_mezzanine
 from vidcut.pipeline.ports import (
@@ -18,10 +18,12 @@ from vidcut.pipeline.ports import (
     MediaClip,
     MediaTool,
     NotFoundError,
+    NothingToExportError,
     ProgressReporter,
     RecordingRepository,
 )
 from vidcut.pipeline.xmeml import XmemlFile, build_xmeml
+from vidcut.services.job_requests import find_queued
 from vidcut.services.judge import load_lecture_analyses
 
 STAGE = "export"
@@ -73,20 +75,14 @@ class ExportService:
         """書き出しのジョブを積む。同じ書き出しが待機中なら積まずに、そのジョブを返す。
 
         待機中のジョブは実行するときの編集状態を読むので、積み直す必要がない。
-        確認と登録は 1 つの操作ではない。重なって二重に積まれても、同じファイルを 2 回書くだけ。
         """
         if kind not in EXPORT_KINDS:
             raise ValueError(f"書き出しのジョブではありません: {kind}")
         if self._lectures.get(lecture_id) is None:
             raise NotFoundError(f"レクチャーがありません: {lecture_id}")
-        for stored in self._queue.list_all():
-            waiting = stored.job
-            if (waiting.kind, waiting.target_id, waiting.status) == (
-                kind,
-                lecture_id,
-                JobStatus.QUEUED,
-            ):
-                return waiting
+        waiting = find_queued(self._queue, kind, lecture_id)
+        if waiting is not None:
+            return waiting
         job = Job(id=self._new_id(), kind=kind, target_id=lecture_id)
         self._queue.enqueue(job)
         return job
@@ -149,7 +145,9 @@ class ExportService:
             self._settings,
         )
         if not plan.clips:
-            raise ValueError(f"残す区間がありません（すべて削除されています）: {lecture.title}")
+            raise NothingToExportError(
+                f"残す区間がありません（すべて削除されています）: {lecture.title}"
+            )
         used_ids = {clip.recording_id for clip in plan.clips}
         used = [recording for recording in recordings if recording.id in used_ids]
         return _Prepared(

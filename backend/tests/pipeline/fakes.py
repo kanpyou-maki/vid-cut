@@ -167,3 +167,19 @@ class DirectoryStore:
 
     def write_json(self, recording_id: str, name: str, data: object) -> None:
         self.path(recording_id, name).write_text(json.dumps(data, ensure_ascii=False))
+
+
+class NoRecordings:
+    """録画ファイルが 1 本も登録されていない RecordingRepository。"""
+
+    def add(self, recording: Recording) -> None:
+        raise AssertionError("このテストでは録画ファイルを登録しません")
+
+    def get(self, recording_id: str) -> Recording | None:
+        return None
+
+    def find_by_fingerprint(self, fingerprint: str) -> Recording | None:
+        return None
+
+    def list_all(self) -> tuple[Recording, ...]:
+        return ()

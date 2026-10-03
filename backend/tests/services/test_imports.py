@@ -9,7 +9,7 @@ from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.lectures import SqliteLectureRepository
 from vidcut.adapters.sqlite.recordings import SqliteRecordingRepository
-from vidcut.domain.models import JobKind
+from vidcut.domain.models import ErrorCode, JobKind
 from vidcut.pipeline.ports import ProbeResult, UnsupportedMediaError
 from vidcut.services.imports import ImportService
 
@@ -61,6 +61,17 @@ class TestImportPaths:
             (JobKind.MAKE_MEZZANINE, recording.id),
         ]
 
+    def test_title_from_a_decomposed_file_name_is_composed(
+        self, conn: sqlite3.Connection, tmp_path: Path
+    ) -> None:
+        # macOS のファイル名は濁点が分かれた形（NFD）のことがある
+        (recording,) = (
+            make_service(conn).import_paths([video(tmp_path, "カ\u3099イト\u3099\u200b.mov")]).added
+        )
+        lecture = SqliteLectureRepository(conn).find_by_recording(recording.id)
+        assert lecture is not None
+        assert lecture.title == "ガイド"
+
     def test_folder_expands_to_videos_in_name_order(
         self, conn: sqlite3.Connection, tmp_path: Path
     ) -> None:
@@ -103,14 +114,16 @@ class TestImportPaths:
         missing = tmp_path / "missing.mov"
         result = make_service(conn).import_paths([missing, video(tmp_path, "ok.mov")])
         assert [Path(r.source_path).name for r in result.added] == ["ok.mov"]
-        ((path, message),) = result.failed
-        assert path == str(missing)
-        assert "見つかりません" in message
+        (failure,) = result.failed
+        assert failure.path == str(missing)
+        assert failure.code is ErrorCode.SOURCE_MISSING
+        assert "見つかりません" in failure.message
 
     def test_unsupported_media_is_reported(self, conn: sqlite3.Connection, tmp_path: Path) -> None:
         result = make_service(conn, RejectingMedia()).import_paths([video(tmp_path, "a.mov")])
         assert result.added == ()
-        assert "音声" in result.failed[0][1]
+        assert result.failed[0].code is ErrorCode.UNSUPPORTED_MEDIA
+        assert "音声" in result.failed[0].message
         assert SqliteRecordingRepository(conn).list_all() == ()
 
     def test_relative_paths_are_resolved(

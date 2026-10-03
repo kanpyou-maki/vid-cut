@@ -5,10 +5,11 @@ import threading
 from collections.abc import Callable, Mapping
 
 from vidcut.domain.models import Job, JobKind
+from vidcut.pipeline.error_codes import classify_error
 from vidcut.pipeline.ports import JobQueue, ProgressReporter
 
 MAX_ERROR_CHARS = 1000
-"""画面に出すエラーの最大文字数。詳細はログに残す。"""
+"""ジョブ表に残すエラー文の最大文字数。全文はログに残す。画面には種別（error_code）だけを出す。"""
 
 JobHandler = Callable[[Job, ProgressReporter], object]
 """ジョブを処理する。戻り値は使わない（結果は生成物と DB に残す）。"""
@@ -52,7 +53,7 @@ class Worker:
             handler(job, self._reporter(job))
         except Exception as e:
             self._logger.exception("ジョブ %s（%s）が失敗しました", job.id, job.kind)
-            self._queue.mark_failed(job.id, _error_message(e))
+            self._queue.mark_failed(job.id, _error_message(e), classify_error(e))
         else:
             self._queue.mark_succeeded(job.id)
             self._logger.info("ジョブ %s（%s）が完了しました", job.id, job.kind)

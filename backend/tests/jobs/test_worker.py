@@ -7,9 +7,9 @@ import pytest
 
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
-from vidcut.domain.models import Job, JobKind, JobStatus
+from vidcut.domain.models import ErrorCode, Job, JobKind, JobStatus
 from vidcut.jobs.worker import MAX_ERROR_CHARS, JobHandler, Worker
-from vidcut.pipeline.ports import ProgressReporter
+from vidcut.pipeline.ports import ExternalToolError, LoginRequiredError, ProgressReporter
 
 
 @pytest.fixture
@@ -50,9 +50,15 @@ class Recorder:
         self.calls.append(job.id)
 
 
-def failing(message: str) -> JobHandler:
+def error_code_of(queue: SqliteJobQueue, jid: str) -> ErrorCode | None:
+    stored = queue.get(jid)
+    assert stored is not None
+    return stored.job.error_code
+
+
+def failing(message: str, error_type: type[Exception] = RuntimeError) -> JobHandler:
     def handler(job: Job, report: ProgressReporter) -> None:
-        raise RuntimeError(message)
+        raise error_type(message)
 
     return handler
 
@@ -111,6 +117,23 @@ class TestRunOnce:
         assert error_of(queue, "j1") == "ffmpeg が失敗しました"
         assert "j1" in caplog.text
 
+    @pytest.mark.parametrize(
+        ("error_type", "code"),
+        [
+            (LoginRequiredError, ErrorCode.LOGIN_REQUIRED),
+            (ExternalToolError, ErrorCode.TOOL_FAILED),
+            (FileNotFoundError, ErrorCode.SOURCE_MISSING),
+            (RuntimeError, ErrorCode.INTERNAL),
+        ],
+    )
+    def test_failure_is_sorted_into_an_error_code(
+        self, queue: SqliteJobQueue, error_type: type[Exception], code: ErrorCode
+    ) -> None:
+        enqueue(queue, "j1")
+        handler = failing("/Users/me/a.mov を処理できません", error_type)
+        Worker(queue, {JobKind.ANALYZE_RECORDING: handler}).run_once()
+        assert error_code_of(queue, "j1") is code
+
     def test_long_error_is_truncated(self, queue: SqliteJobQueue) -> None:
         enqueue(queue, "j1")
         Worker(queue, {JobKind.ANALYZE_RECORDING: failing("x" * 5000)}).run_once()
@@ -132,6 +155,7 @@ class TestRunOnce:
         Worker(queue, {}).run_once()
         assert status_of(queue, "j1") is JobStatus.FAILED
         assert "export_mp4" in (error_of(queue, "j1") or "")
+        assert error_code_of(queue, "j1") is ErrorCode.INTERNAL
 
     def test_interrupt_leaves_job_running_for_recovery(self, queue: SqliteJobQueue) -> None:
         enqueue(queue, "j1")

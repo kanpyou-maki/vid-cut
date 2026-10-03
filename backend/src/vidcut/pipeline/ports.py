@@ -1,13 +1,22 @@
 """外部ツールと永続化の抽象（Design Doc 3-1）。実装は adapters/ にあり、bootstrap.py が注入する。"""
 
 from collections.abc import Callable, Iterable, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
 from vidcut.domain.intervals import Interval
-from vidcut.domain.models import CutSuggestion, EditState, Job, Lecture, MediaInfo, Recording
+from vidcut.domain.models import (
+    CutSuggestion,
+    EditState,
+    ErrorCode,
+    Job,
+    Lecture,
+    MediaInfo,
+    Recording,
+)
 from vidcut.domain.timeline import FrameRange
 
 
@@ -21,6 +30,14 @@ class LoginRequiredError(ExternalToolError):
 
 class UnsupportedMediaError(ValueError):
     """録画ファイルが処理できない形式（映像または音声のトラックがない等）。"""
+
+
+class NothingToExportError(ValueError):
+    """書き出そうとしたレクチャーに、残す区間が 1 つもない。"""
+
+
+class InvalidInputError(ValueError):
+    """利用者の入力を受け付けられない（API では 422 で返す）。"""
 
 
 class NotFoundError(LookupError):
@@ -189,6 +206,12 @@ class ExportStore(Protocol):
         ...
 
 
+Atomic = Callable[[], AbstractContextManager[None]]
+"""`with atomic():` で囲んだ保存をまとめて確定する。途中で例外が出たら、囲んだ保存をすべて取り消す。
+
+複数のリポジトリやジョブ表にまたがる保存に使う（Design Doc 3-5-2）。
+"""
+
 Fingerprinter = Callable[[Path], str]
 """録画ファイルの同一性の判定に使う値（サイズ + 更新日時 + 先頭と末尾のハッシュ）。"""
 
@@ -272,7 +295,9 @@ class JobQueue(Protocol):
 
     def mark_succeeded(self, job_id: str) -> None: ...
 
-    def mark_failed(self, job_id: str, error: str) -> None: ...
+    def mark_failed(self, job_id: str, error: str, code: ErrorCode) -> None:
+        """error は生のエラー文、code はその種別（画面に出すのは code だけ）。"""
+        ...
 
     def requeue_running(self) -> int:
         """実行中のまま残ったジョブを待機中に戻し、その件数を返す（起動時の復旧）。"""
@@ -280,4 +305,11 @@ class JobQueue(Protocol):
 
     def retry(self, job_id: str) -> None:
         """失敗したジョブを待機中に戻す。"""
+        ...
+
+    def discard_queued_for(self, target_ids: Iterable[str]) -> int:
+        """target_ids のどれかを対象にした待機中のジョブを消し、その件数を返す。
+
+        レクチャーをまとめる・解除するときに、なくなるレクチャーの判定や書き出しを消すのに使う。
+        """
         ...

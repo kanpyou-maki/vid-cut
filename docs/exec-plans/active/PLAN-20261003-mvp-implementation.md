@@ -82,15 +82,38 @@
 - 残る課題: 書き出しの CLI はない（計画外。手動確認は使い捨てのスクリプトでジョブを積んで行った）。画面からの書き出しは M6 の API と M7 で用意する
 - 手動確認で出た要望（ユーザー、2026-10-03）: セリフが詰まりすぎている。文の終わりのあとは間を持たせたい。一通り仕上げてから調整する（M8 に項目を追加）
 
-### M6: API（`feat/m6-api`）
+### M6: API（3 本の PR に分ける。ユーザー承認、2026-10-03）
+
+PR 1（`feat/m6-api`。API の下ごしらえ。新しい依存なし）:
+
+- [x] M6 の決定を Design Doc に反映（3-5-2: 接続の持ち方・まとめて確定する保存・エラーの分類・再解析・レクチャー名・編集状態の引き継ぎ。3-5-1: proxy のトークン）
+- [x] レクチャー名の正規化（NFC・見えない文字）、書き出し先のシンボリックリンクの拒否、ffmpeg の一時ファイル名の一意化（M5 のセキュリティレビューの LOW）
+- [x] 失敗の種別（`error_code`）: worker が例外の型から分類して jobs 表に記録。取り込みの失敗も同じ種別
+- [x] 判定結果と編集状態を 1 つのトランザクションで保存（`Atomic`）
+- [x] `LectureService`（まとめる・並べ替え・解除・再解析。編集状態の引き継ぎ、判定ジョブの登録）
+- [x] `EditService`（編集状態の検証と保存）、`LectureQuery`（一覧と状態、編集画面に必要なもの一式）
+
+PR 2（`feat/m6-api-http`。fastapi・uvicorn・pydantic、dev に httpx を追加）:
 
 - [ ] FastAPI のアプリと `{success, data, error}` の形、127.0.0.1 のみ
 - [ ] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、起動ごとのトークン、パスの正規化）
 - [ ] 入力の上限（M1 のセキュリティレビュー）: pydantic の厳格な型（StrictInt）、件数（manual_cuts・suggestions・silences）と JSON サイズ、文字列の長さ、時刻の上限（24 時間）。`reason` / `error` は画面でエスケープする
 - [ ] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
-- [ ] `/api/recordings/{id}/proxy`（Range 対応）、`/peaks`
+- [ ] `/api/recordings/{id}/proxy`（Range 対応。トークンは `?token=`）、`/peaks`
+- [ ] `/api/lectures/{id}/reanalyze`
+- [ ] SQLite の接続をリクエストごとに開く（Design Doc 3-5-2）
+
+PR 3（`feat/m6-serve`。frontend の dev に openapi-typescript を追加）:
+
 - [ ] `vidcut serve`（API サーバー + worker の起動、ビルド済み frontend の配信）
 - [ ] OpenAPI → `openapi-typescript` で frontend の型を生成
+- [ ] 手動確認: `~/VidCut/` の写しに対して `vidcut serve` を起動し、一覧・詳細・編集の保存・書き出し・再解析を確かめる
+
+M6 で分かった制限（PR 1）:
+
+- まとめる・解除のとき、元のレクチャーを処理中のジョブ（判定・書き出し）は、レクチャーがなくなったことで失敗として残る（待機中のものは消す）
+- 引き継げなかった戻し候補の記録（`dropped_restored_ids`）は、次に判定をやり直すまで残る。画面で通知を閉じる仕組みは M7 で決める
+- ffmpeg の一時ファイル（`.<名前>.<8 桁>.partial.<拡張子>`）は、強制終了されると残る。1 日以上前のものは、次に同じ生成物を作るときに消す
 
 ### M7: frontend（`feat/m7-*` に分割）
 

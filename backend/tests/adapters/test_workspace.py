@@ -92,6 +92,52 @@ class TestFileExportStore:
         path = FileExportStore(tmp_path).path(title, ".mp4")
         assert path == tmp_path / "exports" / name / f"{name}.mp4"
 
+    @pytest.mark.parametrize(
+        ("title", "name"),
+        [
+            ("report\u202egpj.exe", "reportgpj.exe"),  # 右から左への上書きで見た目を偽れない
+            ("a\u200bb\u2028c\u2029d", "abcd"),
+            ("カ\u3099イト\u3099", "ガイド"),  # NFD のファイル名から来た題名
+            ("\x85\u200b", "untitled"),
+        ],
+    )
+    def test_invisible_characters_are_removed_and_names_are_composed(
+        self, tmp_path: Path, title: str, name: str
+    ) -> None:
+        path = FileExportStore(tmp_path).path(title, ".xml")
+        assert path == tmp_path / "exports" / name / f"{name}.xml"
+
+    def test_refuses_a_lecture_directory_that_is_a_symlink(self, tmp_path: Path) -> None:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        exports = tmp_path / "ws" / "exports"
+        exports.mkdir(parents=True)
+        (exports / "L").symlink_to(outside, target_is_directory=True)
+        store = FileExportStore(tmp_path / "ws")
+        with pytest.raises(ValueError, match="シンボリックリンク"):
+            store.write_text("L", ".xml", "<x/>")
+        assert list(outside.iterdir()) == []
+
+    def test_export_file_that_is_a_symlink_is_replaced_not_followed(self, tmp_path: Path) -> None:
+        outside = tmp_path / "outside.xml"
+        outside.write_text("<外のファイル/>", encoding="utf-8")
+        store = FileExportStore(tmp_path / "ws")
+        store.path("L", ".xml").symlink_to(outside)
+        path = store.write_text("L", ".xml", "<x/>")
+        assert not path.is_symlink()
+        assert path.read_text(encoding="utf-8") == "<x/>"
+        assert outside.read_text(encoding="utf-8") == "<外のファイル/>"
+
+    def test_refuses_an_exports_directory_that_is_a_symlink(self, tmp_path: Path) -> None:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        workspace = tmp_path / "ws"
+        workspace.mkdir()
+        (workspace / "exports").symlink_to(outside, target_is_directory=True)
+        with pytest.raises(ValueError, match="シンボリックリンク"):
+            FileExportStore(workspace).path("L", ".mp4")
+        assert list(outside.iterdir()) == []
+
     def test_long_titles_are_shortened_to_fit_a_file_name(self, tmp_path: Path) -> None:
         path = FileExportStore(tmp_path).path("あ" * 300, ".mp4")
         assert len(path.name.encode()) <= 200
