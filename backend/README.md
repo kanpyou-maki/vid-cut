@@ -18,4 +18,22 @@ uv run vidcut analyze ~/Movies/course/              # フォルダ直下の動�
 uv run vidcut worker                                # 積まれたジョブを順に処理し続ける
 ```
 
+解析が終わると、言い直しの判定（`claude -p`）が続けて実行される。`claude` にログインしていないと判定だけが失敗する
+（無音とフィラーの削除候補は使える）。ターミナルで `claude` を起動して `/login` を実行すること。
+
+## 判定の精度評価
+
+正解データ（削除するチャンクの id）と比べて、適合率・再現率を出す。`claude -p` を呼ぶ（1 回 15 秒ほど）。
+目標（適合率 90% 以上・再現率 80% 以上）に届かなければ終了コード 1。
+
+```bash
+# プロトタイプのチャンク一覧（whisper.cpp の文字起こし）で測る
+uv run vidcut eval judge --chunks ../docs/references/prototype/sample-chunks.json \
+  --truth ../docs/references/prototype/sample-judge-ground-truth.json
+
+# 解析済みのレクチャー（題名または id）で測る。正解の id はレクチャー内のチャンクの通し番号（0 始まり）
+uv run vidcut eval judge --lecture s05-12sample \
+  --truth ../docs/references/prototype/sample-judge-ground-truth.json --runs 3
+```
+
 ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。

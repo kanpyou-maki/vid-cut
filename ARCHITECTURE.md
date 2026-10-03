@@ -13,10 +13,10 @@
 |-----|------|----------|
 | `backend/` | Python（uv プロジェクト）。解析パイプラインとローカル API | `tdd-guide` |
 | `backend/src/vidcut/domain/` | データモデル（発話・単語/文字単位タイミング・確信度・カット区間・編集決定）。外部依存なし | `tdd-guide` |
-| `backend/src/vidcut/pipeline/` | 各段の処理（音声抽出・VAD・文字起こし・位置合わせ・言い直し判定・書き出し）。`ports.py` に外部ツールと永続化の抽象 | `tdd-guide` |
-| `backend/src/vidcut/adapters/` | 外部ツールの境界（`media/`: ffmpeg、`sqlite/`: リポジトリとジョブ表、`ml/`: mlx-whisper / WhisperX / Silero、`workspace.py`: 生成物と fingerprint、`claude -p`） | `tdd-guide` |
+| `backend/src/vidcut/pipeline/` | 各段の処理（音声抽出・VAD・文字起こし・位置合わせ・言い直し判定・書き出し）。`ports.py` に外部ツールと永続化の抽象。`prompts/` に判定の指示文 | `tdd-guide` |
+| `backend/src/vidcut/adapters/` | 外部ツールの境界（`media/`: ffmpeg、`sqlite/`: リポジトリとジョブ表、`ml/`: mlx-whisper / WhisperX / Silero、`workspace.py`: 生成物と fingerprint、`claude_cli.py`: `claude -p`） | `tdd-guide` |
 | `backend/src/vidcut/api/` | FastAPI のルーティング（HTTP の関心事のみ） | `tdd-guide` |
-| `backend/src/vidcut/services/` | ユースケース（取り込み・解析・まとめる・編集の保存・書き出しの依頼） | `tdd-guide` |
+| `backend/src/vidcut/services/` | ユースケース（取り込み・解析・言い直しの判定とその精度評価・まとめる・編集の保存・書き出しの依頼） | `tdd-guide` |
 | `backend/src/vidcut/jobs/` | worker のループ。ジョブ表には `JobQueue` の port を通して触れる（[ADR-004](./docs/adr/ADR-004-local-app-runtime.md)） | `tdd-guide` |
 | `backend/src/vidcut/bootstrap.py` | 依存の組み立て。ports に具象 adapters を注入する唯一の場所 | `tdd-guide` |
 | `backend/src/vidcut/cli.py` | コマンドライン（`serve` / `analyze` / `worker` / `eval`） | `tdd-guide` |

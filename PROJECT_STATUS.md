@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 と FRIC-004 の解消は main にマージ済み（PR #1〜#6）。次は M4（言い直しの判定）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 と FRIC-004 の解消は main にマージ済み（PR #1〜#6）。M4（言い直しの判定）は PR のマージ待ち。次は M5（書き出し）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -30,15 +30,17 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 
 - [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 226 件 / カバレッジ 99%。review-loop 全通過）— 2026-10-03
 - [x] M3: 解析パイプライン（無音・VAD・mlx-whisper・WhisperX・フィラー・要確認の印・段のキャッシュ・CLI）。検証素材の解析 2 分 29 秒、正解の 69 チャンクと一致 — 2026-10-03
 - [x] FRIC-004: 整形・lint は `harness.json` の `commands.lint` を正とする（ルール文書・style-reviewer・python-patterns を修正。`lint` に `ruff format --check` を追加）— 2026-10-03
+- [x] M4: 言い直しの判定（claude adapter・判定の指示文と出力の検証・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）。検証素材で適合率・再現率とも 100%（実際の解析結果で 3 回）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了（M4 は PR のマージ待ち）
 
 ## 次にやること
 
-- [ ] M4: 言い直しの判定（claude adapter・判定の指示文・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）
+- [ ] M4 の PR のマージ（ユーザー）
+- [ ] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ・Premiere での音ズレ確認）
 
 ## 決定事項
 
@@ -80,7 +82,12 @@ _なし_
 - 実素材での M2 の実測: probe 0.1 秒、解析用 wav 0.4 秒、ピーク値 0.2 秒、proxy 38 秒、中間素材 296 秒（196MB）。proxy の 38 秒は解析時間の目標（5 分）に含まれる
 - M2 のセキュリティレビューの LOW: ffmpeg のタイムアウトは M3 で対応済み（録画の長さに応じた上限）。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
-- 検証素材のチャンク 32 で Whisper の定番の幻聴「ご視聴ありがとうございました。」が出る（低確信度の印は付く。正解でも削除対象）。M4 の判定で拾えるか確認する
+- 検証素材のチャンク 32 の幻聴「ご視聴ありがとうございました。」は、位置合わせの失敗でトークンが 0 個になり判定に届いていなかった。M4 で文字を残すように直し、判定が `noise` として削除することを確認した
+- M4 より前に解析した録画ファイルは、解析し直すと位置合わせの段から作り直される（段のキーを上げた）。解析し直す手段は M6 の API で用意する
+- `claude -p` は `<ワークスペース>/judge/` から `--tools ""` と `--safe-mode` を付けて呼ぶ（FRIC-002 は解消）。未ログインだと判定ジョブだけが失敗し、エラーに `/login` の案内が出る
+- 判定の評価: `uv run vidcut eval judge --chunks … --truth …`（プロトタイプのチャンク）または `--lecture <題名>`（解析済みのレクチャー）。1 回約 15 秒
+- 複数ファイルのレクチャーと 300 チャンク超の窓分割は、検証素材を人工的に分けた確認だけ（結果は変わらず）。実素材では M8 で確かめる
+- M6 で使うもの: 判定結果は `JudgementRepository`（`judgements` 表）、引き継げなかった戻し候補は `Judgement.dropped_restored_ids`。まとめる・並べ替えの API は判定ジョブを積むこと
 - 解析ロジックの更新後に登録済みの録画を解析し直す手段がない → M6 の API で再解析を用意する
 - M3 のセキュリティレビューの LOW: ジョブのエラー文と CLI の出力に ffmpeg の stderr や絶対パスが入る → M6 の API では理由を分類して返し、詳細はログへ。wav は一括で読み込む（2 時間で約 230MB）
 - コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
