@@ -66,7 +66,9 @@
 - **日付:** 2026-10-03
 - **状況:** M2・M3 の review-loop で、style-reviewer が 2 回続けて「`.claude/rules/python/coding-style.md` は black と isort を指定しているが、実態は ruff format」と指摘した。
   毎回、依頼文で「ruff format を使う」と断りを入れる必要があり、断りを忘れると誤った BLOCK になりうる
-- **根本原因の仮説:** ドキュメント不足。master から配布されるルール文書が特定の整形ツールを名指ししており、プロジェクトの選択（ADR-001: ruff）と `harness.json` の `lint` コマンドを参照していない
+- **根本原因の仮説:** ドキュメント不足。master から配布されるルール文書が特定の整形ツールを名指ししており、プロジェクトの選択（`backend/pyproject.toml` の ruff）と `harness.json` の `lint` コマンドを参照していない
 - **改善候補:** `.claude/rules/python/coding-style.md` の「Formatting Tools」を「整形と lint は `.claude/harness.json` の `lint` コマンド（このプロジェクトは ruff format / ruff check）に従う」に書き換える。
   汎用的な改善なので sync-upstream で master に還元し、style-reviewer の確認項目も同じ表現にそろえる
-- **Status:** open
+- **対応:** ルール文書はツールを名指しせず `commands.lint` を正とした。style-reviewer に「整形・lint は `commands.lint` の結果で判定し、ツールの種類は問わない」を追加。
+  python-patterns スキルの早見表も同じ方針に直した。vid-cut の `commands.lint` には `ruff format --check` を加え、整形の崩れを機械的に検出する
+- **Status:** resolved（vid-cut: [#6](https://github.com/kanpyou-maki/vid-cut/pull/6)。master: [claude-config-master#4](https://github.com/kanpyou-maki/claude-config-master/pull/4)）

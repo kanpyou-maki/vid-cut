@@ -263,11 +263,9 @@ requires-python = ">=3.9"
 dependencies = ["pydantic>=2.0.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.4.0", "pytest-cov", "black", "ruff", "mypy"]
+dev = ["pytest>=7.4.0", "pytest-cov", "ruff", "mypy"]
 
-[tool.black]
-line-length = 88
-
+# Formatter and linter are the project's choice (this example uses ruff for both).
 [tool.ruff]
 line-length = 88
 select = ["E", "F", "I", "N", "W"]
@@ -327,9 +325,9 @@ result = "".join(str(item) for item in items)
 ## Tooling Quick Reference
 
 ```bash
-black .          # Format
-isort .          # Sort imports
-ruff check .     # Lint
+# Format and lint with the tools the project has chosen: run `commands.lint` in .claude/harness.json.
+ruff format .    # Format (or: black .)
+ruff check .     # Lint; the `I` rules check import order (or: isort .)
 mypy .           # Type check
 bandit -r src/   # Security scan
 pytest --cov=src # Tests + coverage

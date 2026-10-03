@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 は main にマージ済み。M3（解析パイプライン）は review-loop を通過し、PR のマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 は main にマージ済み（PR #1〜#5）。次は M4（言い直しの判定）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -29,13 +29,13 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 
 - [x] M1: domain（区間演算・データモデル・削除区間・残す区間・フレーム丸め・出力時刻・引き継ぎ。テスト 80 件 / カバレッジ 100%）— 2026-10-03
 - [x] M2: 外部ツールの土台（ffmpeg adapter・可変フレームレートの回帰テスト・SQLite リポジトリ・ジョブ表と worker。テスト 226 件 / カバレッジ 99%。review-loop 全通過）— 2026-10-03
 - [x] M3: 解析パイプライン（無音・VAD・mlx-whisper・WhisperX・フィラー・要確認の印・段のキャッシュ・CLI）。検証素材の解析 2 分 29 秒、正解の 69 チャンクと一致 — 2026-10-03
+- [x] FRIC-004: 整形・lint は `harness.json` の `commands.lint` を正とする（ルール文書・style-reviewer・python-patterns を修正。`lint` に `ruff format --check` を追加）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
 
 ## 進行中
 
 - [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
-- [ ] M3 の PR（`feat/m3-analysis`）のマージ待ち（マージはユーザー）
-- [ ] FRIC-004（Python のルール文書が black / isort を指定）を improve-harness で解消し、sync-upstream で master へ還元する（ユーザーの判断待ち）
+- [ ] FRIC-004 の PR のマージ待ち: vid-cut #6 と claude-config-master#4（マージはユーザー）
 
 ## 次にやること
 
@@ -69,12 +69,12 @@ _なし_
 
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`
 - `claude -p` は再ログイン済み。リポジトリ内で呼ぶと開発用設定が読み込まれるので、中立なディレクトリから呼ぶ（FRIC-002）
-- deny ルールの記法を修正済み（FRIC-001）。master へは claude-config-master#2 で PR 中（マージは人が行う）
+- deny ルールの記法を修正済み（FRIC-001）。master へは claude-config-master#2 で反映済み
 - スパイク S-4 完了: 判定は正解データと 3 回とも完全一致
 - 検証素材にはフィラーがない（ユーザー確認）。フィラー検出の精度は未検証（Design Doc D-5）
 - スパイクの素材と XML は `~/VidCut/spikes/s1/` にある
 - 開発の流れ: main からマイルストーンごとにブランチ（`feat/m2-adapters` など）→ review-loop（`.claude/skills/review-loop/SKILL.md`）→ PR → ユーザーがマージ
-- master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はユーザーのマージ待ち
+- master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はマージ済み。#4（FRIC-004）がマージ待ち
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
 - M5 で確かめること: 中間素材は音声をコピーするので、音声の 51ms の遅れを時刻情報として持ったまま。Premiere がこれをどう扱うか（XML の in / out とずれないか）を検証素材で確認する（M2 の docs-reviewer の指摘）

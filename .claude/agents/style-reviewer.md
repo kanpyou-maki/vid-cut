@@ -37,6 +37,18 @@ grep -rn "console\.log" .claude/hooks/ src/ 2>/dev/null | grep -v ".test."
 
 残存している場合は BLOCK。`console.error` / `console.warn` は適切なエラーハンドリングとして許容。
 
+### 整形・lint [HIGH]
+
+```bash
+# プロジェクトが選んだ整形・lint を実行する（コマンドをハードコードしない — G-14）
+LINT=$(node -pe "require('./.claude/harness.json').commands.lint || ''")
+if [ -n "$LINT" ]; then bash -c "$LINT"; else echo "commands.lint が未定義のためスキップ"; fi
+```
+
+`commands.lint` が未定義のプロジェクトでは、このチェックをスキップする（違反にしない）。
+定義されていて失敗した場合は BLOCK。整形ツールの種類（ruff format / black / Prettier / Biome など）はプロジェクトの選択なので、
+`.claude/rules/` の例示と違うツールを使っていても違反にしない。判定はこのコマンドの結果だけで行う。
+
 ### ファイルサイズ制限 [MEDIUM]
 
 ```bash
