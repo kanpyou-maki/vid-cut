@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 と FRIC-004 の解消は main にマージ済み（PR #1〜#6）。M4（言い直しの判定）は PR #7 のマージ待ち。次は M5（書き出し）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。次は M5（書き出し）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -35,11 +35,10 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M3 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了（M4 は PR #7 のマージ待ち）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了
 
 ## 次にやること
 
-- [ ] M4 の PR [#7](https://github.com/kanpyou-maki/vid-cut/pull/7) のマージ（ユーザー）
 - [ ] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ・Premiere での音ズレ確認）
 
 ## 決定事項
