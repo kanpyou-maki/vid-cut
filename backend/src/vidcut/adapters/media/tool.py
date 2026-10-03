@@ -9,13 +9,19 @@ from vidcut.adapters.media.commands import (
     mezzanine_args,
     probe_args,
     proxy_args,
+    silence_args,
+    timeout_for,
 )
 from vidcut.adapters.media.probe import parse_probe
 from vidcut.adapters.media.runner import run_capture, run_with_progress, write_atomically
-from vidcut.adapters.media.waveform import compute_peaks
+from vidcut.adapters.media.silence import parse_silences
+from vidcut.adapters.media.waveform import compute_peaks, wav_duration_ms
+from vidcut.domain.intervals import Interval
 from vidcut.pipeline.ports import Peaks, ProbeResult, ProgressCallback, UnsupportedMediaError
 
 _PROBE_TIMEOUT_S = 60.0
+# 音声だけの処理は速い（6 分の素材で 1 秒未満）。長さが分からない段の上限
+_AUDIO_TIMEOUT_S = 600.0
 
 
 class FfmpegMediaTool:
@@ -25,12 +31,10 @@ class FfmpegMediaTool:
         ffmpeg: str = "ffmpeg",
         ffprobe: str = "ffprobe",
         settings: MediaSettings | None = None,
-        timeout_s: float | None = None,
     ) -> None:
         self._ffmpeg = ffmpeg
         self._ffprobe = ffprobe
         self._settings = settings or MediaSettings()
-        self._timeout_s = timeout_s
 
     def probe(self, source: Path) -> ProbeResult:
         output = run_capture(probe_args(self._ffprobe, source), timeout_s=_PROBE_TIMEOUT_S)
@@ -47,7 +51,7 @@ class FfmpegMediaTool:
                 audio_args(self._ffmpeg, source, partial),
                 total_ms=1,
                 on_progress=None,
-                timeout_s=self._timeout_s,
+                timeout_s=_AUDIO_TIMEOUT_S,
             ),
         )
 
@@ -62,7 +66,7 @@ class FfmpegMediaTool:
                 ),
                 total_ms=duration_ms,
                 on_progress=on_progress,
-                timeout_s=self._timeout_s,
+                timeout_s=timeout_for(duration_ms),
             ),
         )
 
@@ -77,9 +81,16 @@ class FfmpegMediaTool:
                 ),
                 total_ms=duration_ms,
                 on_progress=on_progress,
-                timeout_s=self._timeout_s,
+                timeout_s=timeout_for(duration_ms),
             ),
         )
 
     def compute_peaks(self, audio: Path, per_second: int) -> Peaks:
         return compute_peaks(audio, per_second)
+
+    def detect_silences(
+        self, audio: Path, *, threshold_db: float, min_ms: int
+    ) -> tuple[Interval, ...]:
+        args = silence_args(self._ffmpeg, audio, threshold_db=threshold_db, min_ms=min_ms)
+        output = run_capture(args, timeout_s=_AUDIO_TIMEOUT_S)
+        return parse_silences(output, duration_ms=wav_duration_ms(audio))

@@ -8,7 +8,8 @@ import pytest
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.domain.models import Job, JobKind, JobStatus
-from vidcut.jobs.worker import MAX_ERROR_CHARS, JobHandler, ProgressReporter, Worker
+from vidcut.jobs.worker import MAX_ERROR_CHARS, JobHandler, Worker
+from vidcut.pipeline.ports import ProgressReporter
 
 
 @pytest.fixture

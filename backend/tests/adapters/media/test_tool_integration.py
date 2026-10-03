@@ -143,6 +143,19 @@ class TestExtractAudio:
         assert len(peaks.values) == pytest.approx(DURATION_S * 100, abs=3)
 
 
+class TestDetectSilences:
+    def test_gaps_between_beeps_are_silences(
+        self, tool: FfmpegMediaTool, vfr_source: Path, tmp_path: Path
+    ) -> None:
+        audio = tmp_path / "audio16k.wav"
+        tool.extract_audio(vfr_source, audio)
+        silences = tool.detect_silences(audio, threshold_db=-40, min_ms=300)
+        # ビープは 0.5〜0.6 / 1.5〜1.6 / 2.5〜2.6 秒。その間と前後が無音
+        expected = [0, 500, 600, 1_500, 1_600, 2_500, 2_600, 4_000]
+        edges = [ms for span in silences for ms in (span.start_ms, span.end_ms)]
+        assert edges == pytest.approx(expected, abs=15)
+
+
 class TestProxy:
     def test_light_constant_rate_video_covering_whole_audio(
         self, tool: FfmpegMediaTool, vfr_source: Path, tmp_path: Path

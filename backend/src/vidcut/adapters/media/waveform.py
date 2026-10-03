@@ -26,6 +26,11 @@ def compute_peaks(audio: Path, per_second: int) -> Peaks:
     return Peaks(per_second=per_second, values=tuple(values))
 
 
+def wav_duration_ms(audio: Path) -> int:
+    with wave.open(str(audio), "rb") as wav:
+        return round(wav.getnframes() * 1000 / wav.getframerate())
+
+
 def _bucket_peaks(chunk: bytes, bucket: int) -> list[float]:
     samples = array.array("h", chunk)
     if sys.byteorder == "big":

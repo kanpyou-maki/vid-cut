@@ -5,13 +5,10 @@ import threading
 from collections.abc import Callable, Mapping
 
 from vidcut.domain.models import Job, JobKind
-from vidcut.pipeline.ports import JobQueue
+from vidcut.pipeline.ports import JobQueue, ProgressReporter
 
 MAX_ERROR_CHARS = 1000
 """画面に出すエラーの最大文字数。詳細はログに残す。"""
-
-ProgressReporter = Callable[[str | None, float], None]
-"""処理中の段の名前と進捗（0〜1）を知らせる。"""
 
 JobHandler = Callable[[Job, ProgressReporter], None]
 
