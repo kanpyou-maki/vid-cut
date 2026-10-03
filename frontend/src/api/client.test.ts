@@ -160,6 +160,173 @@ describe("createApi", () => {
   });
 });
 
+interface Sent {
+  method: string;
+  url: string;
+  headers: Headers;
+  body: unknown;
+}
+
+/** 送った要求を記録し、どの要求にも data を返す API。 */
+function recordingApi(data: unknown) {
+  const sent: Sent[] = [];
+  const api = apiWith(async (request) => {
+    const text = await request.text();
+    sent.push({
+      method: request.method,
+      url: request.url,
+      headers: request.headers,
+      body: text === "" ? null : JSON.parse(text),
+    });
+    return json(200, { success: true, data, error: null });
+  });
+  return { api, sent };
+}
+
+const LISTING = {
+  path: "/Users/me",
+  parent: null,
+  entries: [{ kind: "video", name: "a.mov", path: "/Users/me/a.mov" }],
+  truncated: false,
+};
+const LECTURE_REF = {
+  id: "lec9",
+  title: "まとめ",
+  recording_ids: ["r1", "r2"],
+};
+
+describe("createApi: 素材一覧の操作", () => {
+  it("listDirectory は、パスを省くとホームの一覧を読む", async () => {
+    const { api, sent } = recordingApi(LISTING);
+
+    await expect(api.listDirectory(null)).resolves.toEqual(LISTING);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].method).toBe("GET");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/fs`);
+  });
+
+  it("listDirectory は、パスをクエリに入れて渡す", async () => {
+    const { api, sent } = recordingApi(LISTING);
+    const path = "/Users/me/動画 & 素材/#1?";
+
+    await api.listDirectory(path);
+
+    const url = new URL(sent[0].url);
+    expect(url.pathname).toBe("/api/fs");
+    expect(url.searchParams.get("path")).toBe(path);
+  });
+
+  it("listDirectory の中断は、そのまま伝える", async () => {
+    const controller = new AbortController();
+    const api = apiWith(async (request) => {
+      controller.abort();
+      request.signal.throwIfAborted();
+      return json(200, { success: true, data: LISTING, error: null });
+    });
+
+    const error = await caught(api.listDirectory(null, controller.signal));
+
+    expect(error).toMatchObject({ name: "AbortError" });
+  });
+
+  it("importPaths は、パスの一覧を JSON で送る", async () => {
+    const result = { added: [], existing: [], failed: [] };
+    const { api, sent } = recordingApi(result);
+    const paths = ["/Users/me/a.mov", "/Users/me/b.mov"];
+
+    await expect(api.importPaths(paths)).resolves.toEqual(result);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/imports`);
+    expect(sent[0].headers.get("Content-Type")).toBe("application/json");
+    expect(sent[0].body).toEqual({ paths });
+  });
+
+  it("mergeLectures は、レクチャーの id の順と題名を送る", async () => {
+    const { api, sent } = recordingApi(LECTURE_REF);
+
+    await expect(
+      api.mergeLectures(["lec2", "lec1"], "まとめ"),
+    ).resolves.toEqual(LECTURE_REF);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/merge`);
+    expect(sent[0].body).toEqual({
+      lecture_ids: ["lec2", "lec1"],
+      title: "まとめ",
+    });
+  });
+
+  it("reorderLecture は、録画ファイルの順序を送る", async () => {
+    const { api, sent } = recordingApi(LECTURE_REF);
+
+    await expect(api.reorderLecture("lec9", ["r2", "r1"])).resolves.toEqual(
+      LECTURE_REF,
+    );
+
+    expect(sent[0].method).toBe("PUT");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec9/order`);
+    expect(sent[0].body).toEqual({ recording_ids: ["r2", "r1"] });
+  });
+
+  it("splitLecture は、本文なしで解除を頼み、分かれたレクチャーを返す", async () => {
+    const parts = [
+      { id: "lec10", title: "a", recording_ids: ["r1"] },
+      { id: "lec11", title: "b", recording_ids: ["r2"] },
+    ];
+    const { api, sent } = recordingApi(parts);
+
+    await expect(api.splitLecture("lec9")).resolves.toEqual(parts);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec9/split`);
+    expect(sent[0].body).toBeNull();
+  });
+
+  it("retryJob は、本文なしでジョブの再実行を頼む", async () => {
+    const retried = { id: "job1", status: "queued" };
+    const { api, sent } = recordingApi(retried);
+
+    await expect(api.retryJob("job1")).resolves.toEqual(retried);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/jobs/job1/retry`);
+    expect(sent[0].body).toBeNull();
+  });
+
+  it.each<[string, (api: ReturnType<typeof apiWith>) => Promise<unknown>]>([
+    ["listDirectory", (api) => api.listDirectory("/Users/me")],
+    ["importPaths", (api) => api.importPaths(["/Users/me/a.mov"])],
+    ["mergeLectures", (api) => api.mergeLectures(["lec1", "lec2"], "題名")],
+    ["reorderLecture", (api) => api.reorderLecture("lec1", ["r1"])],
+    ["splitLecture", (api) => api.splitLecture("lec1")],
+    ["retryJob", (api) => api.retryJob("job1")],
+  ])("%s は、トークンをヘッダーにだけ付ける", async (_name, call) => {
+    const { api, sent } = recordingApi(LISTING);
+
+    await call(api);
+
+    expect(sent[0].headers.get("X-VidCut-Token")).toBe(TOKEN);
+    expect(sent[0].url).not.toContain(TOKEN);
+    expect(JSON.stringify(sent[0].body)).not.toContain(TOKEN);
+  });
+
+  it("入力の誤り（422）は、backend の文を持つ失敗にする", async () => {
+    const api = apiWith(async () =>
+      failure(422, "動画ファイル（.mov / .mp4 / .m4v）ではありません"),
+    );
+
+    const error = await caught(api.importPaths(["/Users/me/memo.txt"]));
+
+    expect(error).toMatchObject({
+      kind: "invalid",
+      status: 422,
+      message: "動画ファイル（.mov / .mp4 / .m4v）ではありません",
+    });
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(
