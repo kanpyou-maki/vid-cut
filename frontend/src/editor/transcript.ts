@@ -1,9 +1,4 @@
-import type {
-  LectureDetail,
-  RecordingDetail,
-  Suggestion,
-  Token,
-} from "../api/types";
+import type { LectureDetail, RecordingDetail, Suggestion } from "../api/types";
 
 /**
  * 文字起こしを描くための形（Design Doc 3-6）。読み込んだ詳細から 1 回だけ作る
@@ -70,7 +65,16 @@ function buildRecording(
 ): TranscriptRecording {
   // 中央の時刻の順に並べてから、チャンクごとにまとめる
   const groups = groupsByChunk(
-    recording.tokens.toSorted((a, b) => doubledCenter(a) - doubledCenter(b)),
+    recording.tokens
+      .map((token) => ({
+        id: token.id,
+        recordingId: recording.id,
+        chunkId: token.chunk_id,
+        text: token.text,
+        startMs: token.start_ms,
+        endMs: token.end_ms,
+      }))
+      .toSorted(byCenter),
   );
   const startTimes = new Map(
     recording.chunks.map((chunk) => [chunk.id, chunk.start_ms]),
@@ -81,18 +85,13 @@ function buildRecording(
     const offset = groups
       .slice(0, position)
       .reduce((count, previous) => count + previous.length, firstIndex);
-    const chunkId = group[0].chunk_id;
+    const { chunkId } = group[0];
     return {
       id: chunkId,
-      startMs: startTimes.get(chunkId) ?? group[0].start_ms,
+      startMs: startTimes.get(chunkId) ?? group[0].startMs,
       tokens: group.map((token, order) => ({
+        ...token,
         index: offset + order,
-        id: token.id,
-        recordingId: recording.id,
-        chunkId,
-        text: token.text,
-        startMs: token.start_ms,
-        endMs: token.end_ms,
       })),
     };
   });
@@ -100,24 +99,37 @@ function buildRecording(
     id: recording.id,
     name: recording.name,
     chunks,
-    byCenter: chunks
-      .flatMap((chunk) => chunk.tokens)
-      .toSorted((a, b) => a.startMs + a.endMs - (b.startMs + b.endMs)),
+    byCenter: chunks.flatMap((chunk) => chunk.tokens).toSorted(byCenter),
   };
 }
 
-/** 中央の 2 倍（ミリ秒の整数のまま比べるため）。 */
-function doubledCenter(token: Token): number {
-  return token.start_ms + token.end_ms;
+/** 時刻の範囲を持つもの（トークン）。 */
+interface Timed {
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * 中央の時刻の 2 倍（ミリ秒の整数のまま比べるため）。
+ * トークンが削除区間に入るかどうかと、byCenter の並び順は、どちらもこの値で決める。
+ */
+export function doubledCenter(token: Timed): number {
+  return token.startMs + token.endMs;
+}
+
+function byCenter(a: Timed, b: Timed): number {
+  return doubledCenter(a) - doubledCenter(b);
 }
 
 /** 同じチャンクのトークンを、チャンクが最初に出てきた順にまとめる（中の順は変えない）。 */
-function groupsByChunk(tokens: readonly Token[]): Token[][] {
-  const groups = new Map<string, Token[]>();
+function groupsByChunk<T extends { chunkId: string }>(
+  tokens: readonly T[],
+): T[][] {
+  const groups = new Map<string, T[]>();
   for (const token of tokens) {
-    const group = groups.get(token.chunk_id);
+    const group = groups.get(token.chunkId);
     if (group === undefined) {
-      groups.set(token.chunk_id, [token]);
+      groups.set(token.chunkId, [token]);
     } else {
       group.push(token);
     }

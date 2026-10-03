@@ -1,5 +1,9 @@
 import type { CutKind, EditState, Edits, ManualCut } from "../api/types";
-import type { Transcript, TranscriptToken } from "./transcript";
+import {
+  doubledCenter,
+  type Transcript,
+  type TranscriptToken,
+} from "./transcript";
 
 /**
  * 編集状態と、その操作（Design Doc 3-6・4 章）。編集状態は不変のオブジェクトとして扱い、
@@ -100,11 +104,6 @@ export function tokenCuts(
     }
   }
   return cuts;
-}
-
-/** 中央の 2 倍（ミリ秒の整数のまま比べるため）。 */
-function doubledCenter(token: TranscriptToken): number {
-  return token.startMs + token.endMs;
 }
 
 /** 中央が timeMs 以降の、最初のトークンの位置（tokens は中央の順に並んでいる）。 */

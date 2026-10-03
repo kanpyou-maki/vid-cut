@@ -36,7 +36,8 @@
   min-height: 0;
 }
 
-/* 幅が狭いときは、編集画面も縦に積んでページ全体をスクロールする */
+/* 幅が狭いときは、編集画面も縦に積んでページ全体をスクロールする
+   （境目の幅は、editor/EditorLayout.module.css と同じ値にすること） */
 @media (max-width: 900px) {
   .fill {
     height: auto;

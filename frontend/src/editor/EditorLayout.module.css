@@ -62,7 +62,8 @@
   color: color-mix(in srgb, currentColor 60%, transparent);
 }
 
-/* 幅が狭いときは縦に積み、ページ全体をスクロールする */
+/* 幅が狭いときは縦に積み、ページ全体をスクロールする
+   （境目の幅は、app/App.module.css の .fill と同じ値にすること） */
 @media (max-width: 900px) {
   .panes {
     grid-template:

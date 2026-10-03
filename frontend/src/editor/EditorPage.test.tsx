@@ -115,7 +115,7 @@ describe("EditorPage: 解析・判定が済んでいないレクチャー", () =
   });
 
   it("解析中は、文字起こしを出さずに進捗を表示し、終わったら自動で表示する", async () => {
-    const { api, setDetail } = editorApi(
+    const { api, getLecture, setDetail } = editorApi(
       lectureDetail({
         status: "analyzing",
         recordings: [notAnalyzed],
@@ -130,6 +130,11 @@ describe("EditorPage: 解析・判定が済んでいないレクチャー", () =
     expect(
       screen.queryByRole("region", { name: "文字起こし" }),
     ).not.toBeInTheDocument();
+
+    // 待っている間は、1 秒ごとに読み直す
+    expect(getLecture).toHaveBeenCalledTimes(1);
+    await advance(SECOND_MS);
+    expect(getLecture).toHaveBeenCalledTimes(2);
 
     setDetail(DETAIL);
     await advance(SECOND_MS);

@@ -43,7 +43,7 @@ export interface Autosaver<T> {
   close: () => void;
 }
 
-const SAVED: SaveStatus = { name: "saved" };
+export const SAVED: SaveStatus = { name: "saved" };
 const DIRTY: SaveStatus = { name: "dirty" };
 const SAVING: SaveStatus = { name: "saving" };
 

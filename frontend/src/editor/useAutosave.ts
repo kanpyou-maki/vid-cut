@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type Autosaver, createAutosaver, type SaveStatus } from "./autosaver";
+import {
+  type Autosaver,
+  createAutosaver,
+  SAVED,
+  type SaveStatus,
+} from "./autosaver";
 
 /** 変更から保存までの遅延（Design Doc 3-6、US-08） */
 const AUTOSAVE_DELAY_MS = 1000;
-
-const SAVED: SaveStatus = { name: "saved" };
 
 /**
  * draft が変わるたびに、1 秒の遅延をおいて保存する。
