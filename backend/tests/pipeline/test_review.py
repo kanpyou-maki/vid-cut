@@ -67,3 +67,11 @@ class TestReviewMarks:
         chunks = [chunk(0, 1_000, 2_000)]
         result = marks(chunks, [ChunkTranscript("x", -1.0)], [], [Interval(0, 400)])
         assert [m.span.start_ms for m in result] == [0, 1_000]
+
+    def test_overlap_after_a_token_ending_just_before_speech(self) -> None:
+        tokens = [token(0, 499), token(600, 700)]
+        assert marks([], [], tokens, [Interval(500, 1_000)]) == ()
+
+    def test_token_ending_exactly_at_speech_start_does_not_count(self) -> None:
+        result = marks([], [], [token(0, 500)], [Interval(500, 1_000)])
+        assert [m.kind for m in result] == [ReviewMarkKind.UNRECOGNIZED_SPEECH]

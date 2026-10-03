@@ -88,6 +88,7 @@ class FakeTranscriber:
     def __init__(self) -> None:
         self.calls = 0
         self.hints: list[str] = []
+        self.model_id = "fake-whisper"
 
     def transcribe(
         self,
@@ -112,6 +113,7 @@ class FakeAligner:
 
     def __init__(self) -> None:
         self.calls = 0
+        self.model_id = "fake-aligner"
 
     def align(
         self, audio: Path, segments: Sequence[tuple[Interval, str]]

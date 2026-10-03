@@ -34,6 +34,7 @@ class MlxWhisperTranscriber:
     def __init__(self, *, model: str = DEFAULT_MODEL, language: str = "ja") -> None:
         self._model = model
         self._language = language
+        self.model_id = f"{model}:{language}"
 
     def transcribe(
         self,

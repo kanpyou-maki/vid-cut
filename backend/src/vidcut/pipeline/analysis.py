@@ -32,7 +32,7 @@ AUDIO_FILE = "audio16k.wav"
 PROXY_FILE = "proxy.mp4"
 PEAKS_FILE = "peaks.json"
 # 段の作り方を変えたら上げる（キーが変わり、その段から作り直す）
-_FORMAT_VERSION = 1  # ffmpeg の引数・モデル
+_FORMAT_VERSION = 1  # ffmpeg の引数・生成物の形
 _SEGMENT_VERSION = 2  # 無音と発話チャンクの決め方（2: 端にかかる VAD の区間を使わない）
 
 # 段ごとの進捗の重み（検証素材の実測: proxy 38 秒、文字起こし 99 秒、位置合わせ 21 秒）
@@ -216,7 +216,8 @@ class _Run:
         self, silence_key: str, chunks: tuple[SpeechChunk, ...]
     ) -> tuple[tuple[ChunkTranscript, ...], str]:
         hint = self.settings.transcribe_hint
-        key = stage_key(silence_key, "transcribe", [hint, _FORMAT_VERSION])
+        model = self.tools.transcriber.model_id
+        key = stage_key(silence_key, "transcribe", [hint, model, _FORMAT_VERSION])
         self.progress.start("transcribe")
 
         def compute() -> ser.Json:
@@ -242,7 +243,7 @@ class _Run:
         chunks: tuple[SpeechChunk, ...],
         transcripts: tuple[ChunkTranscript, ...],
     ) -> tuple[Token, ...]:
-        key = stage_key(transcribe_key, "align", _FORMAT_VERSION)
+        key = stage_key(transcribe_key, "align", [self.tools.aligner.model_id, _FORMAT_VERSION])
         self.progress.start("align")
 
         def compute() -> ser.Json:

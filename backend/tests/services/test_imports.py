@@ -83,6 +83,20 @@ class TestImportPaths:
         assert second.existing == first.added
         assert len(SqliteJobQueue(conn).list_all()) == 2
 
+    def test_interrupted_registration_is_completed_on_next_import(
+        self, conn: sqlite3.Connection, tmp_path: Path
+    ) -> None:
+        # 前回は録画の登録だけして落ちた（レクチャーもジョブもない）
+        path = video(tmp_path, "a.mov")
+        service = make_service(conn)
+        first = service.import_paths([path]).added[0]
+        conn.execute("DELETE FROM jobs")
+        conn.execute("DELETE FROM lectures")
+        result = service.import_paths([path])
+        assert result.added == (first,)
+        assert SqliteLectureRepository(conn).find_by_recording(first.id) is not None
+        assert len(SqliteJobQueue(conn).list_all()) == 2
+
     def test_failures_are_reported_and_others_continue(
         self, conn: sqlite3.Connection, tmp_path: Path
     ) -> None:

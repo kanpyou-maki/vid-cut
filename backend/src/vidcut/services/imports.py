@@ -64,7 +64,11 @@ class ImportService:
         fingerprint = self._fingerprint(source)
         found = self._recordings.find_by_fingerprint(fingerprint)
         if found is not None:
-            return found, False
+            if self._lectures.find_by_recording(found.id) is not None:
+                return found, False
+            # 前回は途中で止まった（レクチャーは最後に作る）。ジョブとレクチャーを補う
+            self._finish_registration(found, source)
+            return found, True
         probe = self._media.probe(source)
         recording = Recording(
             id=self._new_id(),
@@ -75,12 +79,19 @@ class ImportService:
             media=probe.media,
         )
         self._recordings.add(recording)
+        self._finish_registration(recording, source)
+        return recording, True
+
+    def _finish_registration(self, recording: Recording, source: Path) -> None:
+        """ジョブを積んでからレクチャーを作る。レクチャーがあれば登録は完了している。
+
+        途中で止まって積み直しても、ジョブは生成物のキャッシュで重複を飛ばす。
+        """
+        for kind in (JobKind.ANALYZE_RECORDING, JobKind.MAKE_MEZZANINE):
+            self._queue.enqueue(Job(id=self._new_id(), kind=kind, target_id=recording.id))
         self._lectures.save(
             Lecture(id=self._new_id(), title=source.stem, recording_ids=(recording.id,))
         )
-        for kind in (JobKind.ANALYZE_RECORDING, JobKind.MAKE_MEZZANINE):
-            self._queue.enqueue(Job(id=self._new_id(), kind=kind, target_id=recording.id))
-        return recording, True
 
 
 def _expand(paths: Sequence[Path]) -> list[Path]:

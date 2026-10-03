@@ -21,9 +21,13 @@ def detect_fillers(
     *,
     min_gap_ms: int = DEFAULT_MIN_GAP_MS,
 ) -> tuple[CutSuggestion, ...]:
+    words_by_chunk: dict[str, list[Token]] = {}
+    for token in tokens:
+        if token.text not in _PUNCTUATION:
+            words_by_chunk.setdefault(token.chunk_id, []).append(token)
     suggestions: list[CutSuggestion] = []
     for chunk in chunks:
-        words = [t for t in tokens if t.chunk_id == chunk.id and t.text not in _PUNCTUATION]
+        words = words_by_chunk.get(chunk.id, [])
         for number, (start, end) in enumerate(_filler_ranges(words, min_gap_ms)):
             filler = words[start:end]
             text = "".join(t.text for t in filler)

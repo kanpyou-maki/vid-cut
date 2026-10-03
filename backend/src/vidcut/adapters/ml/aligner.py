@@ -35,6 +35,7 @@ class WhisperxAligner:
         self._device = device
         self._model: Any = None
         self._metadata: Any = None
+        self.model_id = f"whisperx-default:{language}"
 
     def align(
         self, audio: Path, segments: Sequence[tuple[Interval, str]]

@@ -155,6 +155,27 @@ class TestResume:
             "align": 2,
         }
 
+    def test_changed_model_redoes_transcription_and_alignment(
+        self, recording: Recording, tools: AnalysisTools
+    ) -> None:
+        run(recording, tools)
+        assert isinstance(tools.transcriber, FakeTranscriber)
+        tools.transcriber.model_id = "other-model"
+        run(recording, tools)
+        assert counts(tools)["transcribe"] == 2
+        assert counts(tools)["align"] == 2
+        assert counts(tools)["silence"] == 1
+
+    def test_changed_alignment_model_redoes_only_alignment(
+        self, recording: Recording, tools: AnalysisTools
+    ) -> None:
+        run(recording, tools)
+        assert isinstance(tools.aligner, FakeAligner)
+        tools.aligner.model_id = "other-aligner"
+        run(recording, tools)
+        assert counts(tools)["transcribe"] == 1
+        assert counts(tools)["align"] == 2
+
     def test_deleted_file_is_regenerated(self, recording: Recording, tools: AnalysisTools) -> None:
         run(recording, tools)
         tools.store.path(recording.id, "proxy.mp4").unlink()

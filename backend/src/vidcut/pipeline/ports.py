@@ -95,6 +95,9 @@ class ChunkTranscript:
 
 
 class Transcriber(Protocol):
+    model_id: str
+    """モデルの識別子。生成物のキャッシュのキーに入れる（モデルを変えたら作り直す）。"""
+
     def transcribe(
         self,
         audio: Path,
@@ -118,6 +121,9 @@ class AlignedChar:
 
 
 class Aligner(Protocol):
+    model_id: str
+    """モデルの識別子。生成物のキャッシュのキーに入れる。"""
+
     def align(
         self, audio: Path, segments: Sequence[tuple[Interval, str]]
     ) -> tuple[tuple[AlignedChar, ...], ...]:
