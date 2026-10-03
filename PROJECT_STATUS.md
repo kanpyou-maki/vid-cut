@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 は main にマージ済み。M3（解析パイプライン）を `feat/m3-analysis` で実装し、レビュー中。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 は main にマージ済み。M3（解析パイプライン）は review-loop を通過し、PR のマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。PR #1〜#3 はマージ済み（2026-10-03）。
 
 ## 完了済み
 
@@ -34,7 +34,8 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M2 
 ## 進行中
 
 - [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M3 完了
-- [ ] M3 の review-loop → PR（`feat/m3-analysis`、マージはユーザー）
+- [ ] M3 の PR（`feat/m3-analysis`）のマージ待ち（マージはユーザー）
+- [ ] FRIC-004（Python のルール文書が black / isort を指定）を improve-harness で解消し、sync-upstream で master へ還元する（ユーザーの判断待ち）
 
 ## 次にやること
 
@@ -82,5 +83,7 @@ _なし_
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
 - 検証素材のチャンク 32 で Whisper の定番の幻聴「ご視聴ありがとうございました。」が出る（低確信度の印は付く。正解でも削除対象）。M4 の判定で拾えるか確認する
 - 解析ロジックの更新後に登録済みの録画を解析し直す手段がない → M6 の API で再解析を用意する
+- M3 のセキュリティレビューの LOW: ジョブのエラー文と CLI の出力に ffmpeg の stderr や絶対パスが入る → M6 の API では理由を分類して返し、詳細はログへ。wav は一括で読み込む（2 時間で約 230MB）
+- コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
 - SQLite の接続はスレッドをまたげない（`check_same_thread`）。M6 の API サーバーでは接続の持ち方を決める必要がある
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003 で修正済み、master へは PR #3）
