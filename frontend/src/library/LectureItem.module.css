@@ -23,7 +23,7 @@
 
 .status[data-status="failed"] {
   font-weight: bold;
-  color: light-dark(#b3261e, #f2b8b5);
+  color: var(--color-danger);
   opacity: 1;
 }
 
@@ -70,7 +70,7 @@
 }
 
 .message {
-  color: light-dark(#b3261e, #f2b8b5);
+  color: var(--color-danger);
 }
 
 .failure button,

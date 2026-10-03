@@ -1,6 +1,9 @@
 :root {
   font-family: system-ui, sans-serif;
   color-scheme: light dark;
+
+  /* 失敗を表す文字の色 */
+  --color-danger: light-dark(#b3261e, #f2b8b5);
 }
 
 body {

@@ -127,7 +127,7 @@ _なし_
 - 手動確認の手順: `frontend/README.md` の「手で確かめる（M7 の PR 1: 土台）」
 - PR 2（`feat/m7-library`）: 素材一覧。画面の構成はユーザー承認（2026-10-04。Design Doc 3-6 の「素材一覧」）。backend の変更なし。
   `Api` に `listDirectory`・`importPaths`・`mergeLectures`・`reorderLecture`・`splitLecture`・`retryJob` を足した。`usePolling` は `refresh`（すぐに読み直す）を返す。
-  ダイアログは `src/shared/Modal.tsx`（`dialog` 要素の `showModal`）。jsdom は `showModal` を持たないので、`src/test/setup.ts` に代わりの実装がある。frontend のテスト 229 件 / カバレッジ 100%（分岐 97%）
+  ダイアログは `src/shared/Modal.tsx`（`dialog` 要素の `showModal`）。jsdom は `showModal` を持たないので、`src/test/setup.ts` に代わりの実装がある。閉じるときは描くのをやめ、フォーカスを開く前の要素へ戻す。frontend のテスト 232 件 / カバレッジ 99%（分岐 96%）
 - PR 2 で確認済み（一時ワークスペース。実物の backend）: 足した `Api` のメソッドが通る（日本語と空白を含むパス、本文のない POST、422・404 の文）。
   ヘッドレスの Chrome（CDP で操作）で、投入 → 失敗と再実行 → まとめる → 並べ替え → 解除が動き、コンソールの失敗と CSP の違反がない。
   実物の解析で、元のファイルを消す → 失敗（`source_missing`）→ 作り直す → 再実行 → 編集待ち、まで進む

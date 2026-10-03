@@ -8,13 +8,12 @@ import { ImportResultNotice } from "./ImportResultNotice";
 import { LectureItem } from "./LectureItem";
 import styles from "./LibraryPage.module.css";
 import { moved } from "./lectureView";
-import { MergeDialog } from "./MergeDialog";
+import { MergeDialog, MIN_MERGE_LECTURES } from "./MergeDialog";
 import { SplitDialog } from "./SplitDialog";
 import { NO_SELECTION, toggled } from "./selection";
 import { type Operations, useOperations } from "./useOperations";
 
 const POLL_INTERVAL_MS = 1000;
-const MIN_MERGE_LECTURES = 2;
 
 type Dialog =
   | { name: "none" }

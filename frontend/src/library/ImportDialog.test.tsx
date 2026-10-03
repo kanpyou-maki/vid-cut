@@ -225,6 +225,29 @@ describe("ImportDialog", () => {
     ).not.toBeChecked();
   });
 
+  it("ちょうど 200 件なら投入できる", async () => {
+    const entries = Array.from({ length: 200 }, (_, index) =>
+      video(`clip-${String(index).padStart(3, "0")}.mov`),
+    );
+    const listings = { [HOME]: fsListing({ path: HOME, entries }) };
+    const sent: (readonly string[])[] = [];
+    const importPaths: Api["importPaths"] = async (paths) => {
+      sent.push(paths);
+      return importResult();
+    };
+    renderDialog({ listDirectory: browsing(listings), importPaths });
+    await screen.findByText(HOME);
+
+    fireEvent.click(screen.getByRole("button", { name: "すべて選ぶ" }));
+
+    expect(importButton()).toHaveTextContent("投入（200 件）");
+    expect(importButton()).toBeEnabled();
+    expect(screen.queryByText(/件までです$/)).toBeNull();
+    fireEvent.click(importButton());
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toHaveLength(200);
+  });
+
   it("200 件を超えて選ぶと、投入できないことを知らせる", async () => {
     const entries = Array.from({ length: 201 }, (_, index) =>
       video(`clip-${String(index).padStart(3, "0")}.mov`),

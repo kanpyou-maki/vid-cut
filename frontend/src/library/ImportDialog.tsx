@@ -9,6 +9,8 @@ import { useDirectory } from "./useDirectory";
 
 // backend が 1 回の取り込みで受け付ける件数（Design Doc 3-5）
 const MAX_IMPORT_PATHS = 200;
+// backend が 1 つのフォルダの一覧で返す件数（超えた分は省かれ、truncated で知らされる）
+const MAX_LISTED_ENTRIES = 1000;
 
 /**
  * 投入ダイアログ（Design Doc 3-5・3-6）。サーバー側のフォルダを辿って動画ファイルを選び、取り込みを頼む。
@@ -158,7 +160,12 @@ function Entries({
           </li>
         ))}
       </ul>
-      {listing.truncated && <p>項目が多いため、1,000 件までを表示しています</p>}
+      {listing.truncated && (
+        <p>
+          項目が多いため、{MAX_LISTED_ENTRIES.toLocaleString("ja-JP")}{" "}
+          件までを表示しています
+        </p>
+      )}
     </>
   );
 }

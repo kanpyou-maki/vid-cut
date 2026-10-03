@@ -11,4 +11,3 @@ export type JobListItem = Schemas["JobListItemOut"];
 export type FsListing = Schemas["FsListingOut"];
 export type FsEntry = Schemas["FsEntryOut"];
 export type ImportResult = Schemas["ImportResultOut"];
-export type ImportFailure = Schemas["ImportFailureOut"];

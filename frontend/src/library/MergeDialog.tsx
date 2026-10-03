@@ -7,7 +7,8 @@ import styles from "./MergeDialog.module.css";
 
 // backend が受け付ける題名の長さ（Design Doc 3-5）
 const MAX_TITLE_CHARS = 100;
-const MIN_LECTURES = 2;
+/** まとめるのに要るレクチャーの数。 */
+export const MIN_MERGE_LECTURES = 2;
 
 /**
  * 「まとめる」のダイアログ（Design Doc 3-6）。題名を決めて、lectures の順に 1 つにまとめる。
@@ -31,7 +32,7 @@ export function MergeDialog({
 
   const trimmed = title.trim();
   const canSubmit =
-    !submitting && trimmed !== "" && lectures.length >= MIN_LECTURES;
+    !submitting && trimmed !== "" && lectures.length >= MIN_MERGE_LECTURES;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

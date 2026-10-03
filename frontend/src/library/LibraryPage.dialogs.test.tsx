@@ -1,6 +1,12 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Api } from "../api/client";
 import {
   fsListing,
@@ -11,6 +17,10 @@ import {
 import { apiReturning, libraryApi, REF, renderPage } from "../test/libraryPage";
 
 describe("LibraryPage: まとめる", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const lectures = [
     lectureSummary({
       id: "lec1",
@@ -105,24 +115,23 @@ describe("LibraryPage: まとめる", () => {
   });
 
   it("選んだレクチャーが一覧からなくなったら、選択から外す", async () => {
-    const { api, setLectures } = libraryApi(lectures, {
-      splitLecture: async () => [],
-    });
+    vi.useFakeTimers();
+    const { api, setLectures } = libraryApi(lectures);
     renderPage(api);
-    await userEvent.click(
-      await screen.findByRole("checkbox", { name: "s05-12a を選ぶ" }),
-    );
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: "s05-12b を選ぶ" }),
-    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: "s05-12a を選ぶ" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "s05-12b を選ぶ" }));
     expect(mergeButton()).toHaveTextContent("まとめる（2 件）");
     setLectures([lectures[0], lectures[2]]);
 
-    // 読み直しを待つ（1 秒間隔）
-    await waitFor(
-      () => expect(mergeButton()).toHaveTextContent("まとめる（1 件）"),
-      { timeout: 3000 },
-    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(mergeButton()).toHaveTextContent("まとめる（1 件）");
+    expect(mergeButton()).toBeDisabled();
   });
 });
 

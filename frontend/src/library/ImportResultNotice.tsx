@@ -35,5 +35,10 @@ export function ImportResultNotice({
 
 /** パスの最後の部分（フォルダは出さない。全体は title で確かめられる）。 */
 function fileName(path: string): string {
-  return path.split("/").filter(Boolean).at(-1) ?? path;
+  return (
+    path
+      .split("/")
+      .filter((part) => part !== "")
+      .at(-1) ?? path
+  );
 }
