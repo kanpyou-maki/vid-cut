@@ -37,9 +37,13 @@ class TestErrors:
         assert "not a database" in caplog.text
 
     def test_no_interactive_docs_are_served(self, env: ApiEnv) -> None:
-        # 画面の JS を外部の CDN から読むページを、ローカルアプリには置かない
+        # 画面の JS を外部の CDN から読むページを、ローカルアプリには置かない。
+        # これらのパスは、ほかの知らないパスと同じ扱い（画面の HTML。ここではビルドがないので 503）
         for path in ("/docs", "/redoc", "/openapi.json"):
-            assert env.client.get(path).status_code == 404
+            response = env.client.get(path)
+            assert response.status_code == 503
+            assert "swagger" not in response.text.lower()
+            assert '"openapi"' not in response.text
 
 
 class TestOpenApi:
