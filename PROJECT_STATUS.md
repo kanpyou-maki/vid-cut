@@ -36,12 +36,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M5 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）を実装済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M5 完了。M6 は PR 1（下ごしらえ: services と保存まわり。`feat/m6-api`）が review-loop を通過し、PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ待ち。PR 2（FastAPI のアプリ・防御・入力の上限・各エンドポイント。`feat/m6-api-http`）も review-loop を通過し、PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10)（base は `feat/m6-api`）のマージ待ち
 
 ## 次にやること
 
 - [ ] M6 PR 1 の PR [#9](https://github.com/kanpyou-maki/vid-cut/pull/9) のマージ（ユーザー）
-- [ ] M6 PR 2（`feat/m6-api-http`。PR 1 のブランチに積んでいる）の review-loop と PR 作成
+- [ ] M6 PR 2 の PR [#10](https://github.com/kanpyou-maki/vid-cut/pull/10) のマージ（ユーザー。#9 のあと）
 - [ ] M6 PR 3（`feat/m6-serve`）: `vidcut serve`・ビルド済み frontend の配信・OpenAPI からの型生成（openapi-typescript）・手動確認（`~/VidCut/` の写しで行う）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
