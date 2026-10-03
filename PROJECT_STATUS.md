@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。次は M5（書き出し）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 と FRIC-004 の解消は main にマージ済み（PR #1〜#7）。M5（書き出し）は実装と review-loop が済み、Premiere での音ズレ確認（ユーザー）待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -35,11 +35,15 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M4 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M4 完了。M5 は実装済み（`feat/m5-export`）で、手動確認が残る
 
 ## 次にやること
 
-- [ ] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ・Premiere での音ズレ確認）
+- [ ] M5 の手動確認（ユーザー）: `~/VidCut/exports/s05-12sample/s05-12sample.xml` を Premiere で読み込み、音ズレがないこと。
+      中間素材の音声を Premiere が ffmpeg と同じ時刻に置くかは、`~/VidCut/spikes/m5/s05-12sample_reference.wav`（書き出した MP4 の音声を wav にしたもの）を
+      シーケンスの 0 秒に並べ、波形が A1 / A2 と重なるかで確かめられる（ADR-002「M5 の調査」）
+- [ ] M5 の PR のマージ（ユーザー）。ずれていた場合は、ADR-002 の対策（中間素材の音声を作り直す）を先に入れる
+- [ ] M6: API
 
 ## 決定事項
 
@@ -77,7 +81,14 @@ _なし_
 - master（claude-config-master）への PR #2（deny ルール）・#3（フックのサブディレクトリ対応）はマージ済み。#4（FRIC-004）もマージ済み
 - セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化（PR #2 の説明に記載）
 - 実素材は音声が映像より 51ms 遅れて始まる。解析用の wav は `aresample=first_pts=0` で先頭を埋めてタイムラインにそろえている（M2 で発見、回帰テストあり）
-- M5 で確かめること: 中間素材は音声をコピーするので、音声の 51ms の遅れを時刻情報として持ったまま。Premiere がこれをどう扱うか（XML の in / out とずれないか）を検証素材で確認する（M2 の docs-reviewer の指摘）
+- 中間素材の音声の時刻（M5 で調査。ADR-002）: 元素材のエディットリストは「51.25ms の空白 + 先頭 2,112 サンプルを飛ばす」、中間素材は「7ms の空白 + 先頭から再生」。
+  ffmpeg で読むと両者は 0.25ms で一致する。Premiere が前置きの 2,112 サンプルを自動で取り除くと、音声が最大 44ms 早くなる（未確認。手動確認で確かめる）
+- 書き出しの CLI はない（計画外）。検証素材の書き出しは、`build_app` → `app.exports.request(...)` → `app.worker().run_until_idle()` の使い捨てスクリプトで行った。
+  CLI にするなら `vidcut export <レクチャーの題名または id> [--format premiere|mp4|both] [--wait]`（`eval judge --lecture` と同じ指定の仕方）を提案済み
+- 検証素材は `~/VidCut/` に登録済み（レクチャー `s05-12sample`）。書き出しの実測: Premiere XML は 1 秒未満、MP4 は約 2 分半（40 区間・172 秒・98MB）
+- 書き出し（M5）の制限: 音声はステレオ前提。レクチャー内で解像度や音声形式が違う録画を混ぜた MP4 は失敗する。同じ名前のレクチャーは同じ `exports/<名前>/` に上書きする。
+  MP4 のつなぎ目にフェードはない（プロトタイプは 30ms のフェードを付けていた。必要なら Premiere XML との一致をどうするかと合わせて決める）
+- 解析の段 5（無音）を更新した（M5。無音を録画の終わりまで延ばす）。M5 より前に解析した録画は、解析し直すと無音の段から作り直される
 - 実素材での M2 の実測: probe 0.1 秒、解析用 wav 0.4 秒、ピーク値 0.2 秒、proxy 38 秒、中間素材 296 秒（196MB）。proxy の 38 秒は解析時間の目標（5 分）に含まれる
 - M2 のセキュリティレビューの LOW: ffmpeg のタイムアウトは M3 で対応済み（録画の長さに応じた上限）。ジョブのエラー文に絶対パス（ユーザー名）が入る → M6 の API で返すときにマスクする
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
