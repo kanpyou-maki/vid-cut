@@ -70,6 +70,7 @@
 ### M6: API（`feat/m6-api`）
 
 - [ ] FastAPI のアプリと `{success, data, error}` の形、127.0.0.1 のみ
+- [ ] ローカル API の防御（Design Doc 3-5-1: Host / Origin の検証、起動ごとのトークン、パスの正規化）
 - [ ] `/api/fs`（ホーム配下のみ、パスの検証）、`/api/imports`、`/api/lectures`（一覧・詳細・merge・order・split）、`/api/lectures/{id}/edits`（楽観的排他）、`/api/lectures/{id}/exports`、`/api/jobs`（一覧・retry）
 - [ ] `/api/recordings/{id}/proxy`（Range 対応）、`/peaks`
 - [ ] `vidcut serve`（API サーバー + worker の起動、ビルド済み frontend の配信）

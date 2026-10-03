@@ -19,6 +19,7 @@
 | `backend/src/vidcut/services/` | ユースケース（取り込み・まとめる・編集の保存・書き出しの依頼） | `tdd-guide` |
 | `backend/src/vidcut/jobs/` | SQLite のジョブ表と worker のループ（[ADR-004](./docs/adr/ADR-004-local-app-runtime.md)） | `tdd-guide` |
 | `backend/src/vidcut/bootstrap.py` | 依存の組み立て。ports に具象 adapters を注入する唯一の場所 | `tdd-guide` |
+| `backend/src/vidcut/cli.py` | コマンドライン（`serve` / `analyze` / `worker` / `eval`） | `tdd-guide` |
 | `backend/tests/` | pytest（unit / integration）。重い ML とメディア処理はアダプタ境界でモックする | `tdd-guide` |
 | `frontend/` | TypeScript + React + Vite。プレビュー・文字起こしエディタ・波形タイムライン | `tdd-guide` |
 | `frontend/src/test/` | vitest の共通設定（jest-dom の読み込み、テストごとの後片付け） | `tdd-guide` |
