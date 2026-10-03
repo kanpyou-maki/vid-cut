@@ -18,6 +18,7 @@ from vidcut.pipeline.ports import (
     MediaClip,
     MediaTool,
     NotFoundError,
+    NothingToExportError,
     ProgressReporter,
     RecordingRepository,
 )
@@ -149,7 +150,9 @@ class ExportService:
             self._settings,
         )
         if not plan.clips:
-            raise ValueError(f"残す区間がありません（すべて削除されています）: {lecture.title}")
+            raise NothingToExportError(
+                f"残す区間がありません（すべて削除されています）: {lecture.title}"
+            )
         used_ids = {clip.recording_id for clip in plan.clips}
         used = [recording for recording in recordings if recording.id in used_ids]
         return _Prepared(

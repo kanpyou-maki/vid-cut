@@ -98,8 +98,8 @@ def _print_import(result: ImportResult) -> None:
     )
     for recording in result.added:
         print(f"  登録 {recording.source_path}")
-    for path, message in result.failed:
-        print(f"  失敗 {path}: {message}")
+    for failure in result.failed:
+        print(f"  失敗 {failure.path}: {failure.message}")
 
 
 def _eval_judge(app: App, args: argparse.Namespace) -> int:

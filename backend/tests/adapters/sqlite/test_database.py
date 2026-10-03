@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pytest
 
-from vidcut.adapters.sqlite.database import SCHEMA_VERSION, open_database, transaction
+from vidcut.adapters.sqlite.database import (
+    MIGRATIONS,
+    SCHEMA_VERSION,
+    open_database,
+    transaction,
+)
 
 
 def tables(conn: sqlite3.Connection) -> set[str]:
@@ -37,6 +42,23 @@ class TestOpenDatabase:
         conn.close()
         with pytest.raises(RuntimeError, match="新しい"):
             open_database(db_path)
+
+
+class TestMigration:
+    def test_failed_jobs_from_before_error_codes_keep_their_message(self, db_path: Path) -> None:
+        # 版 2（error_code 列がない）のときに失敗したジョブ
+        old = sqlite3.connect(db_path, isolation_level=None)
+        old.executescript("BEGIN; " + "".join(MIGRATIONS[:2]) + " PRAGMA user_version = 2; COMMIT;")
+        old.execute(
+            "INSERT INTO jobs (id, kind, target_id, status, priority, error)"
+            " VALUES ('j1', 'analyze_recording', 'r1', 'failed', 10, 'boom')"
+        )
+        old.close()
+        conn = open_database(db_path)
+        row = conn.execute("SELECT error, error_code FROM jobs WHERE id = 'j1'").fetchone()
+        assert (row["error"], row["error_code"]) == ("boom", None)
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        conn.close()
 
 
 class TestTransaction:

@@ -11,7 +11,7 @@ NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')"
 _BUSY_TIMEOUT_MS = 5000
 
 # 版ごとのスキーマ変更。追加だけを行い、既存の要素は書き換えない（PRAGMA user_version で管理）
-_MIGRATIONS: tuple[str, ...] = (
+MIGRATIONS: tuple[str, ...] = (
     f"""
     CREATE TABLE recordings (
         seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,9 +70,13 @@ _MIGRATIONS: tuple[str, ...] = (
         updated_at TEXT NOT NULL DEFAULT ({NOW})
     );
     """,
+    # 失敗の種別（Design Doc 3-5-2）。これより前に失敗したジョブは NULL のまま
+    """
+    ALTER TABLE jobs ADD COLUMN error_code TEXT;
+    """,
 )
 
-SCHEMA_VERSION = len(_MIGRATIONS)
+SCHEMA_VERSION = len(MIGRATIONS)
 
 
 def open_database(path: Path) -> sqlite3.Connection:
@@ -115,5 +119,5 @@ def _migrate(conn: sqlite3.Connection) -> None:
         )
     for version in range(current, SCHEMA_VERSION):
         conn.executescript(
-            f"BEGIN IMMEDIATE; {_MIGRATIONS[version]} PRAGMA user_version = {version + 1}; COMMIT;"
+            f"BEGIN IMMEDIATE; {MIGRATIONS[version]} PRAGMA user_version = {version + 1}; COMMIT;"
         )

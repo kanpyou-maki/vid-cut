@@ -5,7 +5,7 @@ import pytest
 
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.jobs import SqliteJobQueue
-from vidcut.domain.models import Job, JobKind, JobStatus
+from vidcut.domain.models import ErrorCode, Job, JobKind, JobStatus
 from vidcut.pipeline.ports import NotFoundError
 
 
@@ -111,17 +111,26 @@ class TestProgressAndCompletion:
     def test_mark_failed_records_error(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))
         queue.claim_next()
-        queue.mark_failed("j1", "ffmpeg が失敗しました")
+        queue.mark_failed("j1", "ffmpeg が失敗しました", ErrorCode.TOOL_FAILED)
         stored = queue.get("j1")
         assert stored is not None
         assert (stored.job.status, stored.job.error) == (JobStatus.FAILED, "ffmpeg が失敗しました")
+        assert stored.job.error_code is ErrorCode.TOOL_FAILED
+
+    def test_jobs_that_did_not_fail_have_no_error_code(self, queue: SqliteJobQueue) -> None:
+        queue.enqueue(job("j1"))
+        queue.claim_next()
+        queue.mark_succeeded("j1")
+        stored = queue.get("j1")
+        assert stored is not None
+        assert stored.job.error_code is None
 
     def test_only_running_jobs_can_finish(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))
         with pytest.raises(ValueError, match="実行中"):
             queue.mark_succeeded("j1")
         with pytest.raises(ValueError, match="実行中"):
-            queue.mark_failed("j1", "x")
+            queue.mark_failed("j1", "x", ErrorCode.INTERNAL)
         with pytest.raises(ValueError, match="実行中"):
             queue.report_progress("j1", None, 0.1)
 
@@ -144,11 +153,11 @@ class TestRecovery:
         queue.enqueue(job("j1"))
         queue.claim_next()
         queue.report_progress("j1", "align", 0.7)
-        queue.mark_failed("j1", "boom")
+        queue.mark_failed("j1", "boom", ErrorCode.INTERNAL)
         queue.retry("j1")
         stored = queue.get("j1")
         assert stored is not None
-        assert stored.job == job("j1")
+        assert stored.job == job("j1")  # エラー文と種別も消える
 
     def test_retry_only_failed_jobs(self, queue: SqliteJobQueue) -> None:
         queue.enqueue(job("j1"))

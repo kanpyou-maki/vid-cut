@@ -5,7 +5,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from vidcut.domain.models import Job, JobKind, Lecture, Recording
+from vidcut.domain.models import ErrorCode, Job, JobKind, Lecture, Recording
+from vidcut.domain.titles import normalize_title
+from vidcut.pipeline.error_codes import classify_error
 from vidcut.pipeline.ports import (
     ExternalToolError,
     Fingerprinter,
@@ -16,13 +18,23 @@ from vidcut.pipeline.ports import (
 )
 
 VIDEO_SUFFIXES = frozenset({".mov", ".mp4", ".m4v"})
+FALLBACK_TITLE = "untitled"
+
+
+@dataclass(frozen=True)
+class ImportFailure:
+    """取り込めなかったファイル。message は生のエラー文で、画面には code だけを出す。"""
+
+    path: str
+    code: ErrorCode
+    message: str
 
 
 @dataclass(frozen=True)
 class ImportResult:
     added: tuple[Recording, ...]
     existing: tuple[Recording, ...]  # 同じファイルが登録済み（解析は積み直さない）
-    failed: tuple[tuple[str, str], ...]  # (パス, 理由)
+    failed: tuple[ImportFailure, ...]
 
 
 class ImportService:
@@ -47,12 +59,12 @@ class ImportService:
         """ファイルまたはフォルダ（直下の動画ファイル）を取り込む。1 本の失敗で全体を止めない。"""
         added: list[Recording] = []
         existing: list[Recording] = []
-        failed: list[tuple[str, str]] = []
+        failed: list[ImportFailure] = []
         for path in _expand(paths):
             try:
                 recording, is_new = self._import_one(path)
             except (OSError, ValueError, ExternalToolError) as e:
-                failed.append((str(path), _message(e)))
+                failed.append(ImportFailure(str(path), classify_error(e), _message(e)))
                 continue
             (added if is_new else existing).append(recording)
         return ImportResult(tuple(added), tuple(existing), tuple(failed))
@@ -89,9 +101,8 @@ class ImportService:
         """
         for kind in (JobKind.ANALYZE_RECORDING, JobKind.MAKE_MEZZANINE):
             self._queue.enqueue(Job(id=self._new_id(), kind=kind, target_id=recording.id))
-        self._lectures.save(
-            Lecture(id=self._new_id(), title=source.stem, recording_ids=(recording.id,))
-        )
+        title = normalize_title(source.stem, fallback=FALLBACK_TITLE)
+        self._lectures.save(Lecture(id=self._new_id(), title=title, recording_ids=(recording.id,)))
 
 
 def _expand(paths: Sequence[Path]) -> list[Path]:

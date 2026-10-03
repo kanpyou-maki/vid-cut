@@ -5,10 +5,13 @@ import sqlite3
 from datetime import datetime
 
 from vidcut.adapters.sqlite.database import NOW
-from vidcut.domain.models import Job, JobKind, JobStatus
+from vidcut.domain.models import ErrorCode, Job, JobKind, JobStatus
 from vidcut.pipeline.ports import NotFoundError, StoredJob
 
-_COLUMNS = "id, kind, target_id, status, priority, stage, progress, error, created_at, updated_at"
+_COLUMNS = (
+    "id, kind, target_id, status, priority, stage, progress, error, error_code,"
+    " created_at, updated_at"
+)
 
 
 class SqliteJobQueue:
@@ -18,8 +21,9 @@ class SqliteJobQueue:
     def enqueue(self, job: Job) -> None:
         try:
             self._conn.execute(
-                "INSERT INTO jobs (id, kind, target_id, status, priority, stage, progress, error)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO jobs"
+                " (id, kind, target_id, status, priority, stage, progress, error, error_code)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     job.id,
                     job.kind.value,
@@ -29,6 +33,7 @@ class SqliteJobQueue:
                     job.stage,
                     job.progress,
                     job.error,
+                    job.error_code.value if job.error_code else None,
                 ),
             )
         except sqlite3.IntegrityError as e:
@@ -60,8 +65,10 @@ class SqliteJobQueue:
     def mark_succeeded(self, job_id: str) -> None:
         self._update_running(job_id, "status = 'succeeded', progress = 1", ())
 
-    def mark_failed(self, job_id: str, error: str) -> None:
-        self._update_running(job_id, "status = 'failed', error = ?", (error,))
+    def mark_failed(self, job_id: str, error: str, code: ErrorCode) -> None:
+        self._update_running(
+            job_id, "status = 'failed', error = ?, error_code = ?", (error, code.value)
+        )
 
     def requeue_running(self) -> int:
         cursor = self._conn.execute(
@@ -72,7 +79,7 @@ class SqliteJobQueue:
     def retry(self, job_id: str) -> None:
         cursor = self._conn.execute(
             "UPDATE jobs SET status = 'queued', stage = NULL, progress = 0, error = NULL,"
-            f" updated_at = {NOW} WHERE id = ? AND status = 'failed'",
+            f" error_code = NULL, updated_at = {NOW} WHERE id = ? AND status = 'failed'",
             (job_id,),
         )
         if cursor.rowcount == 0:
@@ -106,6 +113,7 @@ def _to_stored(row: sqlite3.Row) -> StoredJob:
             stage=row["stage"],
             progress=row["progress"],
             error=row["error"],
+            error_code=ErrorCode(row["error_code"]) if row["error_code"] else None,
         ),
         priority=row["priority"],
         created_at=datetime.fromisoformat(row["created_at"]),

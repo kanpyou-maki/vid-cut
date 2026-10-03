@@ -30,7 +30,12 @@ from vidcut.domain.timeline import FrameRange
 from vidcut.pipeline.analysis_result import save_analysis
 from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.mezzanine import mezzanine_path
-from vidcut.pipeline.ports import Judgement, NotFoundError, RecordingRepository
+from vidcut.pipeline.ports import (
+    Judgement,
+    NotFoundError,
+    NothingToExportError,
+    RecordingRepository,
+)
 from vidcut.services.export import ExportService
 
 # make_analysis は 1〜2 秒の無音の削除候補を 1 つ持つ。録画は 10 秒で、残るのは 0〜1 秒と 2〜10 秒
@@ -245,7 +250,7 @@ class TestCannotExport:
         env.analyzed("r1", "r2")
         whole = (retake("r1", 0, 10_000, "j1"), retake("r2", 0, 10_000, "j2"))
         env.judgements.save(Judgement("l1", "key", whole))
-        with pytest.raises(ValueError, match="残す区間"):
+        with pytest.raises(NothingToExportError, match="残す区間"):
             getattr(env.service, method)("l1", ignore)
         assert env.media.calls["make_mezzanine"] == 0
         assert not (env.root / "ws" / "exports").exists()

@@ -7,7 +7,15 @@ from pathlib import Path
 from typing import Protocol
 
 from vidcut.domain.intervals import Interval
-from vidcut.domain.models import CutSuggestion, EditState, Job, Lecture, MediaInfo, Recording
+from vidcut.domain.models import (
+    CutSuggestion,
+    EditState,
+    ErrorCode,
+    Job,
+    Lecture,
+    MediaInfo,
+    Recording,
+)
 from vidcut.domain.timeline import FrameRange
 
 
@@ -21,6 +29,10 @@ class LoginRequiredError(ExternalToolError):
 
 class UnsupportedMediaError(ValueError):
     """録画ファイルが処理できない形式（映像または音声のトラックがない等）。"""
+
+
+class NothingToExportError(ValueError):
+    """書き出そうとしたレクチャーに、残す区間が 1 つもない。"""
 
 
 class NotFoundError(LookupError):
@@ -272,7 +284,9 @@ class JobQueue(Protocol):
 
     def mark_succeeded(self, job_id: str) -> None: ...
 
-    def mark_failed(self, job_id: str, error: str) -> None: ...
+    def mark_failed(self, job_id: str, error: str, code: ErrorCode) -> None:
+        """error は生のエラー文、code はその種別（画面に出すのは code だけ）。"""
+        ...
 
     def requeue_running(self) -> int:
         """実行中のまま残ったジョブを待機中に戻し、その件数を返す（起動時の復旧）。"""
