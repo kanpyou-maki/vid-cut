@@ -165,7 +165,13 @@ PR 4（`feat/m7-transcript-review`）:
 
 PR 5（`feat/m7-preview`）:
 
-- [ ] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）、文字起こしとの再生位置の同期
+- [x] backend: レクチャーの詳細に、残す区間の余白（`keep_padding`）を足す（プレビューが、書き出しと同じ区間を残す）
+- [x] 残す区間の計算（backend と同じ値で確かめる）と、カット後のタイムライン
+- [x] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）、文字起こしとの再生位置の同期
+- [x] 実物の backend と proxy 動画、ヘッドレスの Chrome での確認（再生 → 削除区間を飛ばす → 文字の印 → クリック・時刻・バーでの移動 → 削除した部分も再生する。コンソールの失敗なし）
+- [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「プレビュー」）
+- [ ] review-loop → PR（PR 4 の上に積む）
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」
 
 PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
 
