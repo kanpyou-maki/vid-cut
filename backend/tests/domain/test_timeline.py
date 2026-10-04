@@ -5,11 +5,13 @@ from typing import Any
 import pytest
 
 from vidcut.domain.intervals import Interval
+from vidcut.domain.models import Token
 from vidcut.domain.timeline import (
     FrameRange,
     build_output_timeline,
     keep_ranges,
     output_duration_ms,
+    sentence_pauses,
     to_frames,
     to_output_ms,
 )
@@ -38,8 +40,40 @@ def test_keep_ranges_matches_the_cases_shared_with_the_frontend(case: dict[str, 
         silences=_spans(case["silences"]),
         pad_before_ms=case["pad_before_ms"],
         pad_after_ms=case["pad_after_ms"],
+        # 文の終わりの例だけが持つ。持たない例は、文末の扱いがないときと同じ結果になる
+        sentence_pauses=_spans(case.get("sentence_pauses", [])),
+        pad_after_sentence_ms=case.get("pad_after_sentence_ms"),
     )
     assert kept == tuple(_spans(case["expected"]))
+
+
+SENTENCE_PAUSES_CASES_PATH = Path(__file__).parent / "sentence_pauses_cases.json"
+"""文の終わりの間の例。frontend（keepRanges.ts の sentencePauses）のテストも同じファイルを読む。"""
+
+
+def _token(index: int, start_ms: int, end_ms: int, text: str) -> Token:
+    return Token(
+        id=f"t{index}",
+        recording_id="r1",
+        chunk_id="c1",
+        text=text,
+        span=Interval(start_ms, end_ms),
+        asr_confidence=0.9,
+        align_score=0.9,
+    )
+
+
+@pytest.mark.parametrize(
+    "case",
+    json.loads(SENTENCE_PAUSES_CASES_PATH.read_text()),
+    ids=lambda case: str(case["name"]),
+)
+def test_sentence_pauses_matches_the_cases_shared_with_the_frontend(case: dict[str, Any]) -> None:
+    tokens = [_token(index, *token) for index, token in enumerate(case["tokens"])]
+
+    pauses = sentence_pauses(tokens, _spans(case["silences"]))
+
+    assert pauses == tuple(_spans(case["expected"]))
 
 
 class TestKeepRanges:
@@ -103,6 +137,20 @@ class TestKeepRanges:
             DURATION, cuts=[silence], silences=[silence], pad_before_ms=0, pad_after_ms=0
         )
         assert result == (Interval(0, 1000), Interval(2000, DURATION))
+
+    def test_sentence_padding_defaults_to_the_usual_padding(self) -> None:
+        # 文末用の値を渡さなければ、文の終わりでも通常の余白
+        kept = keep_ranges(
+            5_000,
+            cuts=[Interval(1_000, 2_000)],
+            silences=[Interval(1_000, 2_000)],
+            sentence_pauses=[Interval(900, 2_000)],
+        )
+        assert kept == (Interval(0, 1_250), Interval(1_850, 5_000))
+
+    def test_rejects_negative_sentence_padding(self) -> None:
+        with pytest.raises(ValueError, match="余白"):
+            keep_ranges(5_000, cuts=[], silences=[], pad_after_sentence_ms=-1)
 
     def test_rejects_negative_padding(self) -> None:
         with pytest.raises(ValueError):

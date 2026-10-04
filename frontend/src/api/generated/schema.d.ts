@@ -652,6 +652,8 @@ export interface components {
         KeepPaddingOut: {
             /** After Ms */
             after_ms: number;
+            /** After Sentence Ms */
+            after_sentence_ms: number;
             /** Before Ms */
             before_ms: number;
         };

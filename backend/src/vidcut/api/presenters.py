@@ -250,7 +250,9 @@ def to_lecture_detail(
         judged_suggestions=[to_suggestion(s) for s in (judgement.suggestions if judgement else ())],
         dropped_restored_ids=list(judgement.dropped_restored_ids) if judgement else [],
         keep_padding=KeepPaddingOut(
-            before_ms=settings.pad_before_ms, after_ms=settings.pad_after_ms
+            before_ms=settings.pad_before_ms,
+            after_ms=settings.pad_after_ms,
+            after_sentence_ms=settings.pad_after_sentence_ms,
         ),
         edit_state=to_edit_state(detail.edit_state),
         exports=to_exports(exports),

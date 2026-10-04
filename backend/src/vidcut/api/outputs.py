@@ -143,6 +143,7 @@ class KeepPaddingOut(BaseModel):
 
     before_ms: int
     after_ms: int
+    after_sentence_ms: int  # 文の終わり（。？！）のあとの無音に残す余白
 
 
 class DroppedRestoredOut(BaseModel):

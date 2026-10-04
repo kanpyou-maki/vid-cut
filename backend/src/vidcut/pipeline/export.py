@@ -12,9 +12,11 @@ from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutSuggestion, EditState, Recording
 from vidcut.domain.timeline import (
     DEFAULT_PAD_AFTER_MS,
+    DEFAULT_PAD_AFTER_SENTENCE_MS,
     DEFAULT_PAD_BEFORE_MS,
     FrameRange,
     keep_ranges,
+    sentence_pauses,
     to_frames,
 )
 from vidcut.pipeline.analysis_result import Analysis
@@ -24,16 +26,21 @@ DEFAULT_FPS = 60
 
 @dataclass(frozen=True)
 class ExportSettings:
-    """fps は中間素材のフレームレートと同じ値にする（bootstrap がそろえる）。"""
+    """fps は中間素材のフレームレートと同じ値にする（bootstrap がそろえる）。
+
+    余白は、残す発話の前（pad_before_ms）・後ろ（pad_after_ms）・文の終わりのあと
+    （pad_after_sentence_ms）に、隣の無音の中にだけ付ける（Design Doc 3-4）。
+    """
 
     fps: int = DEFAULT_FPS
     pad_before_ms: int = DEFAULT_PAD_BEFORE_MS
     pad_after_ms: int = DEFAULT_PAD_AFTER_MS
+    pad_after_sentence_ms: int = DEFAULT_PAD_AFTER_SENTENCE_MS
 
     def __post_init__(self) -> None:
         if self.fps <= 0:
             raise ValueError(f"fps は正である必要があります: {self.fps}")
-        if self.pad_before_ms < 0 or self.pad_after_ms < 0:
+        if min(self.pad_before_ms, self.pad_after_ms, self.pad_after_sentence_ms) < 0:
             raise ValueError(f"余白は 0 以上である必要があります: {self}")
 
 
@@ -77,12 +84,15 @@ def plan_export(
     clips: list[ExportClip] = []
     for recording, analysis in zip(recordings, analyses, strict=True):
         cuts = effective_cuts(recording.id, (*analysis.suggestions, *judged), state)
+        silences = tuple(silence.span for silence in analysis.silences)
         kept = keep_ranges(
             recording.duration_ms,
             cuts,
-            (silence.span for silence in analysis.silences),
+            silences,
             settings.pad_before_ms,
             settings.pad_after_ms,
+            sentence_pauses=sentence_pauses(analysis.tokens, silences),
+            pad_after_sentence_ms=settings.pad_after_sentence_ms,
         )
         clips.extend(ExportClip(recording.id, frames) for frames in to_frames(kept, settings.fps))
     return ExportPlan(fps=settings.fps, clips=tuple(clips))

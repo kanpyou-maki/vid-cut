@@ -13,6 +13,7 @@ from vidcut.domain.models import (
     ManualCut,
     Recording,
     Silence,
+    Token,
 )
 from vidcut.domain.timeline import FrameRange
 from vidcut.pipeline.analysis_result import Analysis
@@ -47,14 +48,27 @@ def analysis(
     rid: str = "r1",
     suggestions: Sequence[CutSuggestion] = (),
     silences: Sequence[Interval] = (),
+    tokens: Sequence[Token] = (),
 ) -> Analysis:
     return Analysis(
         recording_id=rid,
         silences=tuple(Silence(rid, span) for span in silences),
         chunks=(),
-        tokens=(),
+        tokens=tuple(tokens),
         suggestions=tuple(suggestions),
         review_marks=(),
+    )
+
+
+def token(start_ms: int, end_ms: int, text: str, rid: str = "r1") -> Token:
+    return Token(
+        id=f"{rid}-t{start_ms}",
+        recording_id=rid,
+        chunk_id=f"{rid}-c0000",
+        text=text,
+        span=Interval(start_ms, end_ms),
+        asr_confidence=0.9,
+        align_score=0.9,
     )
 
 
@@ -78,6 +92,35 @@ class TestPlanExport:
         )
         assert clips(plan.clips) == [("r1", 0, 255), ("r1", 291, 600)]
         assert plan.total_frames == 255 + 309
+
+    def test_silence_after_a_sentence_keeps_the_longer_padding(self) -> None:
+        # 無音の前の最後の文字が「。」なら、残す区間の後ろに 500ms の余白が残る
+        silent = Interval(4_000, 5_000)
+        cut = suggestion("r1", 4_000, 5_000)
+        spoken = [token(3_800, 3_900, "す"), token(3_900, 3_920, "。")]
+        plan = plan_export(
+            [recording()], [analysis("r1", [cut], [silent], spoken)], (), NO_EDITS, ExportSettings()
+        )
+        assert clips(plan.clips) == [("r1", 0, 270), ("r1", 291, 600)]
+
+    def test_silence_in_the_middle_of_a_sentence_keeps_the_usual_padding(self) -> None:
+        silent = Interval(4_000, 5_000)
+        cut = suggestion("r1", 4_000, 5_000)
+        spoken = [token(3_800, 3_900, "が"), token(3_900, 3_920, "、")]
+        plan = plan_export(
+            [recording()], [analysis("r1", [cut], [silent], spoken)], (), NO_EDITS, ExportSettings()
+        )
+        assert clips(plan.clips) == [("r1", 0, 255), ("r1", 291, 600)]
+
+    def test_sentence_padding_is_configurable(self) -> None:
+        silent = Interval(4_000, 5_000)
+        cut = suggestion("r1", 4_000, 5_000)
+        spoken = [token(3_900, 3_920, "。")]
+        settings = ExportSettings(pad_after_sentence_ms=800)
+        plan = plan_export(
+            [recording()], [analysis("r1", [cut], [silent], spoken)], (), NO_EDITS, settings
+        )
+        assert clips(plan.clips) == [("r1", 0, 288), ("r1", 291, 600)]
 
     def test_judged_retakes_are_cut_without_padding_into_speech(self) -> None:
         retake = suggestion("r1", 2_000, 3_000, CutKind.RETAKE)
@@ -165,6 +208,13 @@ class TestExportSettings:
     def test_rejects_non_positive_frame_rate(self, fps: int) -> None:
         with pytest.raises(ValueError):
             ExportSettings(fps=fps)
+
+    def test_sentence_padding_defaults_to_half_a_second(self) -> None:
+        assert ExportSettings().pad_after_sentence_ms == 500
+
+    def test_rejects_negative_sentence_padding(self) -> None:
+        with pytest.raises(ValueError, match="余白"):
+            ExportSettings(pad_after_sentence_ms=-1)
 
     def test_rejects_negative_padding(self) -> None:
         with pytest.raises(ValueError):

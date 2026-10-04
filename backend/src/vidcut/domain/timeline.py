@@ -1,12 +1,17 @@
 """残す区間・フレームへの丸め・出力時刻への変換（Design Doc 3-4・4 章）。"""
 
+from bisect import bisect_left
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from vidcut.domain.intervals import Interval, merge, require_int, subtract
+from vidcut.domain.models import Token
 
 DEFAULT_PAD_BEFORE_MS = 150
 DEFAULT_PAD_AFTER_MS = 250
+DEFAULT_PAD_AFTER_SENTENCE_MS = 500
+"""文の終わりのあとの余白。仮の値（ユーザーがプレビューで聞いて決める。M8）。"""
+SENTENCE_END_CHARS = frozenset("。？！?!")
 
 
 def keep_ranges(
@@ -15,26 +20,65 @@ def keep_ranges(
     silences: Iterable[Interval],
     pad_before_ms: int = DEFAULT_PAD_BEFORE_MS,
     pad_after_ms: int = DEFAULT_PAD_AFTER_MS,
+    *,
+    sentence_pauses: Iterable[Interval] = (),
+    pad_after_sentence_ms: int | None = None,
 ) -> tuple[Interval, ...]:
     """録画ファイルの残す区間を返す。
 
     削除区間を除いた残りの前後に余白を付ける。余白は隣の無音区間の中にだけ伸ばし、
     削除した発話には食い込ませない。余白で重なった区間は統合する（短い無音は残る）。
+
+    文の終わりで終わる区間は、後ろの余白に pad_after_sentence_ms を使う（省くと pad_after_ms）。
+    文の終わりかどうかは sentence_pauses（sentence_pauses 関数の結果）で決まる:
+    区間の終わりがその間の中にあり、区間が文末の文字を頭から含むとき。
     """
+    sentence_pad_ms = pad_after_ms if pad_after_sentence_ms is None else pad_after_sentence_ms
     if duration_ms <= 0:
         raise ValueError(f"duration_ms は正である必要があります: {duration_ms}")
-    if pad_before_ms < 0 or pad_after_ms < 0:
-        raise ValueError(f"余白は 0 以上である必要があります: {pad_before_ms}, {pad_after_ms}")
+    if pad_before_ms < 0 or pad_after_ms < 0 or sentence_pad_ms < 0:
+        raise ValueError(
+            f"余白は 0 以上である必要があります: {pad_before_ms}, {pad_after_ms}, {sentence_pad_ms}"
+        )
 
     silence_spans = merge(silences)  # 接する無音を 1 つにまとめ、余白が境目で止まらないようにする
+    pauses = tuple(sentence_pauses)
     kept = subtract(Interval(0, duration_ms), cuts)
     return merge(
         Interval(
             _pad_start(span.start_ms, silence_spans, pad_before_ms),
-            _pad_end(span.end_ms, silence_spans, pad_after_ms),
+            _pad_end(
+                span.end_ms,
+                silence_spans,
+                sentence_pad_ms if _ends_sentence(span, pauses) else pad_after_ms,
+            ),
         )
         for span in kept
     )
+
+
+def sentence_pauses(tokens: Iterable[Token], silences: Iterable[Interval]) -> tuple[Interval, ...]:
+    """文の終わりの間: 文末の記号のトークンの開始から、その直後の無音の終わりまで。
+
+    無音ごとに、その前で最後に始まるトークンを見る（無音の中で始まるトークンは数えない）。
+    そのトークンが文末の記号（。？！）で終わっていれば、その無音は文の終わりのあとの間。
+    削除区間には依らないので、録画ファイルごとに 1 回求めればよい。
+    """
+    ordered = sorted(tokens, key=lambda token: (token.span.start_ms, token.span.end_ms))
+    starts = [token.span.start_ms for token in ordered]
+    pauses: list[Interval] = []
+    for silence in merge(silences):
+        index = bisect_left(starts, silence.start_ms)
+        if index == 0:
+            continue
+        last = ordered[index - 1]
+        if last.text[-1] in SENTENCE_END_CHARS:
+            pauses.append(Interval(last.span.start_ms, silence.end_ms))
+    return tuple(pauses)
+
+
+def _ends_sentence(span: Interval, pauses: Sequence[Interval]) -> bool:
+    return any(span.start_ms <= pause.start_ms < span.end_ms < pause.end_ms for pause in pauses)
 
 
 def _pad_start(start_ms: int, silences: Sequence[Interval], pad_ms: int) -> int:

@@ -199,7 +199,7 @@ export function lectureDetail(
     judged: true,
     judged_suggestions: [],
     dropped_restored_ids: [],
-    keep_padding: { before_ms: 150, after_ms: 250 },
+    keep_padding: { before_ms: 150, after_ms: 250, after_sentence_ms: 500 },
     edit_state: editState(),
     exports: exportsState(),
     ...overrides,

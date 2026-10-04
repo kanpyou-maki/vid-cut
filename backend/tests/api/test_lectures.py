@@ -83,14 +83,22 @@ class TestDetail:
         """プレビューが、書き出しと同じ区間を残せるようにする（余白の値を画面に持たせない）。"""
         (lecture,) = env.imported("a.mov")
         detail = env.data("GET", f"/api/lectures/{lecture['id']}")
-        assert detail["keep_padding"] == {"before_ms": 150, "after_ms": 250}
+        assert detail["keep_padding"] == {
+            "before_ms": 150,
+            "after_ms": 250,
+            "after_sentence_ms": 500,
+        }
 
     def test_padding_follows_the_export_settings(self, tmp_path: Path) -> None:
-        settings = ExportSettings(pad_before_ms=40, pad_after_ms=900)
+        settings = ExportSettings(pad_before_ms=40, pad_after_ms=900, pad_after_sentence_ms=1_200)
         env = build_env(tmp_path, export_settings=settings)
         (lecture,) = env.imported("a.mov")
         detail = env.data("GET", f"/api/lectures/{lecture['id']}")
-        assert detail["keep_padding"] == {"before_ms": 40, "after_ms": 900}
+        assert detail["keep_padding"] == {
+            "before_ms": 40,
+            "after_ms": 900,
+            "after_sentence_ms": 1_200,
+        }
 
     def test_before_analysis_there_is_nothing_to_edit_yet(self, env: ApiEnv) -> None:
         env.data("POST", "/api/imports", json={"paths": [str(env.video("a.mov"))]})
