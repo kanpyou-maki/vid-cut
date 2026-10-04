@@ -34,11 +34,13 @@ class Stage:
 def prepare(root: Path, *, make_lesson: LessonMaker = make_real_lesson) -> Stage:
     """root をまっさらにして、ワークスペースと素材を作る。
 
-    消すのは、前回このスクリプトが作ったフォルダ（目印がある）だけ。
-    実データのフォルダを誤って指定しても、消さずに失敗する。
+    消すのは、前回このスクリプトが作ったフォルダ（目印がある）か、空のフォルダだけ。
+    実データのフォルダやファイルを誤って指定しても、消さずに失敗する。
     """
     root = root.resolve()
     if root.exists():
+        if not root.is_dir():
+            raise ValueError(f"E2E 用のフォルダではありません（フォルダではない）: {root}")
         if any(root.iterdir()) and not (root / MARKER).is_file():
             raise ValueError(f"E2E 用のフォルダではありません（{MARKER} がない）: {root}")
         shutil.rmtree(root)

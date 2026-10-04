@@ -68,6 +68,7 @@ npm run e2e        # E2E（Playwright。画面をビルドし、E2E 用の backe
 
 `npm run e2e`（リポジトリのルートからは `.claude/harness.json` の `commands.e2e`）。投入 → 解析 → 編集 → 書き出しを、実物の backend と Chrome で通す（[Design Doc](../docs/design.md) 6 章）。20 秒ほどで終わる。
 
+- macOS が前提（取り消しのキーは ⌘Z を送る。アプリ自体も macOS 用）
 - 必要なもの: ffmpeg、uv、Google Chrome（Playwright 付属の Chromium は H.264 を再生できないので、入っている Chrome を使う。`npx playwright install` は要らない）
 - 流れ: 画面を `e2e/run/dist/` にビルドする（`dist/` は書き換えない）→ Playwright が E2E 用の backend（`backend/tests/e2e/serve.py`）を 8799 番で起動する → Chrome で操作する → backend を止める
 - E2E 用の backend は、ML と判定だけを偽の実装に差し替える（結果は、台本 `backend/tests/e2e/script.json` で決まる）。ffmpeg・SQLite・API・worker・書き出しは実物。

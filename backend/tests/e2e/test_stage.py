@@ -24,6 +24,15 @@ class TestPrepare:
 
         assert (root / "大事なファイル.txt").read_text() == "消さない"
 
+    def test_refuses_a_file(self, tmp_path: Path) -> None:
+        root = tmp_path / "root"
+        root.write_text("消さない")
+
+        with pytest.raises(ValueError, match="E2E 用のフォルダではありません"):
+            prepare(root, make_lesson=_empty_lesson)
+
+        assert root.read_text() == "消さない"
+
     def test_makes_the_workspace_and_the_lessons(self, tmp_path: Path) -> None:
         stage = prepare(tmp_path / "root", make_lesson=_empty_lesson)
 

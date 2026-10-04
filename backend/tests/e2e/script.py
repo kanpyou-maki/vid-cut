@@ -94,6 +94,9 @@ class ScriptedJudge:
             for match in map(_LISTING_LINE.match, prompt.splitlines())
             if match is not None
         ]
+        if not listed:
+            # 一覧の書式が変わると、何も消さない判定を黙って返してしまう
+            raise ValueError("指示文から、チャンクの一覧を読み取れません")
         delete = [
             {"id": number, "kind": "retake", "reason": RETAKE_REASON, "superseded_by": following}
             for (number, text), (following, _) in pairwise(listed)

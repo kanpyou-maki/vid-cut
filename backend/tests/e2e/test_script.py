@@ -80,6 +80,10 @@ class TestScriptedJudge:
 
         assert json.loads(ScriptedJudge().complete(f"指示\n{listing}")) == {"delete": []}
 
+    def test_rejects_a_prompt_without_the_listing(self) -> None:
+        with pytest.raises(ValueError, match="一覧を読み取れません"):
+            ScriptedJudge().complete("指示だけで、一覧がない")
+
     def test_does_not_delete_the_last_chunk_as_a_retake(self) -> None:
         # 言い直した後の版がなければ、消さない
         listing = render_listing(build_entries([make_analysis("r1", TEXTS[:2])]))
