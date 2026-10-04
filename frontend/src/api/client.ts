@@ -10,6 +10,7 @@ import type {
   LectureDetail,
   LectureRef,
   LectureSummary,
+  Peaks,
 } from "./types";
 
 const TOKEN_HEADER = "X-VidCut-Token";
@@ -67,6 +68,8 @@ export interface Api {
    * 画面の URL・ログ・保存領域には入れないこと
    */
   proxyUrl(recordingId: string): string;
+  /** 録画ファイルの波形のピーク値。解析のピーク値の段が終わるまでは、not_found の失敗になる */
+  getPeaks(recordingId: string, signal?: AbortSignal): Promise<Peaks>;
 }
 
 export interface ApiOptions {
@@ -150,6 +153,13 @@ export function createApi(options: ApiOptions): Api {
       url.searchParams.set(TOKEN_QUERY, options.token);
       return url.toString();
     },
+    getPeaks: (recordingId, signal) =>
+      unwrap(
+        client.GET("/api/recordings/{recording_id}/peaks", {
+          params: { path: { recording_id: recordingId } },
+          signal,
+        }),
+      ),
   };
 }
 

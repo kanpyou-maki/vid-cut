@@ -20,5 +20,7 @@ export type ReviewMark = Schemas["ReviewMarkOut"];
 export type CutKind = Schemas["CutKind"];
 export type EditState = Schemas["EditStateOut"];
 export type ManualCut = Schemas["ManualCutOut"];
+/** 波形のピーク値。1 秒あたり per_second 個の、0〜1 の値 */
+export type Peaks = Schemas["PeaksOut"];
 /** 保存する編集状態（version は、読み込んだときの版） */
 export type Edits = Schemas["EditsIn"];

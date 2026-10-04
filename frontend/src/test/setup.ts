@@ -73,3 +73,24 @@ if (typeof HTMLDialogElement !== "undefined") {
     }
   };
 }
+
+// jsdom は matchMedia を持たない（wavesurfer.js の区間と、配色の切り替えの検知が使う）。
+// どの条件にも当てはまらず、変化も起きないものとしてまねる（変化は、テストが自分で起こす）
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (query: string): MediaQueryList => {
+    const list = new EventTarget() as MediaQueryList;
+    return Object.assign(list, { matches: false, media: query });
+  };
+}
+
+// jsdom は canvas に描けない（getContext が null を返す）。何を呼ばれても何もしない描画先を返す
+// （波形の線そのものは、実物のブラウザで確かめる）
+if (typeof HTMLCanvasElement !== "undefined") {
+  const blankContext = (): unknown =>
+    new Proxy<Record<string | symbol, unknown>>(
+      {},
+      { get: (written, name) => written[name] ?? (() => undefined) },
+    );
+  HTMLCanvasElement.prototype.getContext =
+    blankContext as HTMLCanvasElement["getContext"];
+}

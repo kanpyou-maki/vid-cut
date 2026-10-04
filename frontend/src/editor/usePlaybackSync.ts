@@ -78,6 +78,33 @@ export function usePlayingToken(
   }, [root, tokenIndex, follow]);
 }
 
+/**
+ * 位置の文字が見えるよう、文字起こしをスクロールする（波形のクリックで位置を移したとき。止めていても行う）。
+ * 発話の間なら次の文字、最後の文字よりあとなら最後の文字を出す。
+ */
+export function revealPosition(
+  root: RefObject<HTMLElement | null>,
+  transcript: Transcript,
+  position: Position,
+): void {
+  const recording = transcript.recordings.find(
+    (candidate) => candidate.id === position.recordingId,
+  );
+  const token =
+    recording?.byCenter.find(
+      (candidate) => position.timeMs < candidate.endMs,
+    ) ?? recording?.byCenter.at(-1);
+  const element =
+    token === undefined
+      ? null
+      : (root.current?.querySelector(
+          `[${TOKEN_INDEX_ATTRIBUTE}="${token.index}"]`,
+        ) ?? null);
+  if (element !== null && !isVisibleIn(element, root.current)) {
+    element.scrollIntoView({ block: "center" });
+  }
+}
+
 /** 要素が、文字起こしをスクロールする領域（root の親）の中に見えているか。 */
 function isVisibleIn(element: Element, root: HTMLElement | null): boolean {
   const pane = root?.parentElement;

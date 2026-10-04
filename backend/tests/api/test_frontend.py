@@ -1,5 +1,7 @@
 """ビルド済み frontend の配信（Design Doc 2 章・3-5-1）。HTML にはトークンを埋め込む。"""
 
+import json
+import re
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,7 @@ from tests.api.conftest import BASE_URL, TOKEN
 from tests.pipeline.fakes import FakeMediaTool
 from vidcut.api.app import ApiSettings, create_app
 from vidcut.api.frontend import TOKEN_META
+from vidcut.api.headers import WAVEFORM_STYLE_HASH
 from vidcut.api.security import local_guard
 from vidcut.bootstrap import build_api
 
@@ -22,6 +25,8 @@ INDEX = """<!doctype html>
 </html>
 """
 TOKEN_TAG = f'<meta name="{TOKEN_META}" content="{TOKEN}" />'
+# 波形の部品が差し込む style 要素のハッシュ。frontend のテストも、同じファイルを読む
+WAVEFORM_STYLE_HASH_FILE = Path(__file__).with_name("waveform_style_hash.json")
 
 
 @pytest.fixture
@@ -206,6 +211,31 @@ class TestSecurityHeaders:
         assert "frame-ancestors 'none'" in policy
         assert "object-src 'none'" in policy  # <object> や <embed> で何も読み込ませない
         assert "script-src" not in policy or "'unsafe-inline'" not in policy.split("script-src")[1]
+
+    def test_inline_styles_are_not_allowed_except_the_waveform_style(
+        self, client: TestClient
+    ) -> None:
+        policy = client.get("/").headers["content-security-policy"]
+        directives = dict(part.split(" ", 1) for part in policy.split("; "))
+        # インラインは、スクリプトもスタイルも許可しない（style 属性も不可）。
+        # 例外は、波形の部品（wavesurfer.js）が差し込む style 要素 1 つだけ（ハッシュで許可）
+        assert "'unsafe-inline'" not in policy
+        assert "style-src-attr" not in directives
+        assert "style-src-elem" not in directives
+        sources = directives["style-src"].split(" ")
+        assert sources[0] == "'self'"
+        assert len(sources) == 2
+        assert re.fullmatch(r"'sha256-[A-Za-z0-9+/]{43}='", sources[1])
+
+    def test_waveform_style_hash_is_the_one_the_frontend_test_checks(
+        self, client: TestClient
+    ) -> None:
+        # frontend のテスト（waveChart.test.ts）は、wavesurfer.js が実際に差し込む style 要素の
+        # ハッシュが、このファイルの値と同じことを確かめる。CSP も同じ値を許可していること
+        shared = json.loads(WAVEFORM_STYLE_HASH_FILE.read_text(encoding="utf-8"))
+        policy = client.get("/").headers["content-security-policy"]
+        assert shared["hash"] == WAVEFORM_STYLE_HASH
+        assert f"style-src 'self' '{shared['hash']}'" in policy.split("; ")
 
     def test_startup_and_shutdown_pass_through(self, tmp_path: Path, dist: Path) -> None:
         with make_client(tmp_path, dist) as client:

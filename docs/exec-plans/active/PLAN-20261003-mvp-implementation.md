@@ -159,9 +159,9 @@ PR 4（`feat/m7-transcript-review`）:
 - [x] 判定理由の表示（カーソルを合わせた候補の近くに出す）と、言い直し先への移動。戻した候補の表示と、採否の切り替え
 - [x] `dropped_restored_ids` の通知（件数と「閉じる」）
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（通知 → 要確認の移動 → 判定理由 → 言い直し先への移動 → 採否の切り替え。コンソールの失敗なし）
-- [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「要確認・判定理由・通知」）
+- [x] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「要確認・判定理由・通知」）
 - [x] review-loop（Stage 0〜2 すべて PASS。docs-reviewer の BLOCK 1 回: README の PR 3 の手順が古いままだった → 修正して PASS）→ PR #15
-- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」
+- [x] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」→ ユーザーがマージ（PR #15、2026-10-04）
 
 PR 5（`feat/m7-preview`）:
 
@@ -169,14 +169,22 @@ PR 5（`feat/m7-preview`）:
 - [x] 残す区間の計算（backend と同じ値で確かめる）と、カット後のタイムライン
 - [x] プレビュー: 録画ファイルの切り替え、削除区間のスキップ（`requestVideoFrameCallback`）、文字起こしとの再生位置の同期
 - [x] 実物の backend と proxy 動画、ヘッドレスの Chrome での確認（再生 → 削除区間を飛ばす → 文字の印 → クリック・時刻・バーでの移動 → 削除した部分も再生する。コンソールの失敗なし）
-- [ ] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「プレビュー」）
+- [x] 画面の構成の確認（ユーザー。不在の間に推奨案で実装した。Design Doc 3-6 の「プレビュー」）
 - [x] review-loop（Stage 0〜2 すべて PASS。docs-reviewer の BLOCK 1 回: Design Doc の PR 3 の節が古いままだった → 修正して PASS。同じ種類が 2 回目なので FRIC-005 に記録）→ PR #16（PR 4 の上に積む。向き先は `feat/m7-transcript-review`）
-- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」
+- [x] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」→ ユーザーがマージ（PR #16、2026-10-04）
 
 PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
 
-- [ ] 波形: wavesurfer.js + ピーク値 + regions による削除区間の表示
-- [ ] CSP の違反がコンソールに出ないことの確認。`style-src 'unsafe-inline'` を外せるか試す
+- [x] 画面の構成の提案と承認（ユーザー、2026-10-04。推奨案のまま。Design Doc 3-6 の「編集画面の波形」）
+- [x] 事前の確認: `wavesurfer.js` 8.0.1 の API と、CSP の下での動き（一時フォルダに展開して、ヘッドレスの Chrome で 5 通りの CSP を確かめた）。`npm audit` は既知の脆弱性なし
+- [x] 波形: wavesurfer.js + ピーク値 + regions による削除区間の表示（1 本につなげる、種類ごとの色、戻し済みは破線の枠、目盛り、拡大と縮小）
+- [x] 波形からの操作: クリックで再生位置を移す、区間を選んで「戻す」/「削除に戻す」、ダブルクリックで切り替え（無音の候補を、ここで戻せる）
+- [x] プレビュー・文字起こしとの同期（再生位置の線、再生中のページ送り、波形のクリックで文字起こしをスクロール）
+- [x] CSP: `style-src 'unsafe-inline'` を外し、wavesurfer.js が差し込む `<style>` 1 つだけをハッシュで許可した。違反がコンソールに出ないことを確認
+- [x] 実物の backend と、ヘッドレスの Chrome での確認（描画・クリック・区間の選択と採否・保存・拡大と縮小・再生との連動・配色・読めないときと再試行: 45 項目。
+      録画ファイルを 2 本にした写しで、つなげた波形: 10 項目。コンソールの失敗と CSP の違反なし）
+- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、録画ファイルがないレクチャーの扱い・長い関数の分割・重複した定数の集約を反映）→ PR [#17](https://github.com/kanpyou-maki/vid-cut/pull/17)
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 6: 波形）」
 
 PR 7（`feat/m7-export`）:
 

@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）・PR 3（編集状態と文字起こしの基本）は main にマージ済み（PR #1〜#14）。M7（frontend）を 7 本の PR に分けて実装中。PR 4（要確認・判定理由・通知。`feat/m7-transcript-review`。PR #15）と PR 5（プレビュー。`feat/m7-preview`。PR #16。PR 4 の上に積む）を、ユーザー不在の間に推奨案で実装した（どちらも、画面の構成はユーザー確認待ち）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）〜PR 5（プレビュー）は main にマージ済み（PR #1〜#16）。M7（frontend）を 7 本の PR に分けて実装中。PR 6（波形。`feat/m7-waveform`）は review-loop を通過し、PR [#17](https://github.com/kanpyou-maki/vid-cut/pull/17) のマージ待ち（ユーザーの手動確認）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,17 +37,16 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）も review-loop を通過し、PR [#16](https://github.com/kanpyou-maki/vid-cut/pull/16) のマージ待ち（PR 4 の上に積んでいる。向き先は `feat/m7-transcript-review`）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 5（プレビュー。PR #16）までマージ済み。PR 6（波形）は PR [#17](https://github.com/kanpyou-maki/vid-cut/pull/17) のマージ待ち
 
 ## 次にやること
 
-- [ ] M7 の PR 4 の確認（ユーザー）: 画面の構成（Design Doc 3-6 の「要確認・判定理由・通知」。不在の間に推奨案で実装した。PR の説明の先頭に、選んだ内容と代替案がある）と、
-      手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」）。問題なければマージ
-- [ ] M7 の PR 5 の確認（ユーザー）: 画面の構成（Design Doc 3-6 の「プレビュー」。PR の説明の先頭に、選んだ内容と代替案がある）と、手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」）。
-      PR 5 は PR 4 の上に積んである（PR 4 に直しが入ったら、PR 5 も直す。PR 4 をマージしたあと、PR 5 の向き先を main に変える）
-- [ ] M7: frontend。PR 5 のあとは PR 6（`feat/m7-waveform`: 波形。依存の追加と CSP の確認があるので、ユーザーが戻ってから）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
-- [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
-      波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
+- [ ] M7 の PR 6 の確認（ユーザー）: 手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 6: 波形）」）。問題なければ PR #17 をマージ。
+      PR の説明にある判断 3 件（PRD の US-02 の色の記述、ADR-006 への追記、CSP の `data:`・`blob:`）も決める
+- [ ] M7: frontend。PR 6 のあとは PR 7（`feat/m7-export`: 書き出しボタンと進捗、保存先の表示。backend にレクチャーの詳細の保存先と、Finder で開く API を足す）。PR の分け方と順番は実装計画の M7
+- [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
+      インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
+- [ ] FRIC-005 の対応の master への還元: claude-config-master の PR [#5](https://github.com/kanpyou-maki/claude-config-master/pull/5) を作成済み（ユーザーがレビューしてマージする）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
@@ -79,6 +78,8 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 | 24  | 書き出し先はレクチャーの詳細に足す（フォルダ、形式ごとのパスと最後に書き出した日時）。Finder で開く API（`POST /api/lectures/{id}/exports/reveal`）を足す                                                               | ユーザー決定（2026-10-04）                                     | Design Doc 3-5            |
 | 25  | `dropped_restored_ids` の通知は、サーバー側で閉じる API を足す（画面が表示した id だけを消す）。通知は件数だけ                                                                                                          | ユーザー決定（2026-10-04）                                     | Design Doc 3-5            |
 | 26  | frontend に足す依存は `openapi-fetch` と `wavesurfer.js`（最新の安定版。8 系）だけ。ルーティング・データ取得・UI 部品のライブラリは入れない                                                                             | ユーザー承認（2026-10-04）                                     | ADR-006                   |
+| 27  | 波形の画面の構成（1 本につなげる・元の録画の時刻・クリックは位置の移動と選択で、採否はボタンとダブルクリック・ドラッグは入れない）。`wavesurfer.js` は 8.0.1 に固定                                                     | ユーザー承認（2026-10-04。推奨案のまま）                       | Design Doc 3-6            |
+| 28  | CSP の `style-src 'unsafe-inline'` を外し、wavesurfer.js が差し込む `<style>` 1 つだけをハッシュで許可する（nonce は使わない）                                                                                          | ユーザー承認（2026-10-04）                                     | Design Doc 3-5-1          |
 | 9   | 合格ライン: 実素材 3 本、誤削除 1 本あたり 2 件以下、作業時間は手作業の半分以下。暫定指標: 適合率 ≥ 90%・再現率 ≥ 80%・6 分素材の解析 ≤ 5 分                                                                            | ユーザー合意（2026-10-03）                                     | —                         |
 
 ## ブロッカー
@@ -148,7 +149,7 @@ _なし_
 - PR 3 の review-loop: Stage 0（self）・Stage 1（arch / style / test）・Stage 2（security / docs）すべて PASS。提案を受けて、トークンの通し番号を画面に並ぶ順に振るようにした
   （削除の判定は、中央の時刻の順の一覧 `byCenter` で行う。チャンクのトークンが時刻の上で入り交じっていても、選択範囲と通し番号がずれない）。
   セキュリティの LOW（情報）: ジョブの `error_message` は backend の定型文をそのまま出す（素材一覧と同じ）。タブを閉じるときは確認を出すだけで、保存は走らない（承認済みの方針）
-- PR 4（`feat/m7-transcript-review`）: 要確認・判定理由・通知。ユーザー不在（2026-10-04 の夜）の間に、画面の構成を推奨案で決めて実装した（**ユーザー確認待ち**。Design Doc 3-6）。
+- PR 4（`feat/m7-transcript-review`）: 要確認・判定理由・通知。ユーザー不在の間に、画面の構成を推奨案で決めて実装し、ユーザーが確認してマージした（PR #15、2026-10-04。Design Doc 3-6）。
   backend に `POST /api/lectures/{id}/dropped-restorations/dismiss` を足した（`EditService.dismiss_dropped_restorations` → `JudgementRepository.dismiss_dropped`。記録の列だけを 1 トランザクションで書き換える）。
   frontend は、`Api.dismissDroppedRestorations`、要確認の印（`transcript.ts` の `lowConfidence`・`unrecognized`・`reviewTargets`）と移動（`useReviewNavigation.ts`。N / Shift+N）、
   判定理由（`CutReason.tsx`。文字起こしを描き直さないよう、カーソルの出入りを `document` で受ける）、戻した候補の表示と「削除に戻す」（`edits.ts` の `tokenRestorations`・`reapplySuggestion`）、通知（`DroppedNotice.tsx`）。
@@ -158,7 +159,7 @@ _なし_
   「言い直し先へ移動」で段落が出て目印が付く、クリックで「戻し済み」になり理由も切り替わる、もう一度クリックで削除に戻って保存される。PR 3 の項目と合わせて 44 項目 OK。frontend のテスト 423 件 / カバレッジ 99%（分岐 96%）、backend 1,029 件
 - PR 4 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: `frontend/README.md` の PR 3 の手順に、PR 4 で変わった表示が古いまま残っていた → 修正して PASS）。
   挙動を変えたら、前の PR の手動確認の手順も、いまの挙動に合わせて直す。セキュリティの指摘なし
-- PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案（**ユーザー確認待ち**。Design Doc 3-6 の「プレビュー」）。
+- PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案で実装し、ユーザーが確認してマージした（PR #16、2026-10-04。Design Doc 3-6 の「プレビュー」）。
   backend は、レクチャーの詳細に `keep_padding`（書き出しの設定の余白）を足した。frontend は、`Api.proxyUrl`、残す区間の計算（`keepRanges.ts`。backend の `keep_ranges` と同じ計算。両側のテストが、同じ例 `backend/tests/domain/keep_ranges_cases.json` を読む）、
   カット後のタイムライン（`timeline.ts`）、再生（`usePlayer.ts`。1 つの `video` を切り替え、フレームごとに確かめて飛ぶ）、表示と操作（`PreviewPane.tsx`）、文字起こしとの同期（`usePlaybackSync.ts`）。
   余白の値（M8 の「間の調整」で変える）は backend から受け取るので、画面には持たない。ただし、残す区間の計算そのものを変えたら、`keepRanges.ts` も合わせる
@@ -166,7 +167,7 @@ _なし_
   （フレームごとの記録で、削除区間の中のフレームが 1 つ以下）、再生位置の文字の印、Space での一時停止、「削除した部分も再生する」で削除区間も再生、段落の時刻のクリック、バーの中央のクリック。
   PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 500 件 / カバレッジ 98%（分岐 94%）、backend 1,043 件
 - PR 5 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: Design Doc の PR 3 の節に「プレビューと波形は場所だけ用意する」が残っていた → 修正して PASS）。
-  PR 4 と同じ種類の手戻りが 2 回続いたので、FRIC-005 に記録し、`frontend/README.md` の「画面の実装で守ること」と `.claude/agents/self-reviewer.md` のチェックリストに「ドキュメントの追従」を足した（master への還元は未実施）。
+  PR 4 と同じ種類の手戻りが 2 回続いたので、FRIC-005 に記録し、`frontend/README.md` の「画面の実装で守ること」と `.claude/agents/self-reviewer.md` のチェックリストに「ドキュメントの追従」を足した（master へは、claude-config-master の PR #5 で還元した。2026-10-04）。
   Stage 1 の提案で、残す区間の例を backend と frontend のテストで共有し（`backend/tests/domain/keep_ranges_cases.json`）、テスト用の動画のまねを「`src` を替えると止まる」まで再現した
 - PR 5 の残り・制限: 録画ファイルの切り替えは `src` の差し替えなので、切り替えのときに短い間が空く。複数の録画ファイルのレクチャーは、テストでだけ確かめた（実物では M8 で確かめる）。
   jsdom は再生を実装していないので、テストでは再生の状態と位置だけをまねている（`src/test/setup.ts`。`src` を替えると止まって頭に戻る、まで。読み込めたこと（`loadedmetadata`）は、テストが知らせる）。プレビューは proxy 動画なので、書き出し（中間素材、60fps）とは 1 フレーム未満のずれがありうる
@@ -175,10 +176,29 @@ _なし_
 - 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。
   選択範囲とトークンの重なりは、トークンの要素ではなく中の文字（テキストノード）の範囲で比べる（要素で比べると、文字の境目で始まる選択が隣のトークンにも重なって見える）。
   画面のテストでタイマーを偽物にするときは `vi.useFakeTimers({ shouldAdvanceTime: true })` を使い、描いた直後は `advance(0)` で effect を流してからキーを送る（`src/test/editorPage.tsx`）
-- 編集画面の残り・制限: 無音の候補はトークンを持たないので文字起こしに出ず、波形（PR 6）まで画面から戻せない。編集できる状態になったあとは読み直さない（別のタブでの並べ替えや判定のやり直しは、版が変わらなければ気づかない。PR 4 の通知は、開いたときの分だけを出す。開いている間の変化を知らせる仕組みは、まだない）。
+- 編集画面の残り・制限: 無音の候補はトークンを持たないので文字起こしに出ない（波形から戻す。PR 6）。編集できる状態になったあとは読み直さない（別のタブでの並べ替えや判定のやり直しは、版が変わらなければ気づかない。PR 4 の通知は、開いたときの分だけを出す。開いている間の変化を知らせる仕組みは、まだない）。
   解析結果が読めない録画ファイルは、解析し直す必要があることを伝えるだけ（再解析は API のみ。決定事項 18）。サーバーを起動し直すとトークンが変わるので、未保存の編集は保存できず、読み込み直すと失われる。
   編集してから 1 秒以内に素材一覧へ戻り、すぐ同じレクチャーを開き直すと、離れるときの保存と読み込みが前後して、次の編集で 409 のダイアログが出ることがある（読み込み直せば続けられる）。
   編集のたびに文字起こし全体を描き直す（検証素材の 1,505 トークンでは問題なし。長い素材で重ければ、段落ごとに描き直しを抑える）
+- PR 6（`feat/m7-waveform`）: 波形。画面の構成はユーザー承認（2026-10-04。推奨案のまま。Design Doc 3-6 の「編集画面の波形」）。`wavesurfer.js` 8.0.1（固定。依存なし、BSD-3-Clause。`npm audit` は既知の脆弱性なし）を足した。
+  backend は CSP だけを変えた（`style-src 'self' 'sha256-…'`。`'unsafe-inline'` を外した。API の変更なし）。frontend は、`Api.getPeaks`、波形の配置と区間の計算（`waveLayout.ts`）、
+  wavesurfer.js を包む部品（`waveChart.ts`。wavesurfer.js を読み込むのはここだけ）、ピーク値の読み込み（`usePeaks.ts`）、画面への配置（`WaveChartView.tsx`）、ペイン（`WaveformPane.tsx`）。
+  編集の操作は増やしていない（波形からの採否の切り替えは、文字起こしと同じ `restore`・`reapply` を使う）。frontend のテスト 580 件 / カバレッジ 98%（分岐 94%）、backend 1,045 件
+- PR 6 で確認済み（一時ワークスペース。実物の backend を `--no-worker` で起動、ヘッドレスの Chrome を実際のマウス操作で）: 波形の線が canvas に描かれる、区間の位置と幅が時刻と合う（50px/秒）、
+  クリックで再生位置・文字起こしの印が移る、区間の選択 →「戻す」→ 保存 → ダブルクリック → ⌘Z、拡大と縮小（全体では 93 件の区間がすべて出る）、文字起こしのクリックで波形がスクロール、
+  波形のクリックで文字起こしがスクロール、再生中の線とページ送り、暗い配色、幅 900px 以下、ピーク値の 404 と再試行。45 項目 OK。
+  録画ファイルを 2 本にした写し（DB と生成物を写して id を付け替えた）で、つなげた波形・境目の名前・目盛り・2 本目へのクリックでの動画の切り替えも 10 項目 OK。CSP の違反とコンソールの失敗なし
+- PR 6 で分かった wavesurfer.js 8.0.1 の動き: `peaks` と `duration` だけを渡せば音声を読み込まない（`fetch`・`blob:` なし）。Shadow DOM の中に `<style>` を 1 つ差し込む（`style` 属性は使わない。中身は `height` の値で変わる）。
+  描き終える（`ready`）まで長さを 0 として扱い、それまでに足した区間は頭に寄せられる（`waveChart.ts` が、描き終えてから足す）。画面の外の区間は要素が外されるが、同じ要素が使われ続ける。
+  区間のクリックは、区間の通知 → 波形のクリックの順に届く。jsdom では、幅が 0 だと区間が出ず、`matchMedia` と canvas の描画先がない（`src/test/setup.ts`・`src/test/waveform.ts` でまねる）。
+  Chrome は、要素に書いた `outline` を「色 種類 太さ」の順に直して返す（実物の確認で、文字列をそのまま比べると食い違う）
+- PR 6 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（BLOCK なし。docs-reviewer の BLOCK は、PR 4・PR 5 の 2 回から 0 回になった。FRIC-005 の対応が効いた）。
+  提案を受けて、録画ファイルがないレクチャーでは波形を作らない・`createWaveChart` と `WaveformPane` の分割・「録画ファイルが 2 本以上」の判定の集約（`isMultiTrack`）・操作を止めている間のテストの分割を反映した。
+  セキュリティの LOW（情報）: CSP の `img-src`・`media-src` の `data:`・`blob:` は、いま使っていない（外すかは別件）。
+  ユーザーの判断に回したもの: PRD の US-02 の色の記述（「赤 = 無音、青 = フィラー」）が、PR 3 で承認した配色（無音は青、フィラーは黄、言い直しは赤）と食い違っている。ADR-006 に「8.0.1 に固定・CSP はハッシュ」の追記をするか
+- PR 6 の残り・制限: 区間はマウスでしか選べない（キーボードでは、無音の候補を戻せない）。ドラッグで区間を作る・縁を動かす操作はない（M8 の「間の調整」と合わせて考える）。
+  2 本目からの目盛りは、半端な時刻になる（位置が、つなげた全体で決まるため）。手動の削除区間と自動の候補が重なるところは、両方の色が重なって見える。
+  長いレクチャー（2 時間で、ピーク値は約 72 万個・区間は数千件）での重さは、実素材で M8 に確かめる。CSP の `img-src`・`media-src` の `data:`・`blob:` は、いま使っていない（外すかは未検討）
 - 素材一覧の残り: 判定の進捗（%）は出していない（窓が 1 つだと 0% のまま）。処理中のボタンは `disabled` にするので、キーボードで ↑ ↓ を続けて押すとフォーカスが外れることがある
 
 ### 素材と解析・判定・書き出しの知見

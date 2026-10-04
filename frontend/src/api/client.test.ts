@@ -462,6 +462,44 @@ describe("createApi: プレビュー", () => {
   });
 });
 
+describe("createApi: 波形", () => {
+  const PEAKS = { per_second: 100, values: [0, 0.5, 0.25] };
+
+  it("getPeaks は、録画ファイルのピーク値を読む（トークンはヘッダーに付ける）", async () => {
+    const { api, sent } = recordingApi(PEAKS);
+
+    await expect(api.getPeaks("rec1")).resolves.toEqual(PEAKS);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0].method).toBe("GET");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/recordings/rec1/peaks`);
+    expect(sent[0].headers.get("X-VidCut-Token")).toBe(TOKEN);
+  });
+
+  it("getPeaks の中断は、そのまま伝える", async () => {
+    const controller = new AbortController();
+    const api = apiWith(async (request) => {
+      controller.abort();
+      request.signal.throwIfAborted();
+      return json(200, { success: true, data: PEAKS, error: null });
+    });
+
+    const error = await caught(api.getPeaks("rec1", controller.signal));
+
+    expect(error).toMatchObject({ name: "AbortError" });
+  });
+
+  it("getPeaks は、ピーク値がまだなければ not_found の失敗にする", async () => {
+    const api = apiWith(async () =>
+      failure(404, "指定されたデータが見つかりません"),
+    );
+
+    const error = await caught(api.getPeaks("rec1"));
+
+    expect(error).toMatchObject({ kind: "not_found", status: 404 });
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(

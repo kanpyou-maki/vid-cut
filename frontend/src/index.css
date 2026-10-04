@@ -20,6 +20,10 @@
   /* プレビューの動画の余白（縦横の比が合わない部分）の色 */
   --color-video-backdrop: #000;
 
+  /* 波形の線（と目盛りの文字）の色、波形の上の再生位置の線の色 */
+  --color-wave: light-dark(#5b6470, #a7b0bc);
+  --color-wave-cursor: light-dark(#c62828, #ff8a80);
+
   /* プレビューの再生位置の文字の背景色 */
   --color-playing: light-dark(#bfe3c6, #2f6b3a);
 }
