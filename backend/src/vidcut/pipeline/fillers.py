@@ -1,18 +1,64 @@
-"""フィラーの検出: 辞書 + 前後の無音（Design Doc 3-2 段 8）。"""
+"""フィラーの検出: 辞書 + 前後の区切れ（Design Doc 3-2 段 8）。"""
 
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, CutSuggestion, SpeechChunk, Token
 
 DEFAULT_MIN_GAP_MS = 100
+DEFAULT_GUARD_MS = 50
+DEFAULT_MAX_STRETCH_MS = 1_000
 
-# 長いものを先に並べる（「えーと」を「えー」より優先する）
-_FILLERS = re.compile(r"えー+っ?と|えっと|えー+|あのー+|うー+ん|んー+|あー+")
-# 内容語にもなる語。チャンク全体がこの語だけのときに限って候補にする
-_AMBIGUOUS = re.compile(r"(?:まあ|その|あの)ー*")
+# 長いものを先に並べる（「えーと」を「えー」より優先する）。ambiguous は内容語にもなる語で、
+# フィラーと続いているときと、チャンクがそれだけのときに限って候補にする
+_PATTERN = re.compile(
+    r"(?P<filler>えー+っ?と|えっと|えー+|あのー+|うー+ん|んー+|あー+)"
+    r"|(?P<ambiguous>(?:まあ|その|あの)ー*)"
+)
 _PUNCTUATION = frozenset("、。，．,.!?！？「」『』…・〜")
+
+
+@dataclass(frozen=True)
+class _Match:
+    """辞書に一致した範囲。start と end は、句読点を除いた文字（words）の添字 [start, end)。"""
+
+    start: int
+    end: int
+    ambiguous: bool
+
+
+@dataclass(frozen=True)
+class _Words:
+    """チャンクのトークンのうち、句読点を除いた文字と、その並びの中の区切れ。"""
+
+    tokens: Sequence[Token]  # チャンクのトークン（句読点を含む）
+    positions: Sequence[int]  # words[i] の、tokens の中の位置
+    min_gap_ms: int
+
+    @property
+    def words(self) -> list[Token]:
+        return [self.tokens[position] for position in self.positions]
+
+    def breaks_before(self, index: int) -> bool:
+        """words[index] の前が区切れているか: チャンクの頭、句読点が挟まる、間があく。"""
+        if index == 0:
+            return True
+        previous, current = self.positions[index - 1], self.positions[index]
+        if current - previous > 1:  # 間に句読点のトークンがある
+            return True
+        gap = self.tokens[current].span.start_ms - self.tokens[previous].span.end_ms
+        return gap >= self.min_gap_ms
+
+    def breaks_after(self, end: int) -> bool:
+        """words[end - 1] の後ろが区切れているか（チャンクの終わりも可）。"""
+        return end == len(self.positions) or self.breaks_before(end)
+
+    def text(self, start: int, end: int) -> str:
+        """words[start:end] の文字（間の句読点を含む）。"""
+        first, last = self.positions[start], self.positions[end - 1]
+        return "".join(token.text for token in self.tokens[first : last + 1])
 
 
 def detect_fillers(
@@ -20,44 +66,101 @@ def detect_fillers(
     tokens: Sequence[Token],
     *,
     min_gap_ms: int = DEFAULT_MIN_GAP_MS,
+    guard_ms: int = DEFAULT_GUARD_MS,
+    max_stretch_ms: int = DEFAULT_MAX_STRETCH_MS,
 ) -> tuple[CutSuggestion, ...]:
-    words_by_chunk: dict[str, list[Token]] = {}
+    """フィラーの削除候補。続いたフィラーは 1 つにまとめる。
+
+    削除する区間は、前の語の終わりの guard_ms あとから、次の語の頭の guard_ms 手前まで
+    （位置合わせは、伸ばした声に短い時刻しか付けないことがあるため。Design Doc 3-2）。
+    ただし、位置合わせの時刻から max_stretch_ms を超えては広げない
+    （文字のない長い区間には、書き起こされなかった発話があるかもしれない）。
+    """
+    if guard_ms < 0:
+        raise ValueError(f"guard_ms は 0 以上である必要があります: {guard_ms}")
+    if max_stretch_ms < 0:
+        raise ValueError(f"max_stretch_ms は 0 以上である必要があります: {max_stretch_ms}")
+    limits = _CutLimits(guard_ms, max_stretch_ms)
+    by_chunk: dict[str, list[Token]] = {}
     for token in tokens:
-        if token.text not in _PUNCTUATION:
-            words_by_chunk.setdefault(token.chunk_id, []).append(token)
+        by_chunk.setdefault(token.chunk_id, []).append(token)
     suggestions: list[CutSuggestion] = []
     for chunk in chunks:
-        words = words_by_chunk.get(chunk.id, [])
-        for number, (start, end) in enumerate(_filler_ranges(words, min_gap_ms)):
-            filler = words[start:end]
-            text = "".join(t.text for t in filler)
+        chunk_tokens = by_chunk.get(chunk.id, [])
+        positions = [i for i, t in enumerate(chunk_tokens) if t.text not in _PUNCTUATION]
+        words = _Words(chunk_tokens, positions, min_gap_ms)
+        for number, (start, end) in enumerate(_filler_ranges(words)):
             suggestions.append(
                 CutSuggestion(
                     id=f"{chunk.id}-filler-{number}",
                     recording_id=chunk.recording_id,
-                    span=Interval(filler[0].span.start_ms, filler[-1].span.end_ms),
+                    span=_cut_span(chunk, words.words, start, end, limits),
                     kind=CutKind.FILLER,
-                    reason=f"フィラー「{text}」",
+                    reason=f"フィラー「{words.text(start, end)}」",
                 )
             )
     return tuple(suggestions)
 
 
-def _filler_ranges(words: Sequence[Token], min_gap_ms: int) -> list[tuple[int, int]]:
-    """フィラーに当たる words の添字の範囲 [start, end)。"""
-    text = "".join(t.text for t in words)
-    if text and _AMBIGUOUS.fullmatch(text):
-        return [(0, len(words))]
-    return [
-        (m.start(), m.end())
-        for m in _FILLERS.finditer(text)
-        if _pause_before(words, m.start(), min_gap_ms) and _pause_after(words, m.end(), min_gap_ms)
+def _filler_ranges(words: _Words) -> list[tuple[int, int]]:
+    """フィラーに当たる words の添字の範囲 [start, end)。続いたものは 1 つの範囲にまとめる。"""
+    text = "".join(token.text for token in words.words)
+    matches = [
+        _Match(m.start(), m.end(), m.lastgroup == "ambiguous") for m in _PATTERN.finditer(text)
     ]
+    ranges: list[tuple[int, int]] = []
+    index = 0
+    while index < len(matches):
+        last = _run_end(matches, index, words)
+        if last is None:
+            index += 1
+            continue
+        run = matches[index : last + 1]
+        whole_chunk = run[0].start == 0 and run[-1].end == len(text)
+        if whole_chunk or not all(match.ambiguous for match in run):
+            ranges.append((run[0].start, run[-1].end))
+        index = last + 1
+    return ranges
 
 
-def _pause_before(words: Sequence[Token], index: int, min_gap_ms: int) -> bool:
-    return index == 0 or words[index].span.start_ms - words[index - 1].span.end_ms >= min_gap_ms
+def _run_end(matches: Sequence[_Match], first: int, words: _Words) -> int | None:
+    """matches[first] から続く一致のうち、前後が区切れているまとまりの、最後の添字。なければ None。
+
+    まとまりの内側（一致どうしが隣り合うところ）は、区切れていなくてよい。
+    """
+    if not words.breaks_before(matches[first].start):
+        return None
+    last: int | None = None
+    index = first
+    while True:
+        if words.breaks_after(matches[index].end):
+            last = index
+        following = index + 1
+        if following == len(matches) or matches[following].start != matches[index].end:
+            return last
+        index = following
 
 
-def _pause_after(words: Sequence[Token], end: int, min_gap_ms: int) -> bool:
-    return end == len(words) or words[end].span.start_ms - words[end - 1].span.end_ms >= min_gap_ms
+@dataclass(frozen=True)
+class _CutLimits:
+    guard_ms: int  # 前後の語の端から残す余裕
+    max_stretch_ms: int  # 位置合わせの時刻から広げる上限
+
+
+def _cut_span(
+    chunk: SpeechChunk, words: Sequence[Token], start: int, end: int, limits: _CutLimits
+) -> Interval:
+    """words[start:end] を消すときの区間。位置合わせの時刻より狭くはしない。"""
+    first, last = words[start].span, words[end - 1].span
+    if start == 0:
+        cut_start = min(chunk.span.start_ms, first.start_ms)
+    else:
+        cut_start = min(words[start - 1].span.end_ms + limits.guard_ms, first.start_ms)
+    if end == len(words):
+        cut_end = max(chunk.span.end_ms, last.end_ms)
+    else:
+        cut_end = max(words[end].span.start_ms - limits.guard_ms, last.end_ms)
+    return Interval(
+        max(cut_start, first.start_ms - limits.max_stretch_ms),
+        min(cut_end, last.end_ms + limits.max_stretch_ms),
+    )

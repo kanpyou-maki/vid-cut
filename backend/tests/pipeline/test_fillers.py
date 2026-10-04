@@ -1,3 +1,5 @@
+import pytest
+
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, SpeechChunk, Token
 from vidcut.pipeline.fillers import detect_fillers
@@ -32,21 +34,50 @@ def spans(text: str, gaps: dict[int, int] | None = None) -> list[tuple[Interval,
     return [(s.span, s.reason) for s in detect_fillers([chunk], tokens)]
 
 
+def tokens_at(*items: tuple[str, int, int]) -> tuple[Token, ...]:
+    """(文字, 開始, 終了) を、そのままの時刻でトークンにする。"""
+    return tuple(
+        Token(
+            id=f"t{i}",
+            recording_id="r1",
+            chunk_id="r1-c0000",
+            text=text,
+            span=Interval(start, end),
+            asr_confidence=0.9,
+            align_score=0.9,
+        )
+        for i, (text, start, end) in enumerate(items)
+    )
+
+
+def chunk_at(start: int, end: int) -> SpeechChunk:
+    return SpeechChunk(id="r1-c0000", recording_id="r1", span=Interval(start, end))
+
+
 class TestDetectFillers:
     def test_chunk_consisting_of_filler_is_a_candidate(self) -> None:
         assert spans("えーと") == [(Interval(0, 300), "フィラー「えーと」")]
 
     def test_filler_separated_by_pauses_is_a_candidate(self) -> None:
-        # 「えー」の後に 200ms の間があり、そこから本題に入る
-        assert spans("えーそれでは", gaps={2: 200}) == [(Interval(0, 200), "フィラー「えー」")]
+        # 「えー」の後に 200ms の間があり、そこから本題に入る。次の語の 50ms 手前まで削る
+        assert spans("えーそれでは", gaps={2: 200}) == [(Interval(0, 350), "フィラー「えー」")]
 
     def test_filler_inside_a_word_without_pause_is_kept(self) -> None:
         assert spans("えーそれでは") == []
 
     def test_punctuation_is_ignored_when_measuring_pauses(self) -> None:
+        # 前の語「は」の終わり（200）の 50ms あとから、次の語「次」の頭（1000）の 50ms 手前まで
         assert spans("では、あのー、次に", gaps={3: 150, 6: 150}) == [
-            (Interval(450, 750), "フィラー「あのー」")
+            (Interval(250, 950), "フィラー「あのー」")
         ]
+
+    def test_punctuation_next_to_the_filler_counts_as_a_break(self) -> None:
+        # 間がなくても、読点で区切られていれば候補にする
+        assert spans("では、あのー、次に") == [(Interval(250, 650), "フィラー「あのー」")]
+
+    def test_punctuation_on_one_side_only_is_not_enough(self) -> None:
+        assert spans("では、あのー次に") == []
+        assert spans("ではあのー、次に") == []
 
     def test_long_vowels_of_any_length(self) -> None:
         assert spans("うーーん")[0][1] == "フィラー「うーーん」"
@@ -54,7 +85,9 @@ class TestDetectFillers:
     def test_ambiguous_word_only_when_it_is_the_whole_chunk(self) -> None:
         assert spans("まあ") == [(Interval(0, 200), "フィラー「まあ」")]
         assert spans("まあいいでしょう", gaps={2: 300}) == []
-        assert spans("その、") == [(Interval(0, 200), "フィラー「その」")]
+        assert spans("まあ、いいでしょう") == []
+        # チャンクの終わりまで削る（後ろの読点のぶんも）
+        assert spans("その、") == [(Interval(0, 300), "フィラー「その」")]
 
     def test_suggestion_metadata(self) -> None:
         chunk, tokens = chunk_with("えっと")
@@ -66,3 +99,93 @@ class TestDetectFillers:
     def test_no_tokens_no_fillers(self) -> None:
         chunk = SpeechChunk(id="r1-c0000", recording_id="r1", span=Interval(0, 1_000))
         assert detect_fillers([chunk], []) == ()
+
+
+class TestCutSpan:
+    """削除する区間は、位置合わせの時刻ではなく、前後の語で決める（Design Doc 3-2）。"""
+
+    def test_covers_a_drawn_out_filler_that_the_aligner_squeezed(self) -> None:
+        # 実素材の形: 「えー」に 41ms しか付かないが、声は次の語の直前まで続いている
+        tokens = tokens_at(
+            ("え", 220, 240), ("ー", 240, 261), ("、", 261, 281), ("見", 600, 700), ("て", 700, 800)
+        )
+        (suggestion,) = detect_fillers([chunk_at(200, 800)], tokens)
+        assert suggestion.span == Interval(200, 550)
+
+    def test_starts_at_the_chunk_head_and_ends_at_the_chunk_end(self) -> None:
+        tokens = tokens_at(("え", 300, 320), ("ー", 320, 340), ("と", 340, 360))
+        (suggestion,) = detect_fillers([chunk_at(100, 900)], tokens)
+        assert suggestion.span == Interval(100, 900)
+
+    def test_filler_at_the_end_of_a_chunk(self) -> None:
+        assert spans("それでは、えー") == [(Interval(450, 700), "フィラー「えー」")]
+
+    def test_is_never_narrower_than_the_aligned_filler(self) -> None:
+        # 前後の語がすぐ隣にあるときは、位置合わせの時刻のまま
+        tokens = tokens_at(
+            ("は", 0, 100), ("、", 100, 120), ("え", 120, 220), ("ー", 220, 320),
+            ("、", 320, 340), ("次", 340, 440),
+        )  # fmt: skip
+        (suggestion,) = detect_fillers([chunk_at(0, 440)], tokens)
+        assert suggestion.span == Interval(120, 320)
+
+    def test_does_not_stretch_far_beyond_the_aligned_filler(self) -> None:
+        # 文字のない長い区間には、書き起こされなかった発話があるかもしれない。広げるのは 1 秒まで
+        tokens = tokens_at(("え", 3_000, 3_020), ("ー", 3_020, 3_040), ("と", 3_040, 3_060))
+        (suggestion,) = detect_fillers([chunk_at(0, 9_000)], tokens)
+        assert suggestion.span == Interval(2_000, 4_060)
+
+    def test_stretch_limit_is_configurable(self) -> None:
+        tokens = tokens_at(("え", 3_000, 3_020), ("ー", 3_020, 3_040), ("と", 3_040, 3_060))
+        (suggestion,) = detect_fillers([chunk_at(0, 9_000)], tokens, max_stretch_ms=200)
+        assert suggestion.span == Interval(2_800, 3_260)
+
+    def test_guard_is_configurable(self) -> None:
+        chunk, tokens = chunk_with("えーそれでは", gaps={2: 200})
+        (suggestion,) = detect_fillers([chunk], tokens, guard_ms=0)
+        assert suggestion.span == Interval(0, 400)
+
+    def test_rejects_a_negative_guard(self) -> None:
+        chunk, tokens = chunk_with("えーと")
+        with pytest.raises(ValueError, match="guard_ms"):
+            detect_fillers([chunk], tokens, guard_ms=-1)
+
+    def test_rejects_a_negative_stretch_limit(self) -> None:
+        chunk, tokens = chunk_with("えーと")
+        with pytest.raises(ValueError, match="max_stretch_ms"):
+            detect_fillers([chunk], tokens, max_stretch_ms=-1)
+
+
+class TestFillerRuns:
+    """続いたフィラーは、まとめて 1 つの候補にする。"""
+
+    def test_fillers_separated_by_punctuation_become_one(self) -> None:
+        assert spans("次は、あー、えーと") == [(Interval(250, 900), "フィラー「あー、えーと」")]
+
+    def test_fillers_without_punctuation_become_one(self) -> None:
+        assert spans("あーあー") == [(Interval(0, 400), "フィラー「あーあー」")]
+
+    def test_ambiguous_word_goes_with_the_filler_next_to_it(self) -> None:
+        # 実素材の形: 「まあ、あのー、実際に」
+        assert spans("まあ、あのー、実際に") == [(Interval(0, 650), "フィラー「まあ、あのー」")]
+        assert spans("えー、まあ、次に") == [(Interval(0, 550), "フィラー「えー、まあ」")]
+
+    def test_ambiguous_word_that_runs_into_the_next_word_stays(self) -> None:
+        # 「その方法」の「その」は内容語。手前のフィラーだけを消す
+        assert spans("えー、その方法は") == [(Interval(0, 250), "フィラー「えー」")]
+
+    def test_run_of_ambiguous_words_is_cut_only_as_a_whole_chunk(self) -> None:
+        assert spans("まあ、その") == [(Interval(0, 500), "フィラー「まあ、その」")]
+        assert spans("まあ、その、次に") == []
+
+    def test_separate_fillers_in_a_chunk_are_numbered(self) -> None:
+        chunk, tokens = chunk_with("えー、次に、あのー、最後に")
+        found = detect_fillers([chunk], tokens)
+        assert [(s.id, s.reason) for s in found] == [
+            ("r1-c0000-filler-0", "フィラー「えー」"),
+            ("r1-c0000-filler-1", "フィラー「あのー」"),
+        ]
+
+    def test_filler_that_runs_into_the_next_word_does_not_break_a_run(self) -> None:
+        # 2 つ目の「えー」は語につながっている。区切れている 1 つ目だけを消す
+        assert spans("えー、えーそれでは") == [(Interval(0, 250), "フィラー「えー」")]

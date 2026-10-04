@@ -59,6 +59,10 @@ class AnalysisSettings:
     low_confidence_logprob: float = -0.5
     min_unrecognized_ms: int = 300
     filler_min_gap_ms: int = 100
+    # フィラーを消すとき、前後の語の端から残す余裕（位置合わせの誤差で、語の端を削らないため）
+    filler_guard_ms: int = 50
+    # フィラーの削除区間を、位置合わせの時刻から広げる上限（文字のない長い区間まで消さない）
+    filler_max_stretch_ms: int = 1_000
 
 
 @dataclass(frozen=True)
@@ -98,7 +102,13 @@ def analyze_recording(
         tokens=tokens,
         suggestions=(
             *_silence_suggestions(recording.id, segmentation.silences),
-            *detect_fillers(segmentation.chunks, tokens, min_gap_ms=settings.filler_min_gap_ms),
+            *detect_fillers(
+                segmentation.chunks,
+                tokens,
+                min_gap_ms=settings.filler_min_gap_ms,
+                guard_ms=settings.filler_guard_ms,
+                max_stretch_ms=settings.filler_max_stretch_ms,
+            ),
         ),
         review_marks=review_marks(
             recording.id,
