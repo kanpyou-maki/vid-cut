@@ -156,6 +156,20 @@ class TestCutSpan:
             detect_fillers([chunk], tokens, max_stretch_ms=-1)
 
 
+class TestMultiCharacterTokens:
+    """トークンは 1 文字が基本だが、複数の文字を持つこともある（文字とトークンの位置がずれる）。"""
+
+    def test_filler_after_a_multi_character_token(self) -> None:
+        tokens = tokens_at(("API", 0, 300), ("は", 300, 400), ("、", 400, 420), ("えー", 420, 600))
+        (suggestion,) = detect_fillers([chunk_at(0, 900)], tokens)
+        assert (suggestion.span, suggestion.reason) == (Interval(420, 900), "フィラー「えー」")
+
+    def test_filler_that_is_only_part_of_a_token_is_not_a_candidate(self) -> None:
+        # 「えーと」が、ほかの文字と同じトークンに入っている。トークンの途中では切れない
+        tokens = tokens_at(("えーとそれ", 0, 500), ("では", 700, 900))
+        assert detect_fillers([chunk_at(0, 900)], tokens) == ()
+
+
 class TestFillerRuns:
     """続いたフィラーは、まとめて 1 つの候補にする。"""
 

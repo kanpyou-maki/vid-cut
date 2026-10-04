@@ -104,9 +104,21 @@ def detect_fillers(
 
 def _filler_ranges(words: _Words) -> list[tuple[int, int]]:
     """フィラーに当たる words の添字の範囲 [start, end)。続いたものは 1 つの範囲にまとめる。"""
-    text = "".join(token.text for token in words.words)
+    spoken = words.words
+    text = "".join(token.text for token in spoken)
+    # 文字の位置 → 語の添字。トークンは複数の文字を持つことがあるので、文字の位置をそのまま使わない
+    starts: dict[int, int] = {}
+    ends: dict[int, int] = {}
+    offset = 0
+    for index, token in enumerate(spoken):
+        starts[offset] = index
+        offset += len(token.text)
+        ends[offset] = index + 1
     matches = [
-        _Match(m.start(), m.end(), m.lastgroup == "ambiguous") for m in _PATTERN.finditer(text)
+        _Match(starts[m.start()], ends[m.end()], m.lastgroup == "ambiguous")
+        for m in _PATTERN.finditer(text)
+        # トークンの途中で始まる・終わる一致は、時刻が分からないので候補にしない
+        if m.start() in starts and m.end() in ends
     ]
     ranges: list[tuple[int, int]] = []
     index = 0
@@ -116,7 +128,7 @@ def _filler_ranges(words: _Words) -> list[tuple[int, int]]:
             index += 1
             continue
         run = matches[index : last + 1]
-        whole_chunk = run[0].start == 0 and run[-1].end == len(text)
+        whole_chunk = run[0].start == 0 and run[-1].end == len(spoken)
         if whole_chunk or not all(match.ambiguous for match in run):
             ranges.append((run[0].start, run[-1].end))
         index = last + 1

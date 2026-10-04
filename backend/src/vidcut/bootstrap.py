@@ -342,7 +342,13 @@ def _analysis_service(
         aligner=ml.aligner,
         store=stores.store,
     )
-    return AnalysisService(stores.recordings, tools, settings or AnalysisSettings())
+    return AnalysisService(
+        stores.recordings,
+        tools,
+        settings or AnalysisSettings(),
+        lectures=stores.lectures,
+        edit_states=stores.edit_states,
+    )
 
 
 def _judge_services(

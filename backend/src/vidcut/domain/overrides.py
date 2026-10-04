@@ -1,4 +1,4 @@
-"""判定をやり直したときの「戻した削除候補」の引き継ぎ（Design Doc 4 章）。"""
+"""判定や解析をやり直したときの「戻した削除候補」の引き継ぎ（Design Doc 4 章）。"""
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
@@ -61,3 +61,41 @@ def _find_match(
         ):
             return candidate.id
     return None
+
+
+def carry_over_analysis_restorations(
+    state: EditState,
+    old_suggestions: Iterable[CutSuggestion],
+    new_suggestions: Iterable[CutSuggestion],
+) -> EditState:
+    """解析し直したとき、戻した無音・フィラーの候補を、新しい候補へ引き継ぐ。
+
+    無音とフィラーの id は「何番目か」で決まるので、検出のしかたが変わると、同じ id が別の候補を
+    指すことがある。そのため id ではなく区間で対応づける: 戻していた候補と重なる、同じ録画ファイルの
+    同じ種類の新しい候補を、すべて戻す（迷ったら残す）。重なる候補がなければ、その区間はもう
+    削除されないので、戻した記録は捨てる。
+
+    old_suggestions は、解析し直す前の、その録画ファイルの解析の候補。そこにない id
+    （言い直しの候補、ほかの録画ファイルの候補）には触れない。
+    何も変わらなければ、渡された state をそのまま返す。
+    """
+    old_by_id = {s.id: s for s in old_suggestions}
+    new = tuple(new_suggestions)
+    carried: set[str] = set()
+    for sid in state.restored_suggestion_ids:
+        old = old_by_id.get(sid)
+        if old is None:
+            carried.add(sid)
+        else:
+            carried.update(candidate.id for candidate in new if _replaces(candidate, old))
+    if carried == state.restored_suggestion_ids:
+        return state
+    return replace(state, restored_suggestion_ids=frozenset(carried))
+
+
+def _replaces(candidate: CutSuggestion, old: CutSuggestion) -> bool:
+    return (
+        candidate.kind is old.kind
+        and candidate.recording_id == old.recording_id
+        and candidate.span.overlaps(old.span)
+    )
