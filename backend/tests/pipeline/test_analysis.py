@@ -84,8 +84,7 @@ class TestAnalyzeRecording:
         assert [s.span for s in silences] == [s.span for s in analysis.silences]
         assert len(silences) == 3
         (filler,) = [s for s in analysis.suggestions if s.kind is CutKind.FILLER]
-        # チャンク（1〜4 秒）は「えーと」だけ。位置合わせの終わり（1.3 秒）から、上限の 1 秒まで
-        assert filler.span == Interval(1_000, 2_300)
+        assert filler.span == Interval(1_000, 1_300)
 
     def test_suggestion_ids_are_unique_across_recordings(
         self, recording: Recording, tools: AnalysisTools

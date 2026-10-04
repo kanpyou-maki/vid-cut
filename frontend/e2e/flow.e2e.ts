@@ -45,9 +45,8 @@ const PAD_AFTER_MS = 250;
 const PAD_AFTER_SENTENCE_MS = 500;
 // 「間の設定」で試す、文の終わりのあとの余白
 const LONGER_PAD_AFTER_SENTENCE_MS = 800;
-// フィラー「えーと」を消す区間の長さ。チャンクの頭から、次の語「最」の頭の 50ms 手前まで
-// （偽の位置合わせは、1 文字を 100ms で並べる: 「えーと」300ms +「、」100ms − 余裕 50ms）
-const FILLER_MS = 350;
+// 「えーと」の長さ（偽の位置合わせは、1 文字を 100ms で並べる）
+const FILLER_MS = 300;
 // カット後の長さ。台本の行の間は 1 秒以上あるので、余白どうしはつながらない（行ごとに 1 つのクリップになる）
 // フィラーを戻したとき: 1・3・4 行目が、それぞれ前後の余白つきで残る
 const FILLER_RESTORED_MS = clipMs(0) + clipMs(2) + clipMs(3);
