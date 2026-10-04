@@ -207,7 +207,8 @@ PR 1（`test/m8-e2e`。E2E）:
       専用のフォルダを実行のたびに作り直し、目印のないフォルダは消さない）、台本（`script.json`）、ffmpeg で作る素材
 - [x] frontend: Playwright（`@playwright/test` 1.63.0 に固定。`npm audit` は既知の脆弱性なし）、シナリオ 2 つ（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）、
       コンソールの失敗・CSP の違反・失敗した要求の検出、`harness.json` の `commands.e2e`
-- [ ] review-loop → PR
+- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、Premiere XML の確認を各クリップの開始と終了のフレームに強めた）
+- [ ] PR → ユーザーがマージ
 
 PR 2（`feat/m8-sentence-pause`。間の調整の計算）:
 
