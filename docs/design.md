@@ -237,7 +237,8 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
   応答は、どちらを見せたか（`target`: `file` / `directory`）。フォルダがまだなければ作らずに 422（「書き出したファイルがまだありません」）、
   書き出し先がシンボリックリンクなら 422、レクチャーがなければ 404、`open` が失敗したら 500（定型文。パスと `open` の出力はログにだけ出す）。防御は 3-5-1
 - **残す区間の余白**（3-4。M7 の `feat/m7-preview`）: `GET /api/lectures/{id}` に `keep_padding`（`before_ms`・`after_ms`・`after_sentence_ms`。書き出しの設定の値。`after_sentence_ms` は M8 の `feat/m8-sentence-pause` で足した。M8 の `feat/m8-pause-settings` からは、利用者が保存した値があればそれ、なければ既定値）を足す。
-  プレビューは、これと無音・削除区間・文字起こしのトークン（文の終わりの判定）から、書き出しと同じ「残す区間」を画面の中で求める（編集のたびにサーバーへ問い合わせない。余白の値を画面に持たせない）
+  プレビューは、これと無音・削除区間・文字起こしのトークン（文の終わりの判定）から、書き出しと同じ「残す区間」を画面の中で求める（編集のたびにサーバーへ問い合わせない）。余白の値は、開いたときは `keep_padding`、そのあとは画面の間の設定（3-6 の「編集画面の間の設定」）が持つ値を使う
+  （M7 の時点では、画面は余白の値を持たず、`keep_padding` をそのまま使っていた）
 - **設定**（3-4 の「間の設定」。M8 の `feat/m8-pause-settings`）: `GET /api/settings` は `keep_padding`（いま使う値）・`default_keep_padding`（既定値）・`customized`（保存した値を使っているか）を返す。
   `PUT /api/settings` は `{keep_padding: {before_ms, after_ms, after_sentence_ms}}` を受けて保存し、同じ形を返す。値は 0〜2000 の整数だけ（小数・文字列・真偽値・範囲の外・項目の過不足は 422）。
   `{keep_padding: null}` は、保存した値を消して既定値に戻す。版による排他はしない（後から保存したほうが残る。利用者は 1 人）。防御はほかの `/api` と同じ（3-5-1。Host・Origin・トークン・本文の大きさ）

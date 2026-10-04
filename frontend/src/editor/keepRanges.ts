@@ -4,7 +4,8 @@
  *
  * backend の計算を変えたら、ここも合わせること。両側のテストが、同じ例（backend/tests/domain/ の
  * keep_ranges_cases.json と sentence_pauses_cases.json）を読んで確かめている。
- * 余白の値は、レクチャーの詳細（`keep_padding`）が伝える。フレームへの丸めは行わない（プレビューでは 1 フレーム未満の差）。
+ * 余白の値は、呼び出し側が渡す（開いたときはレクチャーの詳細の `keep_padding`、そのあとは「間の設定」の `usePadding` が持つ値）。
+ * フレームへの丸めは行わない（プレビューでは 1 フレーム未満の差）。
  */
 
 /** 半開区間 [startMs, endMs)。 */

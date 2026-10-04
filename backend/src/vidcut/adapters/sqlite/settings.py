@@ -29,8 +29,9 @@ class SqliteSettingsRepository:
             if not isinstance(data, dict) or set(data) != _PADDING_FIELDS:
                 raise ValueError("余白の項目がそろっていません")
             return KeepPadding(**data)
-        except ValueError:
+        except (ValueError, RecursionError):
             # 壊れた値で書き出しを止めない。既定値に戻る
+            # （RecursionError は、極端に深い入れ子の JSON。データベースを直接書き換えたとき）
             _logger.warning("保存された余白の設定を読めないため、既定値を使います")
             return None
 

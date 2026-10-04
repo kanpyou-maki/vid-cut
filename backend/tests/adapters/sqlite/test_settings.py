@@ -42,6 +42,12 @@ class TestKeepPadding:
             writer.close()
             reader.close()
 
+    def test_deeply_nested_value_counts_as_missing(self, conn: sqlite3.Connection) -> None:
+        # データベースを直接書き換えられても、読み取りで落ちない
+        nested = "[" * 100_000 + "]" * 100_000
+        conn.execute("INSERT INTO settings (key, value) VALUES ('keep_padding', ?)", (nested,))
+        assert SqliteSettingsRepository(conn).keep_padding() is None
+
     def test_unreadable_value_counts_as_missing(self, conn: sqlite3.Connection) -> None:
         # 壊れた値で書き出しを止めない（既定値に戻る）
         for stored in (

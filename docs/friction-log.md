@@ -89,4 +89,11 @@
   汎用的な改善なので、sync-upstream で master に還元する
 - **対応:** `frontend/README.md` の「画面の実装で守ること」に決まりを足し、`.claude/agents/self-reviewer.md` のチェックリストに「4. ドキュメントの追従」を足した。
   master へは sync-upstream で還元した（claude-config-master の PR #5。2026-10-04。master に合わせて、チェック項目から摩擦の番号を外した）
-- **Status:** resolved（vid-cut: M7 の PR 5。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み）
+- **再発（2026-10-04。M8 の PR 3）:** docs-reviewer が同じ種類の BLOCK を 1 回出した（PR 6・PR 7・M8 の PR 1・PR 2 は 0 回）。
+  余白の値を画面が持つように変えたのに、Design Doc 3-5 と `PROJECT_STATUS.md` の「余白の値を画面に持たせない」が残っていた。
+  変えた文言と機能名（`keep_padding`・`export_settings`・「余白」）では検索していたが、見つけた行の後半までは読んでいなかった。
+  今回古くなったのは文言ではなく「値をどこが持つか」という責務の記述で、「持たない」「受け取るだけ」のような否定・限定の形で書かれていた
+- **再発への対応:** `.claude/agents/self-reviewer.md` のチェック項目と `frontend/README.md` の決まりに、
+  「値や状態の持ち主・責務を移したときは、前の持ち主についての否定・限定の記述（「持たない」「〜だけ」「しない」）も探し、検索で当たった段落は最後まで読む」を足した。
+  汎用的な改善なので、次の sync-upstream で master に還元する
+- **Status:** resolved（vid-cut: M7 の PR 5、再発への対応は M8 の PR 3。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み。再発への対応の還元は未）
