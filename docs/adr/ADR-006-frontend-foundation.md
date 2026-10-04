@@ -59,3 +59,10 @@ backend の変更が要らないが、手順が 1 つ増え、忘れると理由
 ### 案 E: 型を使わない自作の `fetch` の包み
 
 `openapi-fetch` がしている「パスと引数と応答の型の対応づけ」を自分で書くことになる。採用しない。
+
+## 追記（2026-10-04。M7 の `feat/m7-waveform`。ユーザー承認）
+
+- **`wavesurfer.js` は 8.0.1 に固定する**（`frontend/package.json`。`^` を付けない）。上の「最新の安定版。8 系」は、採用した時点での選び方を指す
+- **CSP の `style-src 'unsafe-inline'` を外し、wavesurfer.js が Shadow DOM の中に差し込む `<style>` 1 つだけを、中身のハッシュで許可する**
+  （`style-src 'self' 'sha256-…'`。nonce は使わない。応答ごとに乱数を作って HTML に埋め込む経路が増えるため）。
+  ハッシュは版と波形の高さで変わるので、版を固定し、テストで確かめる。詳しくは [Design Doc](../design.md) 3-5-1 の「応答のヘッダー」と 3-6 の「編集画面の波形」
