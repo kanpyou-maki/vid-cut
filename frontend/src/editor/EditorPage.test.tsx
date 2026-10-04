@@ -58,7 +58,7 @@ describe("EditorPage: 読み込み", () => {
       screen.getByRole("region", { name: "プレビュー" }).querySelector("video"),
     ).not.toBeNull();
     expect(screen.getByRole("region", { name: "波形" })).toHaveTextContent(
-      "準備中",
+      "波形を読み込んでいます…",
     );
   });
 

@@ -31,20 +31,20 @@ export function EditorLayout({
   );
 }
 
-/**
- * 3 つのペイン: 左がプレビュー、右が文字起こし、下が波形。
- * 波形は場所だけ（feat/m7-waveform で作る）。
- */
+/** 3 つのペイン: 左がプレビュー、右が文字起こし、下が波形。 */
 export function EditorPanes({
   preview,
   transcript,
   transcriptTools,
+  waveform,
 }: {
   /** プレビュー。渡さなければ、まだ使えないことを出す（編集できる状態になるまで） */
   preview?: ReactNode;
   transcript: ReactNode;
   /** 文字起こしの上（凡例の隣）に出す操作 */
   transcriptTools?: ReactNode;
+  /** 波形。渡さなければ、まだ使えないことを出す（編集できる状態になるまで） */
+  waveform?: ReactNode;
 }) {
   return (
     <div className={styles.panes}>
@@ -63,7 +63,11 @@ export function EditorPanes({
         {transcript}
       </section>
       <section className={styles.waveform} aria-label="波形">
-        <p className={styles.placeholder}>波形は準備中です</p>
+        {waveform ?? (
+          <p className={styles.placeholder}>
+            波形は、編集できるようになると使えます
+          </p>
+        )}
       </section>
     </div>
   );

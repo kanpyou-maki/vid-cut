@@ -21,7 +21,7 @@ import {
   tokenRestorations,
 } from "./edits";
 import { canRedo, canUndo, startHistory } from "./history";
-import { buildTimeline } from "./timeline";
+import { buildTimeline, type Position } from "./timeline";
 import { selectedTokenRange } from "./tokenSelection";
 import {
   buildTranscript,
@@ -35,6 +35,7 @@ import {
   useUnloadWarning,
 } from "./useEditorKeys";
 import {
+  revealPosition,
   reviewPosition,
   tokenAt,
   usePlayingToken,
@@ -45,6 +46,21 @@ import {
   type ReviewNavigation,
   useReviewNavigation,
 } from "./useReviewNavigation";
+import {
+  buildWaveLayout,
+  type WaveLayout,
+  type WaveRegion,
+  waveRegions,
+} from "./waveLayout";
+
+/** 波形のペインに渡すもの。 */
+export interface Wave {
+  layout: WaveLayout;
+  /** 波形に出す削除区間（自動の削除候補と、手動の区間） */
+  regions: readonly WaveRegion[];
+  /** 波形のクリックで、再生位置を移す（文字起こしも、その位置を出す） */
+  seek: (position: Position) => void;
+}
 
 export interface EditActions {
   /** 選んでいるトークンを削除して、選択を外す。トークンを選んでいたら true（すべて削除済みで、何も変わらなかったときも） */
@@ -69,6 +85,7 @@ export interface Editing extends EditActions {
   review: ReviewNavigation;
   /** カット後のプレビューの再生 */
   player: Player;
+  wave: Wave;
   /** 文字起こしの要素に付ける（選択範囲をトークンの範囲に直すのに使う） */
   transcriptRoot: RefObject<HTMLDivElement | null>;
   hasSelection: boolean;
@@ -144,6 +161,7 @@ export function useEditing(detail: LectureDetail): Editing {
     [transcript, seek],
   );
   const review = useReviewNavigation(reviewTargets, transcriptRoot, visit);
+  const wave = useWave(detail, draft, transcript, transcriptRoot, seek);
 
   useEditorKeys(!locked, {
     onDelete: actions.deleteSelection,
@@ -163,6 +181,7 @@ export function useEditing(detail: LectureDetail): Editing {
     restoredIds: draft.restoredIds,
     review,
     player,
+    wave,
     transcriptRoot,
     hasSelection,
     canUndo: canUndo(history),
@@ -171,6 +190,32 @@ export function useEditing(detail: LectureDetail): Editing {
     retrySave: retry,
     locked,
   };
+}
+
+/** 波形の配置と区間。配置は、レクチャーを読み込んだときに決まる。区間は、編集のたびに作り直す。 */
+function useWave(
+  detail: LectureDetail,
+  draft: EditDraft,
+  transcript: Transcript,
+  transcriptRoot: RefObject<HTMLDivElement | null>,
+  seek: (position: Position) => void,
+): Wave {
+  const layout = useMemo(() => buildWaveLayout(detail), [detail]);
+  const regions = useMemo(
+    () => waveRegions(detail, draft, layout),
+    [detail, draft, layout],
+  );
+  const seekAndReveal = useCallback(
+    (position: Position) => {
+      seek(position);
+      revealPosition(transcriptRoot, transcript, position);
+    },
+    [seek, transcript, transcriptRoot],
+  );
+  return useMemo(
+    () => ({ layout, regions, seek: seekAndReveal }),
+    [layout, regions, seekAndReveal],
+  );
 }
 
 /** 画面からの操作。どれも、呼ぶたびに変わらない関数。 */

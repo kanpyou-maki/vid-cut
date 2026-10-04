@@ -30,6 +30,7 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     saveEdits: () => pending(),
     dismissDroppedRestorations: () => pending(),
     proxyUrl: (recordingId) => `/proxy/${recordingId}`,
+    getPeaks: () => pending(),
     ...overrides,
   };
 }

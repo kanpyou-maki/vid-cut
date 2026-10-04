@@ -3,13 +3,20 @@
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+# 波形の部品（wavesurfer.js）が Shadow DOM の中に差し込む style 要素の、中身のハッシュ。
+# wavesurfer.js の版か、波形の高さ（frontend の waveChart.ts の WAVE_HEIGHT_PX）を変えると変わる。
+# tests/api/waveform_style_hash.json と同じ値にすること（frontend のテスト waveChart.test.ts が、
+# 実際に差し込まれる中身のハッシュと、その値が合うことを確かめる）
+WAVEFORM_STYLE_HASH = "sha256-XGW/cX2BkTPWNNT3NdyASrPEWZfPnKdPJaJ2aN7R+v8="
+
 # 読み込めるのは自分自身（'self'）のものだけ。スクリプトのインライン実行は許可しない。
-# スタイルのインラインは、波形の部品（wavesurfer.js）が style 要素を差し込むので許可する。
+# スタイルのインラインも許可しない（style 属性も不可）。
+# 例外は、波形の部品が差し込む style 要素 1 つだけ。
 # 動画と画像は、画面が作る blob: と data: も使う。
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
+        f"style-src 'self' '{WAVEFORM_STYLE_HASH}'",
         "img-src 'self' data: blob:",
         "media-src 'self' blob:",
         "object-src 'none'",

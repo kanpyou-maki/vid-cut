@@ -18,7 +18,8 @@
   "dependencies": {
     "openapi-fetch": "^0.17.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "wavesurfer.js": "8.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",

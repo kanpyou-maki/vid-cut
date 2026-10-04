@@ -12,6 +12,7 @@ import { PreviewPane } from "./PreviewPane";
 import { TranscriptView } from "./TranscriptView";
 import { type Editing, useEditing } from "./useEditing";
 import type { ReviewNavigation } from "./useReviewNavigation";
+import { WaveformPane } from "./WaveformPane";
 
 const SAVE_LABELS: Readonly<Record<SaveStatus["name"], string>> = {
   saved: "保存済み",
@@ -62,6 +63,16 @@ export function EditorWorkspace({
             onRestore={locked ? undefined : editing.restore}
             onReapply={locked ? undefined : editing.reapply}
             rootRef={editing.transcriptRoot}
+          />
+        }
+        waveform={
+          <WaveformPane
+            layout={editing.wave.layout}
+            regions={editing.wave.regions}
+            position={editing.player.position}
+            onSeek={editing.wave.seek}
+            onRestore={locked ? undefined : editing.restore}
+            onReapply={locked ? undefined : editing.reapply}
           />
         }
       />
