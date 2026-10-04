@@ -31,10 +31,12 @@ const STATUS_LABELS: Readonly<
 export function PaddingSettings({ control }: { control: PaddingControl }) {
   const { padding, status, defaults } = control;
   const titleId = useId();
-  // 使えない値を入力している項目。その間は、プレビューにも保存にも使わない
+  // 使えない値を入力している項目。使えない値は無視して、最後に使えた値をプレビューと保存に使う
   const [invalid, setInvalid] = useState<ReadonlySet<keyof KeepPadding>>(
     new Set(),
   );
+  // 「既定に戻す」のたびに進める。入力欄を作り直して、入力の途中の文字を消す
+  const [resets, setResets] = useState(0);
   const mark = (key: keyof KeepPadding, isInvalid: boolean) => {
     const next = new Set(invalid);
     if (isInvalid) {
@@ -59,7 +61,7 @@ export function PaddingSettings({ control }: { control: PaddingControl }) {
         <div className={styles.fields}>
           {FIELDS.map(({ key, label }) => (
             <PadField
-              key={key}
+              key={`${key}-${resets}`}
               label={label}
               value={padding[key]}
               onChange={(value) => control.change({ ...padding, [key]: value })}
@@ -71,6 +73,7 @@ export function PaddingSettings({ control }: { control: PaddingControl }) {
             className={styles.reset}
             onClick={() => {
               setInvalid(new Set());
+              setResets(resets + 1);
               control.reset();
             }}
           >

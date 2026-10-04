@@ -83,6 +83,10 @@ function field(name: string): HTMLInputElement {
   return within(panel()).getByRole("spinbutton", { name });
 }
 
+function resetButton(): HTMLElement {
+  return within(panel()).getByRole("button", { name: "既定に戻す" });
+}
+
 function values(): number[] {
   return ["前", "後ろ", "文の終わりのあと"].map((name) =>
     Number(field(name).value),
@@ -199,6 +203,62 @@ describe("間の設定", () => {
 
     expect(saveKeepPadding.mock.calls).toEqual([[null]]);
     expect(values()).toEqual([150, 250, 500]);
+  });
+
+  it("「既定に戻す」の途中で変えた値は、消さずに保存する", async () => {
+    let finishReset: (value: Settings) => void = () => {};
+    const { saveKeepPadding, user } = await openEditor();
+    saveKeepPadding.mockImplementationOnce(
+      () =>
+        new Promise<Settings>((resolve) => {
+          finishReset = resolve;
+        }),
+    );
+    await user.click(resetButton());
+
+    type("文の終わりのあと", "700");
+    finishReset(settings(DEFAULTS, false));
+    await advance(SAVE_DELAY_MS);
+
+    expect(values()).toEqual([150, 250, 700]);
+    expect(saveKeepPadding).toHaveBeenLastCalledWith({
+      ...DEFAULTS,
+      after_sentence_ms: 700,
+    });
+    expect(screen.getByTestId("padding-status")).toHaveTextContent("保存済み");
+  });
+
+  it("「既定に戻す」は、入力の途中の使えない値も消す", async () => {
+    await openEditor();
+    type("文の終わりのあと", "");
+
+    // フォーカスを外さずに押す
+    fireEvent.click(resetButton());
+
+    await waitFor(() => expect(values()).toEqual([150, 250, 500]));
+    expect(field("文の終わりのあと")).toHaveAttribute("aria-invalid", "false");
+    expect(within(panel()).queryByRole("alert")).toBeNull();
+  });
+
+  it("「既定に戻す」に失敗しても、変えていなければ書き出しは頼める", async () => {
+    const requestExport = vi.fn(async () => exportJob());
+    const { saveKeepPadding, user } = await openEditor({
+      requestExport,
+      getExports: async () =>
+        exportsState({ premiere_xml: exportFile("xml", { job: exportJob() }) }),
+    });
+    saveKeepPadding.mockRejectedValueOnce(SAVE_FAILED);
+    await user.click(resetButton());
+    expect(await within(panel()).findByRole("alert")).toHaveTextContent(
+      "間の設定を保存できませんでした",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Premiere XML を書き出す" }),
+    );
+
+    // 画面の値と保存されている値は同じなので、書き出しを止めない
+    await waitFor(() => expect(requestExport).toHaveBeenCalled());
   });
 
   it("保存できなければ知らせ、もう一度変えると保存し直す", async () => {

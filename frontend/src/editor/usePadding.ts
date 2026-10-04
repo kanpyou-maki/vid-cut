@@ -76,8 +76,9 @@ export function usePadding(initial: KeepPadding): PaddingControl {
   const flush = useCallback((): Promise<boolean> => {
     cancelTimer();
     if (latest.current === saved.current) {
-      // 進行中の保存があれば、その結果を待つ
-      return queue.current;
+      // 送るものはない。進行中の保存（か「既定に戻す」）を待つだけで、前の失敗は引きずらない
+      // （画面の値と保存されている値が同じなら、書き出してよい）
+      return queue.current.then(() => latest.current === saved.current);
     }
     return send(async () => {
       const target = latest.current;
@@ -102,11 +103,15 @@ export function usePadding(initial: KeepPadding): PaddingControl {
 
   const reset = useCallback(() => {
     cancelTimer();
+    const before = latest.current;
     void send(async () => {
       const settings = await api.saveKeepPadding(null);
-      latest.current = settings.keep_padding;
-      setPadding(settings.keep_padding);
       setDefaults(settings.default_keep_padding);
+      // 戻している間に変えた値は、消さない（保存済みの値と違うので、このあと保存される）
+      if (latest.current === before) {
+        latest.current = settings.keep_padding;
+        setPadding(settings.keep_padding);
+      }
       return settings.keep_padding;
     });
   }, [api, cancelTimer, send]);
