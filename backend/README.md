@@ -16,7 +16,12 @@ uv run ruff check . && uv run ruff format --check .   # lint と整形の確認�
 uv run vidcut analyze ~/Movies/S05-12.mov --wait   # 取り込んで、この場で解析まで実行
 uv run vidcut analyze ~/Movies/course/              # フォルダ直下の動画を取り込み、ジョブだけ積む
 uv run vidcut worker                                # 積まれたジョブを順に処理し続ける（serve は自分で worker を起動する）
+uv run vidcut reanalyze --wait                      # 登録済みの録画をすべて解析し直す（解析のしかたを変えたあと）
 ```
+
+`reanalyze` は、フィラーの検出などを変えたあとに、登録済みの録画に当て直すためのもの。文字起こしなどの段は作り直さないので、すぐ終わる（4 本で 1 秒未満）。
+言い直しの判定は、入力（文字起こし）が同じなら `claude` を呼ばずに前の結果のまま。手動の削除と、言い直しの候補の戻しも変わらない。
+戻していた無音・フィラーは、区間が重なる新しい候補へ引き継ぐ（id は「何番目か」で決まるので、id では対応づけない。Design Doc 3-2）。`--wait` を付けなければ、ジョブを積むだけ（`vidcut serve` の worker が処理する）。
 
 解析が終わると、言い直しの判定（`claude -p`）が続けて実行される。`claude` にログインしていないと判定だけが失敗する
 （無音とフィラーの削除候補は使える）。ターミナルで `claude` を起動して `/login` を実行すること。

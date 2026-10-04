@@ -92,7 +92,7 @@ npm run e2e        # E2E（Playwright。画面をビルドし、E2E 用の backe
 6. 値を変えた直後に「Premiere XML」を押す → 書き出した XML が、新しい値のカットになっている（保存してから書き出す）
 7. 「既定に戻す」→ 150・250・500 に戻る
 
-決めた値を伝えてもらえれば、それを既定値にする（`backend/src/vidcut/domain/timeline.py` の `DEFAULT_PAD_AFTER_SENTENCE_MS` など）。
+既定値（150・250・500ms）は変えないことにした（ユーザー決定、2026-10-05）。短いと感じるときは、ここで変える（既定値は `backend/src/vidcut/domain/timeline.py` の `DEFAULT_PAD_AFTER_SENTENCE_MS` など）。
 
 ## 手で確かめる（M7 の PR 1: 土台）
 

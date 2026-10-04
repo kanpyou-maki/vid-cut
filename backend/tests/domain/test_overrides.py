@@ -2,7 +2,7 @@ import pytest
 
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, CutSuggestion, EditState, ManualCut
-from vidcut.domain.overrides import carry_over_restorations
+from vidcut.domain.overrides import carry_over_analysis_restorations, carry_over_restorations
 
 
 def cut(
@@ -89,3 +89,86 @@ def test_tolerance_boundary_is_inclusive() -> None:
 def test_rejects_negative_tolerance() -> None:
     with pytest.raises(ValueError):
         carry_over_restorations(BASE, [], [], tolerance_ms=-1)
+
+
+class TestCarryOverAnalysisRestorations:
+    """解析し直したとき、戻した無音・フィラーを、区間で新しい候補へ引き継ぐ（id では見ない）。"""
+
+    def test_widened_filler_keeps_its_restoration_under_the_new_id(self) -> None:
+        old = cut("r1-c0003-filler-1", 5_600, 5_800, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 5_400, 5_950, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], [new])
+        assert state.restored_suggestion_ids == frozenset({new.id})
+
+    def test_same_id_that_now_means_another_filler_is_not_trusted(self) -> None:
+        # 前の filler-0 はなくなり、同じ id が別のフィラーを指すようになった
+        old = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 7_000, 7_500, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], [new])
+        assert state.restored_suggestion_ids == frozenset()
+
+    def test_fillers_merged_into_one_restore_the_merged_one(self) -> None:
+        first = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        second = cut("r1-c0003-filler-1", 1_300, 1_600, CutKind.FILLER)
+        merged = cut("r1-c0003-filler-0", 950, 1_700, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(second.id), [first, second], [merged])
+        assert state.restored_suggestion_ids == frozenset({merged.id})
+
+    def test_filler_split_into_two_restores_both(self) -> None:
+        old = cut("r1-c0003-filler-0", 1_000, 2_000, CutKind.FILLER)
+        parts = [
+            cut("r1-c0003-filler-0", 1_000, 1_400, CutKind.FILLER),
+            cut("r1-c0003-filler-1", 1_600, 2_000, CutKind.FILLER),
+        ]
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], parts)
+        assert state.restored_suggestion_ids == frozenset({parts[0].id, parts[1].id})
+
+    def test_does_not_map_across_kinds_or_recordings(self) -> None:
+        old = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        others = [
+            cut("r1-silence-0001", 900, 1_300, CutKind.SILENCE),
+            cut("r2-c0000-filler-0", 1_000, 1_200, CutKind.FILLER, recording_id="r2"),
+        ]
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], others)
+        assert state.restored_suggestion_ids == frozenset()
+
+    def test_touching_spans_do_not_count_as_overlap(self) -> None:
+        old = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 1_200, 1_500, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], [new])
+        assert state.restored_suggestion_ids == frozenset()
+
+    def test_restorations_of_other_candidates_stay(self) -> None:
+        # 言い直しの候補と、ほかの録画ファイルの候補は、解析し直しでは触れない
+        old = cut("r1-silence-0000", 0, 500, CutKind.SILENCE)
+        state = BASE.restore("r1-c0001-judged").restore("r2-silence-0000").restore(old.id)
+        carried = carry_over_analysis_restorations(state, [old], [old])
+        assert carried.restored_suggestion_ids == state.restored_suggestion_ids
+
+    def test_unchanged_state_is_returned_as_it_is(self) -> None:
+        silence = cut("r1-silence-0000", 0, 500, CutKind.SILENCE)
+        state = BASE.restore(silence.id)
+        assert carry_over_analysis_restorations(state, [silence], [silence]) is state
+
+    def test_preserves_version_and_manual_cuts(self) -> None:
+        old = cut("r1-c0003-filler-1", 5_600, 5_800, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 5_400, 5_950, CutKind.FILLER)
+        manual = ManualCut("m1", "r1", Interval(0, 100))
+        state = EditState("l1", 7, frozenset({old.id}), (manual,))
+        carried = carry_over_analysis_restorations(state, [old], [new])
+        assert (carried.version, carried.manual_cuts) == (7, (manual,))
+
+    def test_overlap_of_a_millisecond_is_enough(self) -> None:
+        old = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 1_199, 1_500, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], [new])
+        assert state.restored_suggestion_ids == frozenset({new.id})
+
+    def test_each_restoration_is_carried_on_its_own(self) -> None:
+        # 2 つ戻していて、新しい候補に重なるのは片方だけ
+        kept = cut("r1-c0001-filler-0", 1_000, 1_200, CutKind.FILLER)
+        gone = cut("r1-c0002-filler-0", 5_000, 5_200, CutKind.FILLER)
+        new = cut("r1-c0001-filler-0", 900, 1_300, CutKind.FILLER)
+        state = BASE.restore(kept.id).restore(gone.id)
+        carried = carry_over_analysis_restorations(state, [kept, gone], [new])
+        assert carried.restored_suggestion_ids == frozenset({new.id})

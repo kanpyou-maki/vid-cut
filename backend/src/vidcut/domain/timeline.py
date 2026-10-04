@@ -9,7 +9,7 @@ from vidcut.domain.models import Token
 
 DEFAULT_PAD_BEFORE_MS = 150
 DEFAULT_PAD_AFTER_MS = 250
-# 文の終わりのあとの余白。仮の値（ユーザーがプレビューで聞いて決める。M8）
+# 文の終わりのあとの余白の既定値。利用者は「間の設定」で変えられる（Design Doc 3-4）
 DEFAULT_PAD_AFTER_SENTENCE_MS = 500
 SENTENCE_END_CHARS = frozenset("。？！?!")
 MAX_PAD_MS = 2_000

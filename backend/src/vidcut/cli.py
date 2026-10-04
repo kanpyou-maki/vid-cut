@@ -31,6 +31,7 @@ from vidcut.services.judge_eval import (
 AppFactory = Callable[[], App]
 ServeFunction = Callable[[ServeOptions], int]
 
+_WORKER_NOTE = "解析は `vidcut worker`（または `vidcut serve`）が順に実行します"
 _MIN_PORT = 1024  # これより小さいポートは、管理者の権限が要る
 _MAX_PORT = 65535
 
@@ -54,6 +55,8 @@ def main(
     try:
         if args.command == "analyze":
             return _analyze(app, [Path(p) for p in args.paths], wait=args.wait)
+        if args.command == "reanalyze":
+            return _reanalyze(app, wait=args.wait)
         if args.command == "eval":
             return _eval_judge(app, args)
         return _worker(app, stop or threading.Event(), parent_pid=args.parent_pid)
@@ -67,6 +70,11 @@ def _parser() -> argparse.ArgumentParser:
     analyze = commands.add_parser("analyze", help="録画ファイル（またはフォルダ）を解析に回す")
     analyze.add_argument("paths", nargs="+", help="録画ファイルまたはフォルダ")
     analyze.add_argument("--wait", action="store_true", help="この場で解析が終わるまで処理する")
+    reanalyze = commands.add_parser(
+        "reanalyze",
+        help="登録済みの録画をすべて解析し直す（解析のしかたを変えたあと。文字起こしは作り直さない）",
+    )
+    reanalyze.add_argument("--wait", action="store_true", help="この場で解析が終わるまで処理する")
     worker = commands.add_parser("worker", help="ジョブを待って処理し続ける")
     worker.add_argument(
         PARENT_PID_FLAG,
@@ -143,8 +151,31 @@ def _analyze(app: App, paths: list[Path], *, wait: bool) -> int:
     result = app.imports.import_paths(paths)
     _print_import(result)
     if not wait:
-        print("解析は `vidcut worker`（または `vidcut serve`）が順に実行します")
+        print(_WORKER_NOTE)
         return 1 if result.failed else 0
+    failed = _process_jobs(app)
+    return 1 if result.failed or failed else 0
+
+
+def _reanalyze(app: App, *, wait: bool) -> int:
+    """登録済みの録画をすべて解析し直す。段のキャッシュがあるので、変わった段からだけ作り直される。
+
+    判定は、入力（文字起こし）が前回と同じなら、言語モデルを呼ばずに前回の結果のまま。
+    """
+    lectures = app.lectures.list_all()
+    if not lectures:
+        print("レクチャーがありません")
+        return 0
+    jobs = [job for lecture in lectures for job in app.lecture_service.reanalyze(lecture.id)]
+    print(f"解析し直し: {len(lectures)} レクチャー / {len(jobs)} 本")
+    if not wait:
+        print(_WORKER_NOTE)
+        return 0
+    return 1 if _process_jobs(app) else 0
+
+
+def _process_jobs(app: App) -> int:
+    """積まれているジョブを、この場ですべて処理する。失敗した件数を返す。"""
     worker = app.worker()
     processed = []
     while (job := worker.run_once()) is not None:
@@ -154,7 +185,7 @@ def _analyze(app: App, paths: list[Path], *, wait: bool) -> int:
     print(f"ジョブ 成功: {len(processed) - len(failed)} 件 / 失敗: {len(failed)} 件")
     for s in failed:
         print(f"  失敗 {s.job.kind}（{s.job.target_id}）: {s.job.error}")
-    return 1 if result.failed or failed else 0
+    return len(failed)
 
 
 def _print_import(result: ImportResult) -> None:

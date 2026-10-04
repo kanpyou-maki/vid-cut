@@ -21,6 +21,11 @@ def detect_fillers(
     *,
     min_gap_ms: int = DEFAULT_MIN_GAP_MS,
 ) -> tuple[CutSuggestion, ...]:
+    """フィラーの削除候補。削る区間は、フィラーの文字の位置合わせの時刻だけ。
+
+    前後の語やチャンクの端のほうへは広げない。位置合わせは語の頭を実際より遅く置くことがあり、
+    広げると、フィラーでない声を削る（Design Doc 3-2 の「試して、やめたこと」）。
+    """
     words_by_chunk: dict[str, list[Token]] = {}
     for token in tokens:
         if token.text not in _PUNCTUATION:
@@ -35,7 +40,7 @@ def detect_fillers(
                 CutSuggestion(
                     id=f"{chunk.id}-filler-{number}",
                     recording_id=chunk.recording_id,
-                    span=Interval(filler[0].span.start_ms, filler[-1].span.end_ms),
+                    span=_aligned_span(filler),
                     kind=CutKind.FILLER,
                     reason=f"フィラー「{text}」",
                 )
@@ -48,11 +53,39 @@ def _filler_ranges(words: Sequence[Token], min_gap_ms: int) -> list[tuple[int, i
     text = "".join(t.text for t in words)
     if text and _AMBIGUOUS.fullmatch(text):
         return [(0, len(words))]
-    return [
-        (m.start(), m.end())
-        for m in _FILLERS.finditer(text)
-        if _pause_before(words, m.start(), min_gap_ms) and _pause_after(words, m.end(), min_gap_ms)
-    ]
+    starts, ends = _word_boundaries(words)
+    ranges: list[tuple[int, int]] = []
+    for match in _FILLERS.finditer(text):
+        # トークンの途中で始まる・終わる一致は、時刻が分からないので候補にしない
+        if match.start() not in starts or match.end() not in ends:
+            continue
+        start, end = starts[match.start()], ends[match.end()]
+        if _pause_before(words, start, min_gap_ms) and _pause_after(words, end, min_gap_ms):
+            ranges.append((start, end))
+    return ranges
+
+
+def _word_boundaries(words: Sequence[Token]) -> tuple[dict[int, int], dict[int, int]]:
+    """つなげた文字列の中の位置 → 語の添字（その位置で始まる語と、その位置で終わる語の次）。
+
+    トークンは複数の文字を持つことがあるので、文字の位置をそのまま語の添字には使えない。
+    """
+    starts: dict[int, int] = {}
+    ends: dict[int, int] = {}
+    offset = 0
+    for index, token in enumerate(words):
+        starts[offset] = index
+        offset += len(token.text)
+        ends[offset] = index + 1
+    return starts, ends
+
+
+def _aligned_span(filler: Sequence[Token]) -> Interval:
+    # 位置合わせの時刻は、文字の順と前後することがある。いちばん早い開始といちばん遅い終了を取る
+    return Interval(
+        min(token.span.start_ms for token in filler),
+        max(token.span.end_ms for token in filler),
+    )
 
 
 def _pause_before(words: Sequence[Token], index: int, min_gap_ms: int) -> bool:
