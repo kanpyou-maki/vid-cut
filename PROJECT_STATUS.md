@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）と PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）がユーザーの確認とマージ待ち。PR 3（間の設定。`feat/m8-pause-settings`）を実装した。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）・PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）・PR 3（間の設定。`feat/m8-pause-settings`。PR #21）がユーザーの確認とマージ待ち（3 本を積み上げている）。次は、ユーザーが間の値を決めることと、PR 4（受け入れ）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -39,14 +39,14 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1（E2E。PR #19）・PR 2（間の調整の計算。PR #20）・PR 3（間の設定）を実装済み。残りは、間の値の決定と PR 4（受け入れ）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1（E2E。PR #19）・PR 2（間の調整の計算。PR #20）・PR 3（間の設定。PR #21）を実装済み。残りは、間の値の決定と PR 4（受け入れ）
 
 ## 次にやること
 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)。ユーザーの確認とマージ待ち
   - [x] PR 2 `feat/m8-sentence-pause`（PR 1 の上に積む）: 間の調整の計算（文の終わりのあとの余白を長くする。仮の値 500ms）、受け入れの記録用のひな形、PRD 3-2 の作業時間の変更。review-loop は全通過。PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20)（ベースは `test/m8-e2e`。#19 をマージしてから、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち
-  - [x] PR 3 `feat/m8-pause-settings`（PR 2 の上に積む）: 間の値を編集画面で変えられるようにした（決定事項 40）。review-loop は全通過（docs は 2 回 BLOCK のあと PASS）。ユーザーの確認とマージ待ち。
+  - [x] PR 3 `feat/m8-pause-settings`（PR 2 の上に積む）: 間の値を編集画面で変えられるようにした（決定事項 40）。review-loop は全通過（docs は 2 回 BLOCK のあと PASS）。PR [#21](https://github.com/kanpyou-maki/vid-cut/pull/21)（ベースは `feat/m8-sentence-pause`。#19 → #20 → #21 の順に、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち。
         そのあと、ユーザーがプレビューで聞いて値を決め（手順は `frontend/README.md` の「手で確かめる（M8 の PR 3: 間の設定）」）、決まった値を既定値にする
   - [ ] PR 4 `fix/m8-acceptance`: 受け入れチェック（forTest01〜03。判定はユーザー。記録は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)）で見つかった直し、フィラー検出の検証（D-5）、
         複数ファイルのレクチャー・300 チャンク超・長いレクチャーの重さの確認（人工データ）、計画の完了処理
