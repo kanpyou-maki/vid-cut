@@ -10,7 +10,7 @@ from vidcut.api.envelope import ErrorOut
 from vidcut.api.errors import install_error_handlers
 from vidcut.api.frontend import frontend_fallback
 from vidcut.api.headers import SecurityHeaders
-from vidcut.api.routes import fs, imports, jobs, lectures, recordings
+from vidcut.api.routes import fs, imports, jobs, lectures, recordings, settings
 from vidcut.api.security import ApiGuard, GuardSettings
 from vidcut.bootstrap import Api
 from vidcut.services.file_browser import FileBrowser
@@ -58,6 +58,6 @@ def _api_app() -> FastAPI:
     対話式のドキュメント（/docs）は出さない（画面の JS を外部の CDN から読むため）。
     """
     app = FastAPI(title=TITLE, docs_url=None, redoc_url=None, openapi_url=None)
-    for module in (fs, imports, lectures, jobs, recordings):
+    for module in (fs, imports, lectures, jobs, recordings, settings):
         app.include_router(module.router, responses=ERROR_RESPONSES)
     return app

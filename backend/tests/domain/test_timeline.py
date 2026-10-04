@@ -7,7 +7,9 @@ import pytest
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import Token
 from vidcut.domain.timeline import (
+    MAX_PAD_MS,
     FrameRange,
+    KeepPadding,
     build_output_timeline,
     keep_ranges,
     output_duration_ms,
@@ -211,3 +213,20 @@ class TestOutputTimeline:
 def test_frame_range_rejects_non_int_values(bad: object) -> None:
     with pytest.raises(TypeError):
         FrameRange(bad, 100)  # type: ignore[arg-type]
+
+
+class TestKeepPadding:
+    def test_defaults_to_the_usual_padding(self) -> None:
+        assert KeepPadding() == KeepPadding(before_ms=150, after_ms=250, after_sentence_ms=500)
+
+    def test_accepts_the_bounds(self) -> None:
+        assert KeepPadding(0, 0, 0).after_ms == 0
+        assert KeepPadding(MAX_PAD_MS, MAX_PAD_MS, MAX_PAD_MS).before_ms == 2_000
+
+    @pytest.mark.parametrize("field", ["before_ms", "after_ms", "after_sentence_ms"])
+    @pytest.mark.parametrize("bad", [-1, MAX_PAD_MS + 1, 1.5, "100", True, None])
+    def test_rejects_values_that_are_not_whole_milliseconds_in_range(
+        self, field: str, bad: object
+    ) -> None:
+        with pytest.raises(ValueError, match="余白"):
+            KeepPadding(**{field: bad})  # type: ignore[arg-type]

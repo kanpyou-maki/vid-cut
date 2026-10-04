@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints,
 
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import EditState, JobKind, ManualCut
+from vidcut.domain.timeline import MAX_PAD_MS, KeepPadding
 from vidcut.domain.titles import MAX_TITLE_CHARS
 
 ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
@@ -22,6 +23,7 @@ Id = Annotated[str, StringConstraints(pattern=ID_PATTERN)]
 SuggestionId = Annotated[str, StringConstraints(min_length=1, max_length=MAX_SUGGESTION_ID_CHARS)]
 PathText = Annotated[str, StringConstraints(min_length=1, max_length=MAX_PATH_CHARS)]
 TimeMs = Annotated[StrictInt, Field(ge=0, le=MAX_TIME_MS)]
+PadMs = Annotated[StrictInt, Field(ge=0, le=MAX_PAD_MS)]
 
 
 class _Input(BaseModel):
@@ -91,3 +93,24 @@ class ExportIn(_Input):
 
     def job_kind(self) -> JobKind:
         return JobKind.EXPORT_PREMIERE if self.format == "premiere_xml" else JobKind.EXPORT_MP4
+
+
+class KeepPaddingIn(_Input):
+    """残す発話の前後の余白（ミリ秒）。"""
+
+    before_ms: PadMs
+    after_ms: PadMs
+    after_sentence_ms: PadMs
+
+    def to_domain(self) -> KeepPadding:
+        return KeepPadding(
+            before_ms=self.before_ms,
+            after_ms=self.after_ms,
+            after_sentence_ms=self.after_sentence_ms,
+        )
+
+
+class SettingsIn(_Input):
+    """keep_padding が null なら、保存した値を消して既定値に戻す。"""
+
+    keep_padding: KeepPaddingIn | None

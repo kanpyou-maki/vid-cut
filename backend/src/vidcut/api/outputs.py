@@ -146,6 +146,14 @@ class KeepPaddingOut(BaseModel):
     after_sentence_ms: int  # 文の終わり（。？！）のあとの無音に残す余白
 
 
+class SettingsOut(BaseModel):
+    """ワークスペース全体の設定。customized は、利用者が保存した値を使っているかどうか。"""
+
+    keep_padding: KeepPaddingOut
+    default_keep_padding: KeepPaddingOut
+    customized: bool
+
+
 class DroppedRestoredOut(BaseModel):
     """通知を閉じたあとに残っている、引き継げなかった「戻した候補」。"""
 

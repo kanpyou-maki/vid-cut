@@ -20,6 +20,7 @@ from vidcut.adapters.sqlite.jobs import SqliteJobQueue
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
 from vidcut.adapters.sqlite.lectures import SqliteLectureRepository
 from vidcut.adapters.sqlite.recordings import SqliteRecordingRepository
+from vidcut.adapters.sqlite.settings import SqliteSettingsRepository
 from vidcut.adapters.workspace import FileArtifactStore, FileExportStore, file_fingerprint
 from vidcut.domain.models import Job, JobKind
 from vidcut.jobs.worker import JobHandler, Worker
@@ -49,6 +50,7 @@ from vidcut.services.judge_eval import JudgeEvalService
 from vidcut.services.lecture_views import LectureQuery
 from vidcut.services.lectures import LectureService
 from vidcut.services.recording_artifacts import RecordingArtifacts
+from vidcut.services.settings import SettingsService
 
 DATABASE_FILE = "vidcut.sqlite3"
 JUDGE_DIRECTORY = "judge"
@@ -134,12 +136,12 @@ class ApiServices:
     ML のモデルと言語モデルは持たない（解析と判定は worker プロセスが行う）。
     exports は依頼（request）だけに使う。
     export_destinations は、書き出しの状態と保存先、Finder で開く。
-    export_settings は、書き出しが残す区間の余白を画面に伝えるために持つ
+    settings は、残す発話の前後の余白（利用者が変えられる）。画面に伝え、保存する
     （プレビューが、書き出しと同じ区間を残す）。
     """
 
     conn: sqlite3.Connection
-    export_settings: ExportSettings
+    settings: SettingsService
     imports: ImportService
     lecture_service: LectureService
     lecture_views: LectureQuery
@@ -159,9 +161,10 @@ def _api_services(
 ) -> ApiServices:
     export_store = FileExportStore(workspace)
     judge_requests = JudgeRequests(lectures=stores.lectures, store=stores.store, queue=stores.queue)
+    settings = SettingsService(SqliteSettingsRepository(stores.conn), export_settings)
     return ApiServices(
         conn=stores.conn,
-        export_settings=export_settings,
+        settings=settings,
         jobs=JobControl(stores.queue),
         artifacts=RecordingArtifacts(recordings=stores.recordings, store=stores.store),
         imports=ImportService(
@@ -205,6 +208,8 @@ def _api_services(
             media=media,
             exports=export_store,
             settings=export_settings,
+            # 余白は利用者が変えられるので、書き出しのたびに読む
+            current_settings=settings.export_settings,
         ),
         export_destinations=ExportDestinations(
             lectures=stores.lectures, queue=stores.queue, exports=export_store, revealer=revealer

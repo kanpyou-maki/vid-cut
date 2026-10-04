@@ -12,6 +12,25 @@ DEFAULT_PAD_AFTER_MS = 250
 # 文の終わりのあとの余白。仮の値（ユーザーがプレビューで聞いて決める。M8）
 DEFAULT_PAD_AFTER_SENTENCE_MS = 500
 SENTENCE_END_CHARS = frozenset("。？！?!")
+MAX_PAD_MS = 2_000
+
+
+@dataclass(frozen=True)
+class KeepPadding:
+    """残す発話の前・後ろ・文の終わりのあとに付ける余白。利用者が設定で変える（Design Doc 3-4）。"""
+
+    before_ms: int = DEFAULT_PAD_BEFORE_MS
+    after_ms: int = DEFAULT_PAD_AFTER_MS
+    after_sentence_ms: int = DEFAULT_PAD_AFTER_SENTENCE_MS
+
+    def __post_init__(self) -> None:
+        for name in ("before_ms", "after_ms", "after_sentence_ms"):
+            value = getattr(self, name)
+            # bool は int の一種なので、型そのものを確かめる
+            if type(value) is not int or not 0 <= value <= MAX_PAD_MS:
+                raise ValueError(
+                    f"余白は 0〜{MAX_PAD_MS} の整数（ミリ秒）である必要があります: {name}={value!r}"
+                )
 
 
 def keep_ranges(

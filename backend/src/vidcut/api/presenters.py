@@ -28,6 +28,7 @@ from vidcut.api.outputs import (
     RecordingDetailOut,
     RecordingOut,
     ReviewMarkOut,
+    SettingsOut,
     SpanOut,
     SuggestionOut,
     TokenOut,
@@ -42,6 +43,7 @@ from vidcut.domain.models import (
     Recording,
     Token,
 )
+from vidcut.domain.timeline import KeepPadding
 from vidcut.pipeline.analysis_result import Analysis
 from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.ports import Peaks, StoredJob
@@ -49,6 +51,7 @@ from vidcut.services.export_destinations import ExportFileStatus, ExportStatus
 from vidcut.services.file_browser import Listing
 from vidcut.services.imports import ImportResult
 from vidcut.services.lecture_views import JobView, LectureDetail, LectureSummary
+from vidcut.services.settings import SettingsView
 
 
 def to_fs_listing(listing: Listing) -> FsListingOut:
@@ -256,6 +259,22 @@ def to_lecture_detail(
         ),
         edit_state=to_edit_state(detail.edit_state),
         exports=to_exports(exports),
+    )
+
+
+def to_keep_padding(padding: KeepPadding) -> KeepPaddingOut:
+    return KeepPaddingOut(
+        before_ms=padding.before_ms,
+        after_ms=padding.after_ms,
+        after_sentence_ms=padding.after_sentence_ms,
+    )
+
+
+def to_settings(view: SettingsView) -> SettingsOut:
+    return SettingsOut(
+        keep_padding=to_keep_padding(view.keep_padding),
+        default_keep_padding=to_keep_padding(view.default_keep_padding),
+        customized=view.customized,
     )
 
 

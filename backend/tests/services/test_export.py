@@ -1,6 +1,6 @@
 import sqlite3
 import xml.etree.ElementTree as ET
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -187,6 +187,19 @@ class TestExportPremiere:
         assert progress == sorted(progress)
         assert reported[-1] == ("export", 1.0)
 
+    def test_reads_the_settings_when_the_job_runs(self, env: Env) -> None:
+        # worker は起動したままなので、画面で変えた余白は、次の書き出しから効く
+        env.analyzed("r1", "r2")
+        current = [ExportSettings()]
+        service = rebuild(env, current_settings=lambda: current[0])
+        before = video_clips(service.export_premiere("l1", ignore))
+
+        current[0] = ExportSettings(fps=30)
+        after = video_clips(service.export_premiere("l1", ignore))
+
+        assert before == [("0", "60"), ("120", "600"), ("0", "60"), ("120", "600")]
+        assert after == [("0", "30"), ("60", "300"), ("0", "30"), ("60", "300")]
+
     def test_frame_rate_follows_the_settings(self, env: Env) -> None:
         env.analyzed("r1", "r2")
         service = rebuild(env, settings=ExportSettings(fps=30))
@@ -300,6 +313,7 @@ def rebuild(
     *,
     settings: ExportSettings | None = None,
     recordings: RecordingRepository | None = None,
+    current_settings: Callable[[], ExportSettings] | None = None,
 ) -> ExportService:
     return ExportService(
         lectures=env.lectures,
@@ -311,4 +325,5 @@ def rebuild(
         media=env.media,
         exports=FileExportStore(env.root / "ws"),
         settings=settings or ExportSettings(),
+        current_settings=current_settings,
     )
