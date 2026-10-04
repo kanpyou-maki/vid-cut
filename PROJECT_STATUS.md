@@ -42,8 +42,11 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 ## 次にやること
 
 - [ ] M7: frontend。次は PR 7（`feat/m7-export`: 書き出しボタンと進捗、保存先の表示。backend にレクチャーの詳細の保存先と、Finder で開く API を足す。決定事項 24、Design Doc 3-5 の「保存先の表示」）。これで M7 は終わり、次は M8（E2E と受け入れ）
-- [ ] CSP の `img-src`・`media-src` から `data:`・`blob:` を外す（決定事項 31。いま使っていない。`backend/src/vidcut/api/headers.py`。テストを先に直し、
-      実物の Chrome で、プレビューの動画と波形が出て、CSP の違反がないことを確かめる。Design Doc 3-5-1 と `headers.py` のコメントも直す）。PR 7 の中で、別のコミットにする
+- [ ] PR 7 は、画面の構成と API の形の提案を出して、ユーザーの判断を待っている（2026-10-04。ブランチ `feat/m7-export` は作成済み。書き出しの実装はまだ）。
+      決まったら Design Doc 3-5・3-6 に書いてから、TDD で実装する
+- [x] CSP の `img-src`・`media-src` から `data:`・`blob:` を外した（決定事項 31。`feat/m7-export` の別のコミット。`img-src 'self'`・`media-src 'self'`）。
+      実物の Chrome（一時ワークスペース）で、プレビューの動画が読めて再生が進む・波形が canvas に描かれる・CSP の違反とコンソールの失敗がない・
+      `data:` の画像と `blob:` の動画は止められる、を確認済み。backend のテスト 1,046 件
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）

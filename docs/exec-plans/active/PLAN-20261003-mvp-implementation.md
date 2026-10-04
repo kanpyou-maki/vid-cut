@@ -188,6 +188,8 @@ PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
 
 PR 7（`feat/m7-export`）:
 
+- [x] CSP の `img-src`・`media-src` から、使っていない `data:`・`blob:` を外す（決定事項 31。別のコミット。実物の Chrome で、プレビューの動画と波形が出て、CSP の違反がないことを確認）
+- [ ] 画面の構成と API の形（提案済み。ユーザーの判断待ち、2026-10-04）
 - [ ] 書き出しボタンと進捗、保存先の表示（backend: レクチャーの詳細に保存先を足す、Finder で開く API）
 
 ### M8: E2E と受け入れ（`test/m8-e2e`）
