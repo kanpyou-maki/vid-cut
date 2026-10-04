@@ -183,7 +183,7 @@ PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
 - [x] CSP: `style-src 'unsafe-inline'` を外し、wavesurfer.js が差し込む `<style>` 1 つだけをハッシュで許可した。違反がコンソールに出ないことを確認
 - [x] 実物の backend と、ヘッドレスの Chrome での確認（描画・クリック・区間の選択と採否・保存・拡大と縮小・再生との連動・配色・読めないときと再試行: 45 項目。
       録画ファイルを 2 本にした写しで、つなげた波形: 10 項目。コンソールの失敗と CSP の違反なし）
-- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、録画ファイルがないレクチャーの扱い・長い関数の分割・重複した定数の集約を反映）→ PR
+- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、録画ファイルがないレクチャーの扱い・長い関数の分割・重複した定数の集約を反映）→ PR [#17](https://github.com/kanpyou-maki/vid-cut/pull/17)
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 6: 波形）」
 
 PR 7（`feat/m7-export`）:
