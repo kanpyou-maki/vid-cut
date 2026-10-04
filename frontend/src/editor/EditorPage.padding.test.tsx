@@ -136,7 +136,8 @@ describe("間の設定", () => {
     const { saveKeepPadding } = await openEditor();
 
     type("前", "100");
-    await advance(SAVE_DELAY_MS - 1);
+    // 実際の時間も進むので、保存の遅延ぎりぎりまでは待たない
+    await advance(SAVE_DELAY_MS / 2);
     type("後ろ", "300");
     await advance(SAVE_DELAY_MS);
 
