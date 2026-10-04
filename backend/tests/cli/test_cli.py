@@ -112,6 +112,65 @@ class TestAnalyze:
         assert "失敗: 2 件" in out
 
 
+class TestReanalyze:
+    """解析のしかた（フィラーの検出など）を変えたあとに、登録済みの録画に当て直す。"""
+
+    def test_enqueues_an_analysis_for_every_recording(
+        self, tmp_path: Path, video: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        build = fake_build(tmp_path / "ws")
+        assert main(["analyze", str(video), "--wait"], build=build) == 0
+        capsys.readouterr()
+
+        code = main(["reanalyze"], build=build)
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "解析し直し: 1 レクチャー / 1 本" in out
+        assert "vidcut worker" in out
+        assert statuses(tmp_path / "ws")[-1] is JobStatus.QUEUED
+
+    def test_wait_rewrites_the_analysis_without_judging_again(
+        self, tmp_path: Path, video: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # 判定の出力は 1 回ぶんだけ。入力（文字起こし）が同じなら、言語モデルを呼び直さない
+        build = fake_build(tmp_path / "ws", [KEEP_ALL])
+        assert main(["analyze", str(video), "--wait"], build=build) == 0
+        analysis = next((tmp_path / "ws").rglob("analysis.json"))
+        analysis.write_text(analysis.read_text().replace("フィラー", "古い規則"))
+        capsys.readouterr()
+
+        code = main(["reanalyze", "--wait"], build=fake_build(tmp_path / "ws", []))
+
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "成功: 2 件 / 失敗: 0 件" in out  # 解析 → 判定（前の結果のまま）
+        assert "古い規則" not in analysis.read_text()
+        assert "フィラー" in analysis.read_text()
+
+    def test_reports_when_there_is_nothing_to_reanalyze(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code = main(["reanalyze"], build=fake_build(tmp_path / "ws"))
+        assert code == 0
+        assert "レクチャーがありません" in capsys.readouterr().out
+
+    def test_failed_job_returns_error_code(
+        self, tmp_path: Path, video: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert main(["analyze", str(video), "--wait"], build=fake_build(tmp_path / "ws")) == 0
+        # 元のファイルも、解析用の音声もなければ、解析し直せない
+        video.unlink()
+        for artifact in (tmp_path / "ws").rglob("audio*.wav"):
+            artifact.unlink()
+        capsys.readouterr()
+
+        code = main(["reanalyze", "--wait"], build=fake_build(tmp_path / "ws"))
+
+        assert code == 1
+        assert "失敗: 1 件" in capsys.readouterr().out
+
+
 class TestWorker:
     def test_recovers_interrupted_jobs_then_stops(self, tmp_path: Path) -> None:
         build = fake_build(tmp_path / "ws")

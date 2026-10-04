@@ -208,18 +208,18 @@ PR 1（`test/m8-e2e`。E2E）:
 - [x] frontend: Playwright（`@playwright/test` 1.63.0 に固定。`npm audit` は既知の脆弱性なし）、シナリオ 2 つ（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）、
       コンソールの失敗・CSP の違反・失敗した要求の検出、`harness.json` の `commands.e2e`
 - [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、Premiere XML の確認を各クリップの開始と終了のフレームに強めた）
-- [ ] PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19) → ユーザーがマージ
+- [x] PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19) → ユーザーがマージ（2026-10-05）
 
 PR 2（`feat/m8-sentence-pause`。間の調整の計算。PR 1 の上に積む）:
 
 - [x] Design Doc 3-4・3-5 に仕様を反映（文の終わりのあとの余白。M5 の手動確認で出た要望。文の終わりかどうかは文字起こしの句点で分かるので、データの作り直しは要らない。
       検証素材では、69 チャンクのうち 37 が「。」で終わる）
-- [x] backend: domain（`sentence_pauses`、`keep_ranges` の文末用の余白）、`ExportSettings.pad_after_sentence_ms`（仮の値 500ms）、`plan_export`、API の `keep_padding.after_sentence_ms`
+- [x] backend: domain（`sentence_pauses`、`keep_ranges` の文末用の余白）、`ExportSettings.pad_after_sentence_ms`（500ms。この時点では仮の値。のちに既定値として確定）、`plan_export`、API の `keep_padding.after_sentence_ms`
 - [x] frontend: `keepRanges.ts`（同じ計算）、`timeline.ts`。両側のテストが共有の例を読む（`keep_ranges_cases.json`・`sentence_pauses_cases.json`）
 - [x] E2E の期待値（各クリップの終わりのフレーム、カット後の長さ）
 - [x] 受け入れチェックの記録用のひな形（[docs/references/acceptance-m8.md](../../references/acceptance-m8.md)）、PRD 3-2 の作業時間を「記録のみ」に変更（ユーザー決定）
 - [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、共有の例と 2 本の録画ファイルの例を足した）
-- [ ] PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20)（ベースは `test/m8-e2e`）→ ユーザーがマージ
+- [x] PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20) → ユーザーがマージ（2026-10-05）
 
 PR 3（`feat/m8-pause-settings`。間の設定。ユーザー承認、2026-10-04）:
 
@@ -228,15 +228,29 @@ PR 3（`feat/m8-pause-settings`。間の設定。ユーザー承認、2026-10-04
 - [x] 編集画面の「間の設定」（前・後ろ・文の終わりのあとの 3 項目。ms、0〜2000 の整数。「既定に戻す」。値を変えるとその場でプレビューに効き、0.5 秒遅れて保存する。書き出しの前に保存する）
 - [x] E2E: 変えた値が、プレビューと書き出した XML の両方に効く。既定に戻すと戻る
 - [x] review-loop（Stage 0〜2 すべて PASS。docs は 2 回 BLOCK のあと PASS: 「余白の値を画面に持たせない」という前の仕様の記述と、状態の記述の「残りは PR 3 の設定の画面」が残っていた。FRIC-005 の再発として記録し、チェック項目を足した）
-- [ ] PR [#21](https://github.com/kanpyou-maki/vid-cut/pull/21)（ベースは `feat/m8-sentence-pause`）→ ユーザーがマージ
-- [ ] 値は、編集画面のプレビューで聞きながら、ユーザーが決める（手順は `frontend/README.md` の「手で確かめる（M8 の PR 3: 間の設定）」）。決まった値を既定値にする
+- [x] PR [#21](https://github.com/kanpyou-maki/vid-cut/pull/21) → ユーザーがマージ（2026-10-05）
+- [x] 値は、既定値（150・250・500ms）のままにする。短いと感じるときは「間の設定」で変える（ユーザー決定、2026-10-05）
 
-PR 4（`fix/m8-acceptance`。受け入れ）:
+受け入れチェック（ユーザー、2026-10-05）:
 
-- [ ] 実際の撮影素材 3 本（`~/Desktop/forTest01.mov`〜`forTest03.mov`）で受け入れチェック（PRD 3-2）: 誤削除は 1 本あたり 2 件以下、書き出しの音ズレ 0 件（削除漏れと作業時間は記録のみ）。記録は [acceptance-m8.md](../../references/acceptance-m8.md)
-- [ ] フィラー検出の検証（Design Doc D-5。forTest の素材にフィラーがある）
-- [ ] 複数の録画ファイルのレクチャー（実素材）、300 チャンク超の窓分割と長いレクチャーの重さ（人工データ。ユーザー決定）
-- [ ] 受け入れで見つかった直し
+- [x] 実際の撮影素材 3 本（`~/Desktop/forTest01.mov`〜`forTest03.mov`）で受け入れチェック（PRD 3-2）: 3 本とも合格（誤削除 1・0・0 件、書き出しの音ズレ 0 件。削除漏れ 1・2・3 件は記録のみ）。
+      記録と、見つかった点の原因は [acceptance-m8.md](../../references/acceptance-m8.md)
+
+PR 4a（`fix/m8-filler-span`。フィラー。ユーザー承認、2026-10-05）:
+
+- [x] Design Doc 3-2 に反映（削除する区間、続いたフィラー、区切れの条件、解析し直し）
+- [x] フィラーの削除区間を広げる（位置合わせが、伸ばした声にごく短い時刻しか付けないため。受け入れチェックで、フィラーと判定されているのに声が残る箇所が 4 件あった）
+- [x] 続いたフィラーをまとめる、読点で区切られたフィラー、「まあ」「その」「あの」はフィラーと続いているときだけ（Design Doc D-5 の検証。forTest の素材で確かめた）
+- [x] `vidcut reanalyze`（登録済みの録画に当て直す。実データの写しで、判定と編集状態が変わらないことを確かめた）
+- [ ] review-loop → PR
+- [ ] ユーザーが、ビルドと解析し直しのあとで、該当の箇所を聞き直す
+
+PR 4b（`fix/m8-acceptance`。残り）:
+
+- [ ] 止めたままのシークで、文字起こしをその位置へスクロールする（語と語の間なら、直後の語）
+- [ ] `vidcut serve` の起動時に、ビルドがソースより古ければ警告する
+- [ ] 複数の録画ファイルのレクチャー（実素材）、300 チャンク超の窓分割と長いレクチャーの重さ（人工データ。ユーザー決定）。重ければ直す
+- [ ] 計画の完了処理
 
 ## 完了条件
 
