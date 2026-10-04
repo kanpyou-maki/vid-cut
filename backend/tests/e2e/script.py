@@ -10,12 +10,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
+from typing import Any
 
 from vidcut.domain.intervals import Interval
 from vidcut.pipeline.ports import ChunkTranscript, ProgressCallback
 
-DURATION_MS = 13_000
-RETAKE_REASON = "直後に同じ内容を言い直している"
 _CONFIDENT = -0.1
 _UNSURE = -0.8  # 要確認の印が付く（AnalysisSettings.low_confidence_logprob より低い）
 
@@ -30,13 +29,25 @@ class Line:
     retake: bool = False  # 次の行で言い直す（偽の判定が削除する）
 
 
-# 偽の位置合わせ（FakeAligner）は 1 文字 100ms で並べるので、文字数 × 100ms が区間に収まること
-LINES = (
-    Line(Interval(1_000, 2_500), "こんにちは。"),
-    Line(Interval(3_500, 5_500), "今日は編集の", retake=True),
-    Line(Interval(6_500, 8_500), "今日は編集の話をします。"),
-    Line(Interval(9_500, 11_500), "えーと、最後です。", avg_logprob=_UNSURE),
+def _line(data: dict[str, Any]) -> Line:
+    return Line(
+        span=Interval(data["start_ms"], data["end_ms"]),
+        text=data["text"],
+        avg_logprob=_UNSURE if data.get("unsure", False) else _CONFIDENT,
+        retake=data.get("retake", False),
+    )
+
+
+# 台本の中身は script.json に置く。画面側の E2E（frontend/e2e/）も同じファイルを読む
+_SCRIPT: dict[str, Any] = json.loads(
+    Path(__file__).with_name("script.json").read_text(encoding="utf-8")
 )
+DURATION_MS: int = _SCRIPT["duration_ms"]
+LESSON_FOLDER: str = _SCRIPT["lesson_folder"]  # 日本語と空白を含むパスを通す
+LESSON_NAMES: tuple[str, ...] = tuple(_SCRIPT["lesson_names"])
+RETAKE_REASON: str = _SCRIPT["retake_reason"]
+# 偽の位置合わせ（FakeAligner）は 1 文字 100ms で並べるので、文字数 × 100ms が区間に収まること
+LINES = tuple(_line(data) for data in _SCRIPT["lines"])
 
 _LISTING_LINE = re.compile(r"^(\d+)\t[\d.]+\t[\d.]+\t(.*)$")
 

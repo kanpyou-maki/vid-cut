@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.e2e.script import DURATION_MS, LINES, RETAKE_REASON
-from tests.e2e.stage import LESSON_NAMES, MARKER, fake_app, prepare
+from tests.e2e.script import DURATION_MS, LESSON_NAMES, LINES, RETAKE_REASON
+from tests.e2e.stage import MARKER, fake_app, prepare
 from vidcut.domain.models import CutKind, JobKind
 from vidcut.services.lecture_views import LectureStatus
 

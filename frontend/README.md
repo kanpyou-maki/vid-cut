@@ -11,6 +11,7 @@ npm run typecheck  # 型チェック
 npm run lint       # Biome（lint + フォーマット確認）と、API の型が最新かの確認
 npm run build      # 本番用のビルド（dist/。`vidcut serve` が配信する）
 npm run gen:api    # backend の OpenAPI から API の型を作り直す（src/api/generated/）
+npm run e2e        # E2E（Playwright。画面をビルドし、E2E 用の backend を起動して、Chrome で操作する）
 ```
 
 開発中は、backend を `uv run --directory ../backend vidcut serve --dev` で起動してから `npm run dev` を使い、`http://localhost:5173/` を開く。
@@ -22,14 +23,15 @@ npm run gen:api    # backend の OpenAPI から API の型を作り直す（src/
 
 ## 構成
 
-| フォルダ        | 中身                                                                                                            |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `src/app/`      | 画面の枠（見出し、パスに応じた画面の出し分け）                                                                  |
-| `src/library/`  | 素材一覧（`/`）。一覧、投入ダイアログ、まとめる・並べ替え・解除、失敗の再実行                                   |
-| `src/editor/`   | 編集画面（`/lectures/{id}`）。3 ペインの枠、文字起こしの編集、undo / redo、自動保存、プレビュー、波形、書き出し |
-| `src/shared/`   | 画面をまたいで使う部品（画面の切り替え、ポーリング、ダイアログ）                                                |
-| `src/api/`      | API クライアント（画面は `Api` のインターフェースだけを使う）、トークン、失敗の種類                             |
-| `vite-plugins/` | 開発サーバー用のプラグイン                                                                                      |
+| フォルダ        | 中身                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/app/`      | 画面の枠（見出し、パスに応じた画面の出し分け）                                                                                             |
+| `src/library/`  | 素材一覧（`/`）。一覧、投入ダイアログ、まとめる・並べ替え・解除、失敗の再実行                                                              |
+| `src/editor/`   | 編集画面（`/lectures/{id}`）。3 ペインの枠、文字起こしの編集、undo / redo、自動保存、プレビュー、波形、書き出し                            |
+| `src/shared/`   | 画面をまたいで使う部品（画面の切り替え、ポーリング、ダイアログ）                                                                           |
+| `src/api/`      | API クライアント（画面は `Api` のインターフェースだけを使う）、トークン、失敗の種類                                                        |
+| `vite-plugins/` | 開発サーバー用のプラグイン                                                                                                                 |
+| `e2e/`          | E2E（Playwright）。シナリオ（`*.e2e.ts`）、画面の操作（`pages.ts`）、裏で起きた問題の検出（`fixtures.ts`）、舞台の場所と台本（`stage.ts`） |
 
 依存の向きは `app → library・editor → shared → api`。
 
@@ -61,6 +63,20 @@ npm run gen:api    # backend の OpenAPI から API の型を作り直す（src/
 
 `src/api/generated/` は生成物（`openapi.json` と `schema.d.ts`）。手で編集せず、backend の API を変えたら `npm run gen:api` で作り直してコミットする。
 `openapi-typescript` 7 は peer 依存が TypeScript 5 のため、`package.json` の `overrides` でこのプロジェクトの TypeScript 6 を使わせている（TypeScript 6 で生成と型チェックが通ることを確認済み）。
+
+## E2E（M8）
+
+`npm run e2e`（リポジトリのルートからは `.claude/harness.json` の `commands.e2e`）。投入 → 解析 → 編集 → 書き出しを、実物の backend と Chrome で通す（[Design Doc](../docs/design.md) 6 章）。20 秒ほどで終わる。
+
+- 必要なもの: ffmpeg、uv、Google Chrome（Playwright 付属の Chromium は H.264 を再生できないので、入っている Chrome を使う。`npx playwright install` は要らない）
+- 流れ: 画面を `e2e/run/dist/` にビルドする（`dist/` は書き換えない）→ Playwright が E2E 用の backend（`backend/tests/e2e/serve.py`）を 8799 番で起動する → Chrome で操作する → backend を止める
+- E2E 用の backend は、ML と判定だけを偽の実装に差し替える（結果は、台本 `backend/tests/e2e/script.json` で決まる）。ffmpeg・SQLite・API・worker・書き出しは実物。
+  ワークスペースと素材は `e2e/run/stage/` に、実行のたびに作り直す（`~/VidCut` は使わない。環境変数 `VIDCUT_WORKSPACE` も見ない）。「Finder で開く」は、窓を開かずログに出すだけ
+- どのテストも、コンソールの失敗（CSP の違反を含む）・失敗した要求・4xx / 5xx の応答が 1 つでもあれば失敗する（`e2e/fixtures.ts`）
+- 失敗したときの画面の画像は `e2e/run/results/` に残る。記録（trace）は取らない（要求のヘッダーにトークンが入るため）
+- ファイル名は `*.e2e.ts`（vitest は拾わない）。型チェックは `tsconfig.e2e.json`、整形と lint は Biome（ほかと同じ）
+- 台本か、残す区間の計算（余白など）を変えたら、`e2e/flow.e2e.ts` の先頭の値（カット後の長さ、クリップの数）も合わせる
+- 8799 番が使われていると起動しない。前回のプロセスが残っていないかは `pgrep -fl "vidcut.cli|tests.e2e"` で確かめる
 
 ## 手で確かめる（M7 の PR 1: 土台）
 

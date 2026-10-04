@@ -6,14 +6,18 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tests.e2e.material import make_lesson as make_real_lesson
-from tests.e2e.script import ScriptedJudge, ScriptedTranscriber, SilentVad
+from tests.e2e.script import (
+    LESSON_FOLDER,
+    LESSON_NAMES,
+    ScriptedJudge,
+    ScriptedTranscriber,
+    SilentVad,
+)
 from tests.pipeline.fakes import FakeAligner
 from vidcut.bootstrap import App, MlTools, build_app
 
 MARKER = "vidcut-e2e-root"
 """このスクリプトが作ったフォルダの目印。これがないフォルダは、空でないかぎり消さない。"""
-LESSON_FOLDER = "講座 素材"  # 日本語と空白を含むパスを通す
-LESSON_NAMES = ("lesson-1.mov", "lesson-2.mov")
 _TONES_HZ = (440, 660)
 
 LessonMaker = Callable[[Path, int], None]
