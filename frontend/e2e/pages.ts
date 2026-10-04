@@ -4,6 +4,9 @@ import { SCRIPT } from "./stage.ts";
 
 // 解析（中間素材の生成を含む）と判定、書き出しを待つ上限
 export const JOB_TIMEOUT_MS = 60_000;
+// 無音の検出（実物の ffmpeg）の端は、音の切り替わりから少しずれる。文末の余白の有無（250ms の差）は見分けられる幅にする
+const LENGTH_TOLERANCE_MS = 150;
+const LENGTH_TIMEOUT_MS = 5_000;
 
 const TOKENS_PER_RECORDING = SCRIPT.lines.reduce(
   (count, line) => count + line.text.length,
@@ -120,6 +123,26 @@ export function restored(page: Page, text: string, kind: string): Locator {
     name: `「${text}」を削除に戻す（${kind}・戻し済み）`,
     exact: true,
   });
+}
+
+/**
+ * プレビューのカット後の長さ（再生位置のバーの最大値。ミリ秒）が、candidates のどれかに近いこと。
+ * 無音の検出（実物の ffmpeg）の端のずれのぶんだけ、幅を持たせる。
+ */
+export async function expectLength(
+  page: Page,
+  candidates: readonly number[],
+): Promise<void> {
+  const bar = page.getByRole("slider", { name: "再生位置" });
+  await expect(async () => {
+    const length = Number(await bar.getAttribute("max"));
+    const nearest = Math.min(
+      ...candidates.map((expected) => Math.abs(length - expected)),
+    );
+    expect(nearest, `カット後の長さ ${length}ms`).toBeLessThanOrEqual(
+      LENGTH_TOLERANCE_MS,
+    );
+  }).toPass({ timeout: LENGTH_TIMEOUT_MS });
 }
 
 export async function expectSaved(page: Page): Promise<void> {

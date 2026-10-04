@@ -1,6 +1,6 @@
 import type { LectureDetail } from "../api/types";
 import type { EditDraft } from "./edits";
-import { keepRanges } from "./keepRanges";
+import { keepRanges, sentencePauses } from "./keepRanges";
 
 /**
  * カット後のタイムライン（Design Doc 3-6 の「カット後のプレビュー」）: レクチャーの録画ファイルの順に、
@@ -54,6 +54,7 @@ export function buildTimeline(
   const padding = {
     beforeMs: detail.keep_padding.before_ms,
     afterMs: detail.keep_padding.after_ms,
+    afterSentenceMs: detail.keep_padding.after_sentence_ms,
   };
   const kept = detail.recordings.flatMap((recording) => {
     // 実際に削除される区間 = （自動の削除候補 − 戻したもの）∪ 手動の削除区間
@@ -70,9 +71,13 @@ export function buildTimeline(
       startMs: silence.start_ms,
       endMs: silence.end_ms,
     }));
-    return keepRanges(recording.duration_ms, cuts, silences, padding).map(
-      (span) => ({ recordingId: recording.id, ...span }),
-    );
+    return keepRanges(
+      recording.duration_ms,
+      cuts,
+      silences,
+      padding,
+      sentencePauses(recording.tokens, silences),
+    ).map((span) => ({ recordingId: recording.id, ...span }));
   });
   // 出力での開始時刻は、それまでの残す区間の長さの合計
   let outputMs = 0;

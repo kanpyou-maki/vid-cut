@@ -15,7 +15,10 @@
     "silences": [[1000, 2000]],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 1250], [1850, 5000]]
+    "expected": [
+      [0, 1250],
+      [1850, 5000]
+    ]
   },
   {
     "name": "余白どうしが重なる短い無音は、残る",
@@ -33,34 +36,62 @@
     "silences": [],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 1000], [1500, 5000]]
+    "expected": [
+      [0, 1000],
+      [1500, 5000]
+    ]
   },
   {
     "name": "余白は、残す発話の隣の無音の中にだけ伸ばす（言い直しのチャンクと前後の無音）",
     "duration_ms": 5000,
-    "cuts": [[1500, 2000], [3000, 3600], [2000, 3000]],
-    "silences": [[1500, 2000], [3000, 3600]],
+    "cuts": [
+      [1500, 2000],
+      [3000, 3600],
+      [2000, 3000]
+    ],
+    "silences": [
+      [1500, 2000],
+      [3000, 3600]
+    ],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 1750], [3450, 5000]]
+    "expected": [
+      [0, 1750],
+      [3450, 5000]
+    ]
   },
   {
     "name": "余白は、無音の端で止まる",
     "duration_ms": 5000,
-    "cuts": [[1000, 1100], [1100, 2000]],
+    "cuts": [
+      [1000, 1100],
+      [1100, 2000]
+    ],
     "silences": [[1000, 1100]],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 1100], [2000, 5000]]
+    "expected": [
+      [0, 1100],
+      [2000, 5000]
+    ]
   },
   {
     "name": "接する無音は、1 つの無音として余白を伸ばす",
     "duration_ms": 5000,
-    "cuts": [[0, 1050], [2000, 3000]],
-    "silences": [[0, 1000], [1000, 2000]],
+    "cuts": [
+      [0, 1050],
+      [2000, 3000]
+    ],
+    "silences": [
+      [0, 1000],
+      [1000, 2000]
+    ],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[900, 2000], [3000, 5000]]
+    "expected": [
+      [900, 2000],
+      [3000, 5000]
+    ]
   },
   {
     "name": "無音の途中から始まる手動の削除は、無音の中にだけ余白を残す",
@@ -69,7 +100,10 @@
     "silences": [[1000, 2000]],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 1750], [3000, 5000]]
+    "expected": [
+      [0, 1750],
+      [3000, 5000]
+    ]
   },
   {
     "name": "すべて削除なら、残す区間はない",
@@ -87,24 +121,187 @@
     "silences": [[1000, 2000]],
     "pad_before_ms": 0,
     "pad_after_ms": 0,
-    "expected": [[0, 1000], [2000, 5000]]
+    "expected": [
+      [0, 1000],
+      [2000, 5000]
+    ]
   },
   {
     "name": "重なる削除は、まとめて扱う。録画ファイルの外にはみ出す分は無視する",
     "duration_ms": 5000,
-    "cuts": [[2000, 3000], [2500, 4000], [4800, 9000]],
+    "cuts": [
+      [2000, 3000],
+      [2500, 4000],
+      [4800, 9000]
+    ],
     "silences": [],
     "pad_before_ms": 150,
     "pad_after_ms": 250,
-    "expected": [[0, 2000], [4000, 4800]]
+    "expected": [
+      [0, 2000],
+      [4000, 4800]
+    ]
   },
   {
     "name": "余白の大きさが前後で違い、無音が録画ファイルの頭と終わりにある",
     "duration_ms": 5000,
-    "cuts": [[0, 800], [4200, 5000]],
-    "silences": [[0, 800], [4200, 5000]],
+    "cuts": [
+      [0, 800],
+      [4200, 5000]
+    ],
+    "silences": [
+      [0, 800],
+      [4200, 5000]
+    ],
     "pad_before_ms": 40,
     "pad_after_ms": 900,
     "expected": [[760, 5000]]
+  },
+  {
+    "name": "文の終わりのあとの無音には、長い余白を残す",
+    "duration_ms": 5000,
+    "cuts": [[1000, 2000]],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [[900, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 1500],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "文の途中のあとの無音は、通常の余白のまま（文末用の値があっても）",
+    "duration_ms": 5000,
+    "cuts": [[1000, 2000]],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 1250],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "文末の余白も、無音の端で止まる（短い無音は残る）",
+    "duration_ms": 5000,
+    "cuts": [[1000, 1400]],
+    "silences": [[1000, 1400]],
+    "sentence_pauses": [[900, 1400]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [[0, 5000]]
+  },
+  {
+    "name": "文末の文字が頭から残っていなければ、通常の余白",
+    "duration_ms": 5000,
+    "cuts": [
+      [0, 950],
+      [1000, 2000]
+    ],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [[900, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [950, 1250],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "文末の文字の頭から残っていれば、長い余白",
+    "duration_ms": 5000,
+    "cuts": [
+      [0, 900],
+      [1000, 2000]
+    ],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [[900, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [900, 1500],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "長い余白は文の終わりのあとの無音だけで、ほかの無音は通常の余白",
+    "duration_ms": 5000,
+    "cuts": [
+      [300, 800],
+      [1200, 2000]
+    ],
+    "silences": [
+      [300, 800],
+      [1200, 2000]
+    ],
+    "sentence_pauses": [[1100, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 550],
+      [650, 1700],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "文の終わりの間の中で始まる手動の削除でも、長い余白を残す",
+    "duration_ms": 5000,
+    "cuts": [[1300, 3000]],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [[900, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 1800],
+      [3000, 5000]
+    ]
+  },
+  {
+    "name": "文末用の値が通常より短くても、そのまま使う",
+    "duration_ms": 5000,
+    "cuts": [[1000, 2000]],
+    "silences": [[1000, 2000]],
+    "sentence_pauses": [[900, 2000]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 0,
+    "expected": [
+      [0, 1000],
+      [1850, 5000]
+    ]
+  },
+  {
+    "name": "文末の長い余白が、次の区間の前の余白に届けば、短い無音は残る（通常の余白なら残らない長さ）",
+    "duration_ms": 5000,
+    "cuts": [[1000, 1600]],
+    "silences": [[1000, 1600]],
+    "sentence_pauses": [[900, 1600]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [[0, 5000]]
+  },
+  {
+    "name": "同じ長さの無音でも、文の途中なら通常の余白で、無音は削られる",
+    "duration_ms": 5000,
+    "cuts": [[1000, 1600]],
+    "silences": [[1000, 1600]],
+    "sentence_pauses": [],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 1250],
+      [1450, 5000]
+    ]
   }
 ]

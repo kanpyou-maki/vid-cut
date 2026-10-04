@@ -4,6 +4,7 @@ import path from "node:path";
 import { expect, test } from "./fixtures.ts";
 import {
   cut,
+  expectLength,
   expectSaved,
   exportAndWait,
   importLessons,
@@ -31,25 +32,42 @@ const SECOND = lectureTitle(SECOND_LESSON);
 const MERGED = "まとめた講座";
 const RETAKE = SCRIPT.lines[1].text;
 const FILLER = "えーと";
-// 残す 3 つの発話と前後の余白で約 6.3 秒。言い直しを戻すと約 8.7 秒、フィラーだけを戻すと約 6.7 秒
-const CUT_LENGTH = /\/ 0:06$/;
-const LENGTH_WITH_RETAKE = /\/ 0:08$/;
-const EXPORTED_SECONDS = 6.7;
-const SECONDS_TOLERANCE = 0.3;
-// 2 本ぶんで約 12.5 秒。1 つ目のシナリオが 1 本目のフィラーを戻していれば、約 13.0 秒
-const MERGED_LENGTH = /\/ 0:1[23]$/;
 // 手動で削除して、取り消す部分（3 行目の中）
 const DELETED_LINE = 2;
 const DELETED_PHRASE = "話をします";
 // フィラーを戻したあとに残る発話は、1・3・4 行目（2 行目は言い直しで削除）。それぞれが、前後の余白つきで 1 つのクリップになる
 const KEPT_LINES = [0, 2, 3];
-// 残す発話の前後に付く余白（書き出しの設定の既定値）と、書き出しのフレームレート
+// 残す発話の前後に付く余白（書き出しの設定の既定値）。文の終わり（。）のあとは長い
 const PAD_BEFORE_MS = 150;
 const PAD_AFTER_MS = 250;
+const PAD_AFTER_SENTENCE_MS = 500;
+// 「えーと」の長さ（偽の位置合わせは、1 文字を 100ms で並べる）
+const FILLER_MS = 300;
+// カット後の長さ。台本の行の間は 1 秒以上あるので、余白どうしはつながらない（行ごとに 1 つのクリップになる）
+// フィラーを戻したとき: 1・3・4 行目が、それぞれ前後の余白つきで残る
+const FILLER_RESTORED_MS = clipMs(0) + clipMs(2) + clipMs(3);
+// 自動の削除のまま: 4 行目はフィラーの直後から始まる。発話の途中なので前の余白は付かず、フィラーのぶんも短い
+const AUTO_CUT_MS = FILLER_RESTORED_MS - PAD_BEFORE_MS - FILLER_MS;
+// 言い直し（2 行目）を戻したとき
+const RETAKE_RESTORED_MS = AUTO_CUT_MS + clipMs(1);
 const FPS = 60;
 const MS_PER_SECOND = 1000;
+const SECONDS_TOLERANCE = 0.3;
 // 無音の検出（実物の ffmpeg）の端は、音の切り替わりから少しずれる
 const FRAME_TOLERANCE = 3;
+
+/** 台本の line 行目の後ろに付く余白。文の終わり（。）で終わる行は長い。 */
+function padAfterMs(line: number): number {
+  return SCRIPT.lines[line].text.endsWith("。")
+    ? PAD_AFTER_SENTENCE_MS
+    : PAD_AFTER_MS;
+}
+
+/** 台本の line 行目を、前後の余白つきで残したときの長さ。 */
+function clipMs(line: number): number {
+  const { start_ms, end_ms } = SCRIPT.lines[line];
+  return PAD_BEFORE_MS + (end_ms - start_ms) + padAfterMs(line);
+}
 
 test.describe.configure({ mode: "serial" });
 
@@ -77,7 +95,7 @@ test("投入した録画ファイルが解析され、編集して、書き出�
     const wave = page.getByRole("region", { name: "波形" });
     await expect(wave.locator("canvas").first()).toBeVisible();
     const time = page.getByTestId("preview-time");
-    await expect(time).toHaveText(CUT_LENGTH);
+    await expectLength(page, [AUTO_CUT_MS]);
     await page.getByRole("button", { name: "再生", exact: true }).click();
     await expect(time).toHaveText(/^0:0[1-9] \//);
     await page.getByRole("button", { name: "一時停止" }).click();
@@ -96,18 +114,19 @@ test("投入した録画ファイルが解析され、編集して、書き出�
   });
 
   await test.step("候補を戻すと、プレビューの長さが変わる", async () => {
-    const time = page.getByTestId("preview-time");
     await cut(page, RETAKE, "言い直し").click();
     await expect(restored(page, RETAKE, "言い直し")).toBeVisible();
-    await expect(time).toHaveText(LENGTH_WITH_RETAKE);
+    // 2 行目は文の途中で終わるので、後ろの余白は通常のまま
+    await expectLength(page, [RETAKE_RESTORED_MS]);
     await restored(page, RETAKE, "言い直し").click();
     await expect(cut(page, RETAKE, "言い直し")).toBeVisible();
-    await expect(time).toHaveText(CUT_LENGTH);
+    await expectLength(page, [AUTO_CUT_MS]);
     // 言い直しの理由の表示が、下の行に重なっている。カーソルを外して閉じてから、次の行を押す
     await page.getByRole("heading", { name: FIRST }).hover();
     await expect(page.getByRole("tooltip")).toHaveCount(0);
     await cut(page, FILLER, "フィラー").click();
     await expect(restored(page, FILLER, "フィラー")).toBeVisible();
+    await expectLength(page, [FILLER_RESTORED_MS]);
     await expectSaved(page);
   });
 
@@ -129,14 +148,14 @@ test("投入した録画ファイルが解析され、編集して、書き出�
       // 戻したフィラーは 4 行目の頭なので、4 行目のクリップも行の頭（の余白）から始まる
       const { start_ms, end_ms } = SCRIPT.lines[line];
       expectNear(clips[index].in, toFrames(start_ms - PAD_BEFORE_MS));
-      expectNear(clips[index].out, toFrames(end_ms + PAD_AFTER_MS));
+      expectNear(clips[index].out, toFrames(end_ms + padAfterMs(line)));
     }
   });
 
   await test.step("MP4 が、カット後の長さになる", async () => {
     await exportAndWait(page, "MP4", "mp4");
     const seconds = durationSeconds(exported(directory, ".mp4"));
-    expect(Math.abs(seconds - EXPORTED_SECONDS)).toBeLessThan(
+    expect(Math.abs(seconds - FILLER_RESTORED_MS / MS_PER_SECOND)).toBeLessThan(
       SECONDS_TOLERANCE,
     );
   });
@@ -172,7 +191,8 @@ test("2 本をまとめたレクチャーで、波形がつながり、動画が
 
   // どちらの録画ファイルの言い直しも、削除されている
   await expect(cut(page, RETAKE, "言い直し")).toHaveCount(2);
-  await expect(page.getByTestId("preview-time")).toHaveText(MERGED_LENGTH);
+  // 1 つ目のシナリオが 1 本目のフィラーを戻していれば、そのぶん長い
+  await expectLength(page, [2 * AUTO_CUT_MS, AUTO_CUT_MS + FILLER_RESTORED_MS]);
   const wave = page.getByRole("region", { name: "波形" });
   await expect(wave.locator("canvas").first()).toBeVisible();
   await expect(wave).toContainText(SECOND_LESSON);

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { lectureDetail, recordingDetail, suggestion } from "../test/fakeApi";
+import {
+  lectureDetail,
+  recordingDetail,
+  suggestion,
+  tokens,
+} from "../test/fakeApi";
 import type { EditDraft } from "./edits";
 import {
   buildTimeline,
@@ -66,12 +71,86 @@ describe("buildTimeline", () => {
 
   it("余白は、詳細が伝える値（書き出しの設定）を使う", () => {
     const tight = buildTimeline(
-      { ...DETAIL, keep_padding: { before_ms: 0, after_ms: 0 } },
+      {
+        ...DETAIL,
+        keep_padding: { before_ms: 0, after_ms: 0, after_sentence_ms: 0 },
+      },
       EMPTY,
     );
 
     expect(tight.segments[0]).toMatchObject({ startMs: 0, endMs: 1000 });
     expect(tight.segments[1]).toMatchObject({ startMs: 3000, endMs: 5000 });
+  });
+
+  it("文の終わりのあとの無音には、長い余白を残す", () => {
+    // 「です。」が 800〜1000、無音 1000〜3000 を削除。「。」のあとなので、後ろの余白は 500ms
+    const silence = { start_ms: 1000, end_ms: 3000 };
+    const recording = (text: string) =>
+      recordingDetail({
+        id: "r1",
+        duration_ms: 10_000,
+        tokens: tokens("c1", text, 800),
+        silences: [silence],
+        suggestions: [
+          suggestion({
+            id: "s1",
+            recording_id: "r1",
+            kind: "silence",
+            ...silence,
+          }),
+        ],
+      });
+
+    const afterSentence = buildTimeline(
+      lectureDetail({ recordings: [recording("す。")] }),
+      EMPTY,
+    );
+    const midSentence = buildTimeline(
+      lectureDetail({ recordings: [recording("が、")] }),
+      EMPTY,
+    );
+
+    expect(afterSentence.segments[0]).toMatchObject({
+      startMs: 0,
+      endMs: 1500,
+    });
+    expect(midSentence.segments[0]).toMatchObject({ startMs: 0, endMs: 1250 });
+  });
+
+  it("文の終わりかどうかは、録画ファイルごとのトークンで決まる", () => {
+    // r1 は「。」、r2 は「、」で終わる。長い余白は r1 だけ
+    const silence = { start_ms: 1000, end_ms: 3000 };
+    const recording = (id: string, text: string) =>
+      recordingDetail({
+        id,
+        duration_ms: 10_000,
+        tokens: tokens(`${id}-c1`, text, 800),
+        silences: [silence],
+        suggestions: [
+          suggestion({
+            id: `${id}-s1`,
+            recording_id: id,
+            kind: "silence",
+            ...silence,
+          }),
+        ],
+      });
+
+    const timeline = buildTimeline(
+      lectureDetail({
+        recordings: [recording("r1", "す。"), recording("r2", "が、")],
+      }),
+      EMPTY,
+    );
+
+    expect(
+      timeline.segments.map((segment) => [segment.recordingId, segment.endMs]),
+    ).toEqual([
+      ["r1", 1500],
+      ["r1", 10_000],
+      ["r2", 1250],
+      ["r2", 10_000],
+    ]);
   });
 
   it("残す区間がなければ、長さは 0", () => {
