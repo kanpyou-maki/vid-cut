@@ -58,6 +58,10 @@ class AnalysisService:
         try:
             previous = load_analysis(self.store, recording_id)
         except ValueError:
+            # 対応づける相手がない。戻していた無音・フィラーの id は、そのまま残る（既知の限界）
+            _logger.warning(
+                "前の解析結果を読めないため、戻した無音・フィラーを引き継げません: %s", recording_id
+            )
             return ()
         return previous.suggestions if previous else ()
 
