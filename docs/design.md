@@ -257,12 +257,15 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
   ビルドの出力の外・隠しファイル・外を指すリンクは返さない。ファイルを求めるパス（`.js`・`.css` など）で見つからないものは 404（HTML を返すと、画面が壊れた理由が分かりにくい）。
   ビルドがなければ、ビルドの手順を書いたページ（503）を返す（API は使える）。このページにもトークンを埋め込む（開発中は、Vite のプラグインがここから読む）。
   CSP は M7 の `feat/m7-waveform` で見直した: 波形の部品（wavesurfer.js）にはピーク値と長さだけを渡すので、音声を読み込まず（`fetch`・`blob:` を使わない）、足すものはなかった。
-  スタイルのインラインの許可（`'unsafe-inline'`）は外し、波形の部品が差し込む `<style>` 1 つだけを、中身のハッシュで許可する（下の「応答のヘッダー」）
+  スタイルのインラインの許可（`'unsafe-inline'`）は外し、波形の部品が差し込む `<style>` 1 つだけを、中身のハッシュで許可する（下の「応答のヘッダー」）。
+  M7 の `feat/m7-export` で、画像と動画の `data:`・`blob:` の許可も外した（ユーザー決定、2026-10-04。画面はどちらも使っていない）
 - **応答のヘッダー**（`api/headers.py`。すべての応答に付ける。想定していない失敗の 500 にも付ける）: `Content-Security-Policy`（読み込めるのは自分自身のものだけ。スクリプトのインライン実行は不可。`<object>` は不可。ほかのページの枠には入れない。
   スタイルは `style-src 'self' 'sha256-…'`: 自分自身のスタイルシートと、wavesurfer.js が Shadow DOM の中に差し込む `<style>` 1 つだけ。`style` 属性は許可しない。
   ハッシュは wavesurfer.js の版と波形の高さで変わる。値は `backend/tests/api/waveform_style_hash.json` にも置き、frontend のテスト（`waveChart.test.ts`）が
   「実際に差し込まれる `<style>` のハッシュ」と、backend のテストが「CSP が許可している値（`api/headers.py`）」と、それぞれ同じことを確かめる。
-  nonce は使わない（応答ごとに乱数を作って HTML に埋め込む経路が増える））、
+  nonce は使わない（応答ごとに乱数を作って HTML に埋め込む経路が増える）。
+  画像と動画は `img-src 'self'`・`media-src 'self'`: `data:` と `blob:` は許可しない
+  （proxy 動画は自分自身の URL から読み、波形は canvas に描く。画面で `data:` や `blob:` の画像・動画を使うようにするなら、ここを先に見直す））、
   `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`（proxy 動画の `?token=` を外へ送らない）、`X-Frame-Options: DENY`
 - **止め方**: Ctrl+C と SIGTERM のどちらでも、サーバーを止めてから worker の子プロセスを止める。
   uvicorn は止まったあとに SIGTERM を送り直すので、worker を起動する前に SIGTERM を KeyboardInterrupt に変えておく（そうしないと worker が残る）。
