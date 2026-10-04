@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { LectureDetail } from "../api/types";
 import { failedJobs } from "../shared/lectureStatus";
 import { Modal } from "../shared/Modal";
@@ -9,10 +10,12 @@ import { DroppedNotice } from "./DroppedNotice";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
 import styles from "./EditorWorkspace.module.css";
 import { ExportBar } from "./ExportBar";
+import { PaddingSettings } from "./PaddingSettings";
 import { PreviewPane } from "./PreviewPane";
 import { TranscriptView } from "./TranscriptView";
 import { type Editing, useEditing } from "./useEditing";
 import { useExports } from "./useExports";
+import { usePadding } from "./usePadding";
 import type { ReviewNavigation } from "./useReviewNavigation";
 import { WaveformPane } from "./WaveformPane";
 
@@ -38,9 +41,17 @@ export function EditorWorkspace({
   detail: LectureDetail;
   onReload: () => void;
 }) {
-  const editing = useEditing(detail);
+  const pause = usePadding(detail.keep_padding);
+  const editing = useEditing(detail, pause.padding);
   const { saveStatus, locked } = editing;
-  const exporting = useExports(detail.id, detail.exports, editing.flushSave);
+  const { flushSave } = editing;
+  const flushPadding = pause.flush;
+  // 書き出しのジョブは、保存済みの編集状態と間の設定を読む。どちらも、頼む前に保存しておく
+  const flushAll = useCallback(
+    async () => (await flushPadding()) && (await flushSave()),
+    [flushPadding, flushSave],
+  );
+  const exporting = useExports(detail.id, detail.exports, flushAll);
 
   return (
     <EditorLayout title={detail.title} toolbar={<Toolbar editing={editing} />}>
@@ -62,7 +73,12 @@ export function EditorWorkspace({
         droppedIds={detail.dropped_restored_ids}
       />
       <EditorPanes
-        preview={<PreviewPane player={editing.player} />}
+        preview={
+          <>
+            <PreviewPane player={editing.player} />
+            <PaddingSettings control={pause} />
+          </>
+        }
         transcriptTools={<ReviewTools review={editing.review} />}
         transcript={
           <TranscriptView

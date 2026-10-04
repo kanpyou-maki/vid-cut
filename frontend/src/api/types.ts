@@ -27,5 +27,9 @@ export type Exports = Schemas["ExportsOut"];
 /** 1 つの形式の書き出し先・最後に書き出した日時・最新の書き出しジョブ */
 export type ExportFile = Schemas["ExportFileOut"];
 export type ExportFormat = Schemas["ExportIn"]["format"];
+/** 残す発話の前・後ろ・文の終わりのあとに残す余白（ミリ秒。0〜2000 の整数） */
+export type KeepPadding = Schemas["KeepPaddingOut"];
+/** ワークスペース全体の設定。customized は、保存した値を使っているかどうか */
+export type Settings = Schemas["SettingsOut"];
 /** 保存する編集状態（version は、読み込んだときの版） */
 export type Edits = Schemas["EditsIn"];

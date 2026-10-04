@@ -1,4 +1,4 @@
-import type { LectureDetail } from "../api/types";
+import type { KeepPadding, LectureDetail } from "../api/types";
 import type { EditDraft } from "./edits";
 import { keepRanges, sentencePauses } from "./keepRanges";
 
@@ -46,15 +46,20 @@ export type Step =
  */
 export const SKIP_LOOKAHEAD_MS = 30;
 
+/**
+ * keepPadding は、残す発話の前後の余白。省くと、詳細を読んだときの値（`detail.keep_padding`）。
+ * 利用者が「間の設定」で変えている間は、その値を渡す。
+ */
 export function buildTimeline(
   detail: LectureDetail,
   draft: EditDraft,
+  keepPadding: KeepPadding = detail.keep_padding,
 ): Timeline {
   const restored = new Set(draft.restoredIds);
   const padding = {
-    beforeMs: detail.keep_padding.before_ms,
-    afterMs: detail.keep_padding.after_ms,
-    afterSentenceMs: detail.keep_padding.after_sentence_ms,
+    beforeMs: keepPadding.before_ms,
+    afterMs: keepPadding.after_ms,
+    afterSentenceMs: keepPadding.after_sentence_ms,
   };
   const kept = detail.recordings.flatMap((recording) => {
     // 実際に削除される区間 = （自動の削除候補 − 戻したもの）∪ 手動の削除区間

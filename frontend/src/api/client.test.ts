@@ -598,6 +598,46 @@ describe("createApi: 書き出し", () => {
   });
 });
 
+describe("createApi: 設定", () => {
+  const PADDING = { before_ms: 100, after_ms: 300, after_sentence_ms: 800 };
+  const SETTINGS = {
+    keep_padding: PADDING,
+    default_keep_padding: {
+      before_ms: 150,
+      after_ms: 250,
+      after_sentence_ms: 500,
+    },
+    customized: true,
+  };
+
+  it("getSettings は、余白と既定値を読む", async () => {
+    const { api, sent } = recordingApi(SETTINGS);
+
+    await expect(api.getSettings()).resolves.toEqual(SETTINGS);
+
+    expect(sent[0].method).toBe("GET");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/settings`);
+  });
+
+  it("saveKeepPadding は、余白を送って、保存後の設定を返す", async () => {
+    const { api, sent } = recordingApi(SETTINGS);
+
+    await expect(api.saveKeepPadding(PADDING)).resolves.toEqual(SETTINGS);
+
+    expect(sent[0].method).toBe("PUT");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/settings`);
+    expect(sent[0].body).toEqual({ keep_padding: PADDING });
+  });
+
+  it("saveKeepPadding に null を渡すと、既定に戻すよう頼む", async () => {
+    const { api, sent } = recordingApi({ ...SETTINGS, customized: false });
+
+    await api.saveKeepPadding(null);
+
+    expect(sent[0].body).toEqual({ keep_padding: null });
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures.ts";
 import {
   cut,
@@ -8,6 +9,7 @@ import {
   expectSaved,
   exportAndWait,
   importLessons,
+  JOB_TIMEOUT_MS,
   openLecture,
   phrase,
   restored,
@@ -41,6 +43,8 @@ const KEPT_LINES = [0, 2, 3];
 const PAD_BEFORE_MS = 150;
 const PAD_AFTER_MS = 250;
 const PAD_AFTER_SENTENCE_MS = 500;
+// 「間の設定」で試す、文の終わりのあとの余白
+const LONGER_PAD_AFTER_SENTENCE_MS = 800;
 // 「えーと」の長さ（偽の位置合わせは、1 文字を 100ms で並べる）
 const FILLER_MS = 300;
 // カット後の長さ。台本の行の間は 1 秒以上あるので、余白どうしはつながらない（行ごとに 1 つのクリップになる）
@@ -138,8 +142,35 @@ test("投入した録画ファイルが解析され、編集して、書き出�
 
   const directory = path.join(WORKSPACE, "exports", FIRST);
 
+  await test.step("間の設定を変えると、プレビューと書き出しの両方に効く", async () => {
+    await page.getByText("間の設定").click();
+    const panel = page.getByRole("group", { name: "間の設定" });
+    await expect(panel).toContainText("既定は 150・250・500");
+    await panel
+      .getByRole("spinbutton", { name: "文の終わりのあと" })
+      .fill(String(LONGER_PAD_AFTER_SENTENCE_MS));
+    // 残っている 3 行は、どれも文の終わり（。）で終わる
+    const extra = LONGER_PAD_AFTER_SENTENCE_MS - PAD_AFTER_SENTENCE_MS;
+    await expectLength(page, [FILLER_RESTORED_MS + KEPT_LINES.length * extra]);
+    // 保存を待たずに頼んでも、書き出しは新しい値を使う（頼む前に保存する）
+    await exportFresh(page, "Premiere XML", "premiere_xml", directory, ".xml");
+    const clips = videoClips(
+      readFileSync(exported(directory, ".xml"), "utf-8"),
+    );
+    for (const [index, line] of KEPT_LINES.entries()) {
+      const { end_ms } = SCRIPT.lines[line];
+      expectNear(
+        clips[index].out,
+        toFrames(end_ms + LONGER_PAD_AFTER_SENTENCE_MS),
+      );
+    }
+    await panel.getByRole("button", { name: "既定に戻す" }).click();
+    await expectLength(page, [FILLER_RESTORED_MS]);
+    await expect(page.getByTestId("padding-status")).toHaveText("保存済み");
+  });
+
   await test.step("Premiere XML に、残す区間だけが並ぶ", async () => {
-    await exportAndWait(page, "Premiere XML", "premiere_xml");
+    await exportFresh(page, "Premiere XML", "premiere_xml", directory, ".xml");
     const clips = videoClips(
       readFileSync(exported(directory, ".xml"), "utf-8"),
     );
@@ -153,7 +184,7 @@ test("投入した録画ファイルが解析され、編集して、書き出�
   });
 
   await test.step("MP4 が、カット後の長さになる", async () => {
-    await exportAndWait(page, "MP4", "mp4");
+    await exportFresh(page, "MP4", "mp4", directory, ".mp4");
     const seconds = durationSeconds(exported(directory, ".mp4"));
     expect(Math.abs(seconds - FILLER_RESTORED_MS / MS_PER_SECOND)).toBeLessThan(
       SECONDS_TOLERANCE,
@@ -204,6 +235,33 @@ test("2 本をまとめたレクチャーで、波形がつながり、動画が
   await expect.poll(() => video.evaluate(sourcePath)).not.toBe(firstSource);
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+/**
+ * 書き出しを頼み、ファイルが書き直されるまで待つ。
+ * 2 回目からは、状態の文（最後の書き出しの日時。分まで）が前と同じになりうるので、ファイルの更新で確かめる。
+ */
+async function exportFresh(
+  page: Page,
+  label: string,
+  format: string,
+  directory: string,
+  suffix: string,
+): Promise<void> {
+  const before = modifiedAt(directory, suffix);
+  await exportAndWait(page, label, format);
+  await expect
+    .poll(() => modifiedAt(directory, suffix), { timeout: JOB_TIMEOUT_MS })
+    .toBeGreaterThan(before);
+}
+
+/** 書き出したファイルの更新時刻。まだなければ 0。 */
+function modifiedAt(directory: string, suffix: string): number {
+  if (!existsSync(directory)) {
+    return 0;
+  }
+  const name = readdirSync(directory).find((each) => each.endsWith(suffix));
+  return name === undefined ? 0 : statSync(path.join(directory, name)).mtimeMs;
+}
 
 /** フォルダの中の、その拡張子のファイル（1 つだけのはず）。 */
 function exported(directory: string, suffix: string): string {

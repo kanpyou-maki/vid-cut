@@ -77,6 +77,14 @@ describe("buildTimeline", () => {
       },
       EMPTY,
     );
+    // 「間の設定」で変えている間は、渡した値が詳細の値より優先される
+    const overridden = buildTimeline(DETAIL, EMPTY, {
+      before_ms: 0,
+      after_ms: 0,
+      after_sentence_ms: 0,
+    });
+
+    expect(overridden.segments).toEqual(tight.segments);
 
     expect(tight.segments[0]).toMatchObject({ startMs: 0, endMs: 1000 });
     expect(tight.segments[1]).toMatchObject({ startMs: 3000, endMs: 5000 });
