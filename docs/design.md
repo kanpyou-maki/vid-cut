@@ -444,7 +444,7 @@ frontend の型は OpenAPI スキーマから `openapi-typescript` で生成す�
 編集画面のプレビュー（M7 の `feat/m7-preview`。画面の構成は、ユーザー不在の間に推奨案で実装し、ユーザーが確認してマージした。PR #16、2026-10-04）:
 
 - **残す区間**: 録画ファイルごとに、（自動の削除候補 − 戻したもの）∪ 手動の削除区間 を除き、残りの前後に余白を付ける（余白は隣の無音の中にだけ伸ばす）。
-  backend の `keep_ranges` と同じ計算を frontend（`keepRanges.ts`）に持つ。両側のテストが同じ例（`backend/tests/domain/keep_ranges_cases.json`）を読んで、同じ入力から同じ結果になることを確かめる
+  backend の `keep_ranges` と同じ計算を frontend（`keepRanges.ts`）に持つ。両側のテストが同じ例（`backend/tests/domain/keep_ranges_cases.json` と、文の終わりの間の `sentence_pauses_cases.json`。3-4）を読んで、同じ入力から同じ結果になることを確かめる
   （backend の計算を変えたら、例を足して、frontend も合わせる。片方だけ変えると、もう片方のテストが落ちる）。
   フレームへの丸めはしない（プレビューでは 1 フレーム未満の差）。録画ファイルの順に並べたものが、カット後のタイムライン（`timeline.ts`）
 - **再生**: 録画ファイルごとの proxy 動画を、1 つの `video` 要素で切り替える（`src` は `Api.proxyUrl`。この URL だけは、トークンをクエリに持つ。3-5-1）。

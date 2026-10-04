@@ -218,7 +218,8 @@ PR 2（`feat/m8-sentence-pause`。間の調整の計算。PR 1 の上に積む�
 - [x] frontend: `keepRanges.ts`（同じ計算）、`timeline.ts`。両側のテストが共有の例を読む（`keep_ranges_cases.json`・`sentence_pauses_cases.json`）
 - [x] E2E の期待値（各クリップの終わりのフレーム、カット後の長さ）
 - [x] 受け入れチェックの記録用のひな形（[docs/references/acceptance-m8.md](../../references/acceptance-m8.md)）、PRD 3-2 の作業時間を「記録のみ」に変更（ユーザー決定）
-- [ ] review-loop → PR
+- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、共有の例と 2 本の録画ファイルの例を足した）
+- [ ] PR → ユーザーがマージ
 
 PR 3（`feat/m8-pause-settings`。間の設定。ユーザー承認、2026-10-04）:
 
