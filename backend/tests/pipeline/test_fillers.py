@@ -303,6 +303,13 @@ class TestBoundaries:
         (suggestion,) = detect_fillers([chunk_at(*chunk)], tokens)
         assert suggestion.span == expected
 
+    def test_tokens_out_of_time_order_do_not_fail_the_analysis(self) -> None:
+        # 位置合わせの時刻が、文字の順と前後することがある。区間が逆転して、解析が落ちないこと
+        tokens = tokens_at(("え", 5_000, 5_100), ("ー", 100, 200))
+        (suggestion,) = detect_fillers([chunk_at(0, 9_000)], tokens)
+        # フィラーの文字のうち、いちばん早い開始（100）といちばん遅い終了（5,100）を基準にする
+        assert suggestion.span == Interval(0, 6_100)
+
     def test_tokens_that_stick_out_of_the_chunk_are_covered(self) -> None:
         # 位置合わせの時刻が、チャンクの範囲から少しはみ出すことがある
         early = tokens_at(("え", 250, 350), ("ー", 350, 450), ("と", 450, 550))

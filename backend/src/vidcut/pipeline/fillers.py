@@ -175,16 +175,19 @@ def _cut_span(
     chunk: SpeechChunk, words: Sequence[Token], start: int, end: int, limits: _CutLimits
 ) -> Interval:
     """words[start:end] を消すときの区間。位置合わせの時刻より狭くはしない。"""
-    first, last = words[start].span, words[end - 1].span
+    # 位置合わせの時刻は、文字の順と前後することがある。フィラーの文字の、いちばん早い開始と
+    # いちばん遅い終了を基準にする（開始 < 終了が保たれる）
+    aligned_start = min(word.span.start_ms for word in words[start:end])
+    aligned_end = max(word.span.end_ms for word in words[start:end])
     if start == 0:
-        cut_start = min(chunk.span.start_ms, first.start_ms)
+        cut_start = min(chunk.span.start_ms, aligned_start)
     else:
-        cut_start = min(words[start - 1].span.end_ms + limits.guard_ms, first.start_ms)
+        cut_start = min(words[start - 1].span.end_ms + limits.guard_ms, aligned_start)
     if end == len(words):
-        cut_end = max(chunk.span.end_ms, last.end_ms)
+        cut_end = max(chunk.span.end_ms, aligned_end)
     else:
-        cut_end = max(words[end].span.start_ms - limits.guard_ms, last.end_ms)
+        cut_end = max(words[end].span.start_ms - limits.guard_ms, aligned_end)
     return Interval(
-        max(cut_start, first.start_ms - limits.max_stretch_ms),
-        min(cut_end, last.end_ms + limits.max_stretch_ms),
+        max(cut_start, aligned_start - limits.max_stretch_ms),
+        min(cut_end, aligned_end + limits.max_stretch_ms),
     )
