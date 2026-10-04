@@ -29,6 +29,9 @@ VITE_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 FRONTEND_DIST_ENV = "VIDCUT_FRONTEND_DIST"
 WORKSPACE_ENV = "VIDCUT_WORKSPACE"
 _WORKER_STOP_TIMEOUT_S = 10.0
+# frontend のテストの置き方（frontend/README.md）。ビルドの出力には入らない
+_FRONTEND_TEST_DIRECTORY = "test"
+_FRONTEND_TEST_INFIX = ".test."
 STALE_BUILD_NOTE = (
     "注意: 画面のビルドが、ソースより古いようです（新しい画面が出ません）。"
     "`npm --prefix frontend run build` を実行してから、起動し直してください"
@@ -91,14 +94,15 @@ def frontend_build_is_stale(dist: Path | None) -> bool:
             for path in sources.rglob("*")
             if path.is_file() and not _is_test_source(path.relative_to(sources))
         )
-    except OSError:
+    except OSError as error:
         # 知らせるための確認なので、読めないファイルがあっても起動を止めない
-        _logger.warning("画面のビルドが古いかどうかを、確かめられませんでした")
+        _logger.warning("画面のビルドが古いかどうかを、確かめられませんでした: %s", error)
         return False
 
 
 def _is_test_source(relative: Path) -> bool:
-    return relative.parts[0] == "test" or ".test." in relative.name
+    """frontend/src からの相対パスが、テストかその補助か（src/test/ の中か、名前に .test.）。"""
+    return relative.parts[0] == _FRONTEND_TEST_DIRECTORY or _FRONTEND_TEST_INFIX in relative.name
 
 
 def serve(

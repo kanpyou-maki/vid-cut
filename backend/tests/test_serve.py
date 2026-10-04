@@ -27,6 +27,7 @@ from vidcut.serve import (
     ServeOptions,
     WorkerProcess,
     default_frontend_dist,
+    frontend_build_is_stale,
     serve,
     start_worker_process,
 )
@@ -313,6 +314,49 @@ class TestStaleFrontendBuild:
         built = frontend_with_sources(tmp_path, built_at=1_000, changed=changed)
         self.launch(tmp_path, built)
         assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_a_source_as_old_as_the_build_is_not_newer(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 1_000})
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_looks_into_nested_folders(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        changed = {"main.tsx": 500, "editor/parts/deep/Field.tsx": 2_000}
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed=changed)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE in capsys.readouterr().out
+
+    def test_only_the_top_level_test_folder_is_ignored(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # テストの補助は src/test/ に置く決まり。ほかの test フォルダは、画面のコードとして見る
+        built = frontend_with_sources(
+            tmp_path, built_at=1_000, changed={"editor/test/helper.ts": 2_000}
+        )
+        self.launch(tmp_path, built)
+        assert STALE_NOTE in capsys.readouterr().out
+
+    def test_a_file_whose_time_cannot_be_read_does_not_stop_the_launch(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+        real_stat = Path.stat
+
+        def stat(self: Path, **kwargs: Any) -> os.stat_result:
+            if self.name == "main.tsx":
+                raise PermissionError("読めない")
+            return real_stat(self, **kwargs)
+
+        monkeypatch.setattr(Path, "stat", stat)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_no_build_location_means_not_stale(self) -> None:
+        assert frontend_build_is_stale(None) is False
 
     def test_is_quiet_without_the_sources(
         self, tmp_path: Path, dist: Path, capsys: pytest.CaptureFixture[str]
