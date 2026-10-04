@@ -29,6 +29,13 @@ VITE_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 FRONTEND_DIST_ENV = "VIDCUT_FRONTEND_DIST"
 WORKSPACE_ENV = "VIDCUT_WORKSPACE"
 _WORKER_STOP_TIMEOUT_S = 10.0
+# frontend のテストの置き方（frontend/README.md）。ビルドの出力には入らない
+_FRONTEND_TEST_DIRECTORY = "test"
+_FRONTEND_TEST_INFIX = ".test."
+STALE_BUILD_NOTE = (
+    "注意: 画面のビルドが、ソースより古いようです（新しい画面が出ません）。"
+    "`npm --prefix frontend run build` を実行してから、起動し直してください"
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -65,6 +72,39 @@ def default_frontend_dist(env: Mapping[str, str] = os.environ) -> Path:
     return Path(__file__).resolve().parents[3] / "frontend" / "dist"
 
 
+def frontend_build_is_stale(dist: Path | None) -> bool:
+    """ビルドの出力（dist）が、隣にある画面のソース（src）より古いか。
+
+    ビルドし直さないと、古い画面を配信し続ける（backend だけが新しくなり、画面の機能が出ない）。
+    ビルドがない・ソースが隣にない（リポジトリの外に置いたビルド）ときは、比べようがないので False。
+    テストとその補助は、ビルドの出力に入らないので見ない。目安であって、確かではない:
+    src の外（index.html・package.json・vite.config.ts・public/）の変更は見ない。
+    ブランチを切り替えただけで更新時刻が変わったファイルは、古いと見なす。
+    """
+    if dist is None:
+        return False
+    index = dist / "index.html"
+    sources = dist.parent / "src"
+    try:
+        if not index.is_file() or not sources.is_dir():
+            return False
+        built_at = index.stat().st_mtime
+        return any(
+            path.stat().st_mtime > built_at
+            for path in sources.rglob("*")
+            if path.is_file() and not _is_test_source(path.relative_to(sources))
+        )
+    except OSError as error:
+        # 知らせるための確認なので、読めないファイルがあっても起動を止めない
+        _logger.warning("画面のビルドが古いかどうかを、確かめられませんでした: %s", error)
+        return False
+
+
+def _is_test_source(relative: Path) -> bool:
+    """frontend/src からの相対パスが、テストかその補助か（src/test/ の中か、名前に .test.）。"""
+    return relative.parts[0] == _FRONTEND_TEST_DIRECTORY or _FRONTEND_TEST_INFIX in relative.name
+
+
 def serve(
     options: ServeOptions,
     *,
@@ -89,6 +129,9 @@ def serve(
             worker = (start_worker or start_worker_process)(options.workspace)
         print(f"http://{HOST}:{options.port}/ を開いてください（Ctrl+C で止めます）")
         print(f"ワークスペース: {options.workspace}")
+        # 開発中は Vite が画面を配信するので、ビルドは使わない
+        if not options.dev and frontend_build_is_stale(options.frontend_dist):
+            print(STALE_BUILD_NOTE)
         (run_server or run_uvicorn)(app, HOST, options.port)
     except KeyboardInterrupt:
         # Ctrl+C と SIGTERM は「止める」合図。エラーにせず、下で worker を止めて終わる

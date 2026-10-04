@@ -21,7 +21,7 @@ import {
   tokenRestorations,
 } from "./edits";
 import { canRedo, canUndo, startHistory } from "./history";
-import { buildTimeline, type Position } from "./timeline";
+import { buildTimeline, type Position, positionAt } from "./timeline";
 import { selectedTokenRange } from "./tokenSelection";
 import {
   buildTranscript,
@@ -151,8 +151,30 @@ export function useEditing(
     () => buildTimeline(detail, draft, keepPadding),
     [detail, draft, keepPadding],
   );
-  const player = usePlayer(timeline, api.proxyUrl);
-  const { seek } = player;
+  const basePlayer = usePlayer(timeline, api.proxyUrl);
+  const { seek } = basePlayer;
+  // 位置を移して、止めたままでも、その位置の文字を出す（波形のクリックと、再生位置のバーで使う）
+  const seekAndReveal = useCallback(
+    (position: Position) => {
+      seek(position);
+      revealPosition(transcriptRoot, transcript, position);
+    },
+    [seek, transcript],
+  );
+  // usePlayer の seekOutput（再生位置のバーが呼ぶ）を、文字も出すものに差し替えて、画面へ渡す
+  const seekOutput = useCallback(
+    (outputMs: number) => {
+      const position = positionAt(timeline, outputMs);
+      if (position !== null) {
+        seekAndReveal(position);
+      }
+    },
+    [timeline, seekAndReveal],
+  );
+  const player = useMemo(
+    () => ({ ...basePlayer, seekOutput }),
+    [basePlayer, seekOutput],
+  );
   useTranscriptSeek(transcriptRoot, transcript, seek);
   const playingToken = useMemo(
     () => tokenAt(transcript, player.position),
@@ -170,7 +192,7 @@ export function useEditing(
     [transcript, seek],
   );
   const review = useReviewNavigation(reviewTargets, transcriptRoot, visit);
-  const wave = useWave(detail, draft, transcript, transcriptRoot, seek);
+  const wave = useWave(detail, draft, seekAndReveal);
 
   useEditorKeys(!locked, {
     onDelete: actions.deleteSelection,
@@ -206,8 +228,6 @@ export function useEditing(
 function useWave(
   detail: LectureDetail,
   draft: EditDraft,
-  transcript: Transcript,
-  transcriptRoot: RefObject<HTMLDivElement | null>,
   seek: (position: Position) => void,
 ): Wave {
   const layout = useMemo(() => buildWaveLayout(detail), [detail]);
@@ -215,17 +235,7 @@ function useWave(
     () => waveRegions(detail, draft, layout),
     [detail, draft, layout],
   );
-  const seekAndReveal = useCallback(
-    (position: Position) => {
-      seek(position);
-      revealPosition(transcriptRoot, transcript, position);
-    },
-    [seek, transcript, transcriptRoot],
-  );
-  return useMemo(
-    () => ({ layout, regions, seek: seekAndReveal }),
-    [layout, regions, seekAndReveal],
-  );
+  return useMemo(() => ({ layout, regions, seek }), [layout, regions, seek]);
 }
 
 /** 画面からの操作。どれも、呼ぶたびに変わらない関数。 */

@@ -89,3 +89,26 @@ class TestScriptedJudge:
         listing = render_listing(build_entries([make_analysis("r1", TEXTS[:2])]))
 
         assert json.loads(ScriptedJudge().complete(listing)) == {"delete": []}
+
+    def test_long_lecture_is_judged_in_windows_without_gaps_or_duplicates(self) -> None:
+        # 約 2 時間ぶん（台本を 554 回繰り返す。2,216 チャンク）。300 チャンクごとの窓に分かれても、
+        # 窓の端で取りこぼしたり、重なりで二重に数えたりしない
+        repeats = 554
+        entries = build_entries([make_analysis("r1", TEXTS * repeats)])
+        judge = CountingJudge()
+
+        decisions = judge_entries(judge, entries, JudgeSettings())
+
+        numbers = [d.number for d in decisions]
+        assert judge.calls == 9
+        assert numbers == [1 + len(LINES) * i for i in range(repeats)]
+        assert all(d.superseded_by == d.number + 1 for d in decisions)
+
+
+class CountingJudge(ScriptedJudge):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def complete(self, prompt: str) -> str:
+        self.calls += 1
+        return super().complete(prompt)

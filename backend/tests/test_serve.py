@@ -1,5 +1,6 @@
 """`vidcut serve` の組み立て（ADR-004、Design Doc 3-5-1）。サーバーと worker は偽物に差し替える。"""
 
+import os
 import re
 import signal
 import subprocess
@@ -26,6 +27,7 @@ from vidcut.serve import (
     ServeOptions,
     WorkerProcess,
     default_frontend_dist,
+    frontend_build_is_stale,
     serve,
     start_worker_process,
 )
@@ -255,6 +257,143 @@ class TestDevelopmentMode:
             )
             statuses[dev] = client_for(server).get("/", headers={"Origin": origin}).status_code
         assert statuses == {False: 403, True: 200}
+
+
+STALE_NOTE = "画面のビルドが、ソースより古い"
+
+
+def frontend_with_sources(tmp_path: Path, *, built_at: float, changed: dict[str, float]) -> Path:
+    """frontend/dist（index.html の更新時刻が built_at）と、src のファイル（名前 → 更新時刻）。"""
+    frontend = tmp_path / "frontend"
+    built = frontend / "dist"
+    built.mkdir(parents=True)
+    index = built / "index.html"
+    index.write_text("<!doctype html><html><head></head><body></body></html>", encoding="utf-8")
+    os.utime(index, (built_at, built_at))
+    for name, modified in changed.items():
+        source = frontend / "src" / name
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text("export {};", encoding="utf-8")
+        os.utime(source, (modified, modified))
+    return built
+
+
+class TestStaleFrontendBuild:
+    """ビルドし直さないと、古い画面を配信し続ける（受け入れチェックで、新しい画面が出なかった）。"""
+
+    def launch(self, tmp_path: Path, built: Path, **changes: Any) -> None:
+        serve(
+            options(tmp_path, built, **changes),
+            run_server=FakeServer(),
+            start_worker=FakeWorker().start,
+        )
+
+    def test_warns_when_a_source_is_newer_than_the_build(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        built = frontend_with_sources(
+            tmp_path, built_at=1_000, changed={"editor/PaddingSettings.tsx": 2_000}
+        )
+        self.launch(tmp_path, built)
+        out = capsys.readouterr().out
+        assert STALE_NOTE in out
+        assert "npm --prefix frontend run build" in out
+
+    def test_is_quiet_when_the_build_is_up_to_date(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        built = frontend_with_sources(tmp_path, built_at=2_000, changed={"main.tsx": 1_000})
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_ignores_tests_and_test_helpers(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # テストは、ビルドの出力に入らない
+        changed = {"editor/keepRanges.test.ts": 2_000, "test/fakeApi.ts": 2_000, "main.tsx": 500}
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed=changed)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_a_source_as_old_as_the_build_is_not_newer(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 1_000})
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_looks_into_nested_folders(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        changed = {"main.tsx": 500, "editor/parts/deep/Field.tsx": 2_000}
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed=changed)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE in capsys.readouterr().out
+
+    def test_only_the_top_level_test_folder_is_ignored(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # テストの補助は src/test/ に置く決まり。ほかの test フォルダは、画面のコードとして見る
+        built = frontend_with_sources(
+            tmp_path, built_at=1_000, changed={"editor/test/helper.ts": 2_000}
+        )
+        self.launch(tmp_path, built)
+        assert STALE_NOTE in capsys.readouterr().out
+
+    def test_a_file_whose_time_cannot_be_read_does_not_stop_the_launch(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+        real_stat = Path.stat
+
+        def stat(self: Path, **kwargs: Any) -> os.stat_result:
+            if self.name == "main.tsx":
+                raise PermissionError("読めない")
+            return real_stat(self, **kwargs)
+
+        monkeypatch.setattr(Path, "stat", stat)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_no_build_location_means_not_stale(self) -> None:
+        assert frontend_build_is_stale(None) is False
+
+    def test_is_quiet_without_the_sources(
+        self, tmp_path: Path, dist: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # リポジトリの外に置いたビルド（ソースが隣にない）は、比べようがない
+        self.launch(tmp_path, dist)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_is_quiet_without_a_build(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # ビルドがなければ、画面がビルドの案内を出す（ここでは警告しない）
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+        (built / "index.html").unlink()
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_a_file_that_cannot_be_read_does_not_stop_the_launch(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # 知らせるための確認で、起動を止めない
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+
+        def unreadable(self: Path, pattern: str) -> Iterator[Path]:
+            raise PermissionError("読めない")
+
+        monkeypatch.setattr(Path, "rglob", unreadable)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
+    def test_is_quiet_in_development(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # 開発中は Vite が画面を配信するので、ビルドは使わない
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+        self.launch(tmp_path, built, dev=True)
+        assert STALE_NOTE not in capsys.readouterr().out
 
 
 class TestDefaultFrontendDist:

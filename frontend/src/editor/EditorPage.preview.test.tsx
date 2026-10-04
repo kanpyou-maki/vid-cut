@@ -77,6 +77,10 @@ function playTo(video: HTMLVideoElement, timeMs: number): void {
   fireEvent.timeUpdate(video);
 }
 
+function seekBar(): HTMLElement {
+  return screen.getByRole("slider", { name: "再生位置" });
+}
+
 function playButton(): HTMLElement {
   return screen.getByRole("button", { name: /^(再生|一時停止)$/ });
 }
@@ -482,6 +486,84 @@ describe("EditorPage: プレビューと文字起こしの同期", () => {
     playTo(video, 250);
 
     expect(screen.getByText("う").className).toMatch(/playing/);
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it("止めたまま再生位置のバーを動かすと、その位置の文字が見えるよう、文字起こしをスクロールする", async () => {
+    await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    vi.spyOn(screen.getByText("う"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+
+    // 「う」は 200〜300ms
+    fireEvent.change(seekBar(), { target: { value: "250" } });
+
+    expect(scrolled.mock.contexts).toEqual([screen.getByText("う")]);
+  });
+
+  it("バーで移した位置が発話の間なら、直後の文字を出す", async () => {
+    await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    // 「あいう」（〜300ms）のあと、次の文字は「か」（5000ms〜。削除済みでも、文字起こしにはある）。
+    // 最初の残す区間（0〜1250ms）の中なので、カット後の 600ms は、録画の 600ms と同じ
+    vi.spyOn(screen.getByText("か"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+
+    fireEvent.change(seekBar(), { target: { value: "600" } });
+
+    expect(scrolled.mock.contexts).toEqual([screen.getByText("か")]);
+  });
+
+  it("バーで 2 本目の録画ファイルへ移ると、2 本目の文字を出す", async () => {
+    await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    vi.spyOn(screen.getByText("た"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+
+    // r1 の残す区間は合わせて 7400ms。カット後の 7450ms は、r2 の 50ms（「た」）
+    fireEvent.change(seekBar(), { target: { value: "7450" } });
+
+    expect(scrolled.mock.contexts).toEqual([screen.getByText("た")]);
+  });
+
+  it("バーを最後まで動かすと、最後の文字を出す", async () => {
+    await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    vi.spyOn(screen.getByText("ち"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+
+    // カット後の長さは 11400ms。その位置（r2 の終わり）より後ろに文字はない
+    fireEvent.change(seekBar(), { target: { value: "11400" } });
+
+    expect(scrolled.mock.contexts).toEqual([screen.getByText("ち")]);
+  });
+
+  it("再生中にバーを動かしても、出すのはその位置の文字だけ", async () => {
+    const { user } = await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+    vi.spyOn(screen.getByText("う"), "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 500, 10, 10),
+    );
+    await user.click(playButton());
+
+    fireEvent.change(seekBar(), { target: { value: "250" } });
+
+    // バーでの移動と、再生中の追従の両方が同じ文字を出そうとする。害はない（同じ文字へのスクロールだけ）
+    expect(new Set(scrolled.mock.contexts)).toEqual(
+      new Set([screen.getByText("う")]),
+    );
+  });
+
+  it("バーで移した位置の文字が見えていれば、スクロールしない", async () => {
+    await openEditor();
+    const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+
+    fireEvent.change(seekBar(), { target: { value: "250" } });
+
     expect(scrolled).not.toHaveBeenCalled();
   });
 

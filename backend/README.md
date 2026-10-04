@@ -48,12 +48,16 @@ uv run vidcut eval judge --lecture s05-12sample \
 ## 画面と API のサーバー
 
 ```bash
-npm --prefix ../frontend run build   # 画面をビルドする（初回と、画面を変えたとき）
+npm --prefix ../frontend run build   # 画面をビルドする（初回と、画面を変えたとき。main を更新したあとも）
 uv run vidcut serve                  # http://127.0.0.1:8765/ を開く。worker も一緒に起動する
 uv run vidcut serve --port 9000      # ポートを変える
 uv run vidcut serve --no-worker      # worker を起動しない（別に `vidcut worker` を動かすとき）
 uv run vidcut serve --dev            # 開発中: Vite の開発サーバー（npm run dev）からの要求も受け付ける
 ```
+
+ビルドし直さないと、`vidcut serve` は前のビルドの画面を配信し続ける（backend だけが新しくなる）。
+起動時に、`frontend/dist/index.html` が `frontend/src` のファイル（テストを除く）より古ければ、「画面のビルドが、ソースより古いようです」と出す（`--dev` のときは出さない）。
+更新時刻を比べるだけの目安で、`src` の外（`index.html`・`package.json`・`vite.config.ts`・`public/`）の変更は見ない。ブランチを切り替えただけでも出ることがある。
 
 - 待ち受けは 127.0.0.1 だけ。起動のたびにトークンを作り、画面の HTML に埋め込む（[Design Doc](../docs/design.md) 3-5-1）。
   API を直接呼ぶときは、`X-VidCut-Token` ヘッダーにそのトークンを付ける
