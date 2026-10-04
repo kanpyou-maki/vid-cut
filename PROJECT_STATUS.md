@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`）を実装した。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）がユーザーの確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -44,7 +44,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 ## 次にやること
 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
-  - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。ユーザーの確認とマージ待ち
+  - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)。ユーザーの確認とマージ待ち
   - [ ] PR 2 `feat/m8-sentence-pause`: 間の調整（文の終わりのあとの余白を長くする計算。backend と frontend の両方、共有の例、E2E の期待値）。受け入れの記録用のひな形もここで用意する
   - [ ] PR 3 `feat/m8-pause-settings`: 間の値を編集画面で変えられるようにする（保存・API・画面）。値は、ユーザーがプレビューで聞いて決める。
         置き場所・項目・保存先・PR 2 と分けることは提案済みで、ユーザーの確認待ち（PR 2 の前に確認する）
