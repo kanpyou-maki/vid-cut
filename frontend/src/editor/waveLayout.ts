@@ -47,22 +47,33 @@ export interface JoinedPeaks {
   values: number[];
 }
 
+// 録画ファイルが 2 本以上のときだけ、何番目の録画ファイルかを見せる（頭の線と名前、選んだ区間の番号、失敗した番号）
+const MIN_TRACKS_TO_NUMBER = 2;
+
 /** 1 つも読めなかったときの、1 秒あたりの個数（backend の既定と同じ） */
 const DEFAULT_PEAKS_PER_SECOND = 100;
 
 export function buildWaveLayout(detail: LectureDetail): WaveLayout {
-  let offsetMs = 0;
-  const tracks = detail.recordings.map((recording) => {
-    const track = {
-      recordingId: recording.id,
-      name: recording.name,
-      offsetMs,
-      durationMs: recording.duration_ms,
-    };
-    offsetMs += recording.duration_ms;
-    return track;
-  });
-  return { tracks, durationMs: offsetMs };
+  return detail.recordings.reduce<WaveLayout>(
+    (layout, recording) => ({
+      tracks: [
+        ...layout.tracks,
+        {
+          recordingId: recording.id,
+          name: recording.name,
+          offsetMs: layout.durationMs,
+          durationMs: recording.duration_ms,
+        },
+      ],
+      durationMs: layout.durationMs + recording.duration_ms,
+    }),
+    { tracks: [], durationMs: 0 },
+  );
+}
+
+/** 録画ファイルが 2 本以上か（何番目の録画ファイルかを見せるか）。 */
+export function isMultiTrack(layout: WaveLayout): boolean {
+  return layout.tracks.length >= MIN_TRACKS_TO_NUMBER;
 }
 
 /** 位置を、波形の上の時刻に直す（位置がない・レクチャーにない録画ファイルなら null）。 */

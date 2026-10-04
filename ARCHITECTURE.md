@@ -68,6 +68,8 @@ backend:  api / cli / jobs → services → pipeline → domain
 frontend → backend の HTTP API のみ（backend の内部構造に依存しない。型は API スキーマから生成）
 frontend: app → library / editor → shared → api（画面は `Api` のインターフェースだけを使う。`openapi-fetch` と生成済みの型を直接使うのは api だけ。
           `wavesurfer.js` を直接使うのは editor の `waveChart.ts` だけ）
+          frontend のテストは、backend のテスト用のデータ（`backend/tests/` の JSON）だけを読んでよい
+          （両側のテストが同じ値を確かめるため: `keep_ranges_cases.json`・`waveform_style_hash.json`）
 ```
 
 ### ハーネス

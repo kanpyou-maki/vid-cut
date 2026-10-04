@@ -9,6 +9,7 @@ import { WaveChartView } from "./WaveChartView";
 import styles from "./WaveformPane.module.css";
 import type { ChartRegion } from "./waveChart";
 import {
+  isMultiTrack,
   joinPeaks,
   type WaveLayout,
   type WaveRegion,
@@ -42,9 +43,6 @@ const SELECTED_RESTORED_OUTLINE = "2px dashed CanvasText";
 const RESTORED_OUTLINE =
   "1px dashed color-mix(in srgb, CanvasText 60%, transparent)";
 
-// 録画ファイルが 2 本以上のときだけ、何番目の録画ファイルかを添える
-const MIN_TRACKS_FOR_NUMBERS = 2;
-
 /**
  * 波形のペイン（Design Doc 3-6 の「編集画面の波形」）: 上の 1 行（凡例・選んだ区間・拡大と縮小）と、波形。
  * 削除区間を種類ごとの色で出し、クリックで再生位置を移す。区間を選ぶと、ここで採否を切り替えられる。
@@ -76,7 +74,8 @@ export const WaveformPane = memo(function WaveformPane({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const selected = regions.find((region) => region.key === selectedKey) ?? null;
-  const numbered = layout.tracks.length >= MIN_TRACKS_FOR_NUMBERS;
+  // 録画ファイルが 2 本以上のときだけ、何番目の録画ファイルかを添える
+  const numbered = isMultiTrack(layout);
   // 長さのない波形は作れない（録画ファイルがないレクチャー）
   const empty = layout.durationMs === 0;
 
@@ -88,29 +87,11 @@ export const WaveformPane = memo(function WaveformPane({
     () => (loaded.loading ? null : joinPeaks(layout, loaded.peaks).values),
     [layout, loaded.loading, loaded.peaks],
   );
-  const toggle = useCallback(
-    (region: WaveRegion | undefined) => {
-      if (region?.restored) {
-        onReapply?.(region.cut.id);
-      } else if (region !== undefined) {
-        onRestore?.(region.cut);
-      }
-    },
-    [onRestore, onReapply],
-  );
-  const seekWave = useCallback(
-    (waveMs: number) => {
-      const target = wavePosition(layout, waveMs);
-      if (target !== null) {
-        onSeek(target);
-      }
-    },
-    [layout, onSeek],
-  );
-  const toggleKey = useCallback(
-    (key: string) => toggle(regions.find((region) => region.key === key)),
-    [regions, toggle],
-  );
+  const { toggle, toggleKey, seekWave } = useWaveActions(layout, regions, {
+    onSeek,
+    onRestore,
+    onReapply,
+  });
 
   return (
     <div className={styles.pane}>
@@ -147,6 +128,47 @@ export const WaveformPane = memo(function WaveformPane({
     </div>
   );
 });
+
+/** 波形からの操作: 区間の採否の切り替えと、クリックした時刻への移動。 */
+function useWaveActions(
+  layout: WaveLayout,
+  regions: readonly WaveRegion[],
+  {
+    onSeek,
+    onRestore,
+    onReapply,
+  }: {
+    onSeek: (position: Position) => void;
+    onRestore?: (cut: TokenCut) => void;
+    onReapply?: (suggestionId: string) => void;
+  },
+) {
+  // 戻した候補は削除に戻し、それ以外（削除している候補と、手動の区間）は戻す
+  const toggle = useCallback(
+    (region: WaveRegion | undefined) => {
+      if (region?.restored) {
+        onReapply?.(region.cut.id);
+      } else if (region !== undefined) {
+        onRestore?.(region.cut);
+      }
+    },
+    [onRestore, onReapply],
+  );
+  const toggleKey = useCallback(
+    (key: string) => toggle(regions.find((region) => region.key === key)),
+    [regions, toggle],
+  );
+  const seekWave = useCallback(
+    (waveMs: number) => {
+      const target = wavePosition(layout, waveMs);
+      if (target !== null) {
+        onSeek(target);
+      }
+    },
+    [layout, onSeek],
+  );
+  return { toggle, toggleKey, seekWave };
+}
 
 /** 凡例。ピーク値を読めなかった録画ファイルがあれば、代わりに失敗の文と「再試行」を出す。 */
 function LegendOrFailure({

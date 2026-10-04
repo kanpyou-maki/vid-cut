@@ -528,8 +528,9 @@ describe("波形: 区間の選択と採否", () => {
     expect(selection()).toMatch(/^クリックで再生位置を移動/);
   });
 
-  it("保存できなくなったあと（レクチャーがなくなった）は、採否を切り替えられない", async () => {
-    const { user } = await openEditor(WAVE, {
+  /** 無音を戻したあと、保存が 404 で止まった状態（編集しても保存できないので、操作を止めている）。 */
+  async function openLocked() {
+    const opened = await openEditor(WAVE, {
       saveEdits: async () => {
         throw NOT_FOUND;
       },
@@ -538,11 +539,23 @@ describe("波形: 区間の選択と採否", () => {
     doubleClickWave(0.1, waveRegion("無音"));
     await advance(SECOND_MS);
     await screen.findByText(/このレクチャーはなくなりました/);
+    return opened;
+  }
+
+  it("保存できなくなったあと（操作を止めている間）は、ダブルクリックで採否が切り替わらない", async () => {
+    await openLocked();
 
     doubleClickWave(0.1, waveRegion("無音"));
-    clickWave(0.1, waveRegion("無音"));
 
     expect(waveRegion("無音").title).toBe("無音 0:01〜0:03（戻し済み）");
+  });
+
+  it("保存できなくなったあとは、区間は選べるが、採否のボタンは押せない", async () => {
+    const { user } = await openLocked();
+
+    clickWave(0.1, waveRegion("無音"));
+
+    expect(selection()).toBe("1: 無音 0:01〜0:03（2.0 秒）・戻し済み");
     expect(waveButton("削除に戻す")).toBeDisabled();
     await user.click(waveButton("削除に戻す"));
     expect(waveRegion("無音").title).toBe("無音 0:01〜0:03（戻し済み）");

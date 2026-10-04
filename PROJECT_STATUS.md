@@ -182,7 +182,7 @@ _なし_
 - PR 6（`feat/m7-waveform`）: 波形。画面の構成はユーザー承認（2026-10-04。推奨案のまま。Design Doc 3-6 の「編集画面の波形」）。`wavesurfer.js` 8.0.1（固定。依存なし、BSD-3-Clause。`npm audit` は既知の脆弱性なし）を足した。
   backend は CSP だけを変えた（`style-src 'self' 'sha256-…'`。`'unsafe-inline'` を外した。API の変更なし）。frontend は、`Api.getPeaks`、波形の配置と区間の計算（`waveLayout.ts`）、
   wavesurfer.js を包む部品（`waveChart.ts`。wavesurfer.js を読み込むのはここだけ）、ピーク値の読み込み（`usePeaks.ts`）、画面への配置（`WaveChartView.tsx`）、ペイン（`WaveformPane.tsx`）。
-  編集の操作は増やしていない（波形からの採否の切り替えは、文字起こしと同じ `restore`・`reapply` を使う）。frontend のテスト 578 件 / カバレッジ 98%（分岐 94%）、backend 1,045 件
+  編集の操作は増やしていない（波形からの採否の切り替えは、文字起こしと同じ `restore`・`reapply` を使う）。frontend のテスト 580 件 / カバレッジ 98%（分岐 94%）、backend 1,045 件
 - PR 6 で確認済み（一時ワークスペース。実物の backend を `--no-worker` で起動、ヘッドレスの Chrome を実際のマウス操作で）: 波形の線が canvas に描かれる、区間の位置と幅が時刻と合う（50px/秒）、
   クリックで再生位置・文字起こしの印が移る、区間の選択 →「戻す」→ 保存 → ダブルクリック → ⌘Z、拡大と縮小（全体では 93 件の区間がすべて出る）、文字起こしのクリックで波形がスクロール、
   波形のクリックで文字起こしがスクロール、再生中の線とページ送り、暗い配色、幅 900px 以下、ピーク値の 404 と再試行。45 項目 OK。

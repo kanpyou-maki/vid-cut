@@ -6,13 +6,11 @@ import {
   createWaveChart,
   type WaveChart,
 } from "./waveChart";
-import { rulerLabel, type WaveLayout } from "./waveLayout";
+import { isMultiTrack, rulerLabel, type WaveLayout } from "./waveLayout";
 
 /** 再生位置の線の色（線は CSS で描かれるので、CSS の変数のまま渡せる） */
 const CURSOR_COLOR = "var(--color-wave-cursor)";
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
-// 録画ファイルが 2 本以上のときだけ、それぞれの頭に番号とファイル名を出す
-const MIN_TRACKS_FOR_MARKERS = 2;
 
 /**
  * 波形を画面に置く（Design Doc 3-6 の「編集画面の波形」）。波形の部品は、ピーク値か配置が変わったときだけ作り直す。
@@ -102,8 +100,9 @@ function waveColorOf(element: HTMLElement): string {
   return getComputedStyle(element).color;
 }
 
+/** 録画ファイルが 2 本以上のときだけ、それぞれの頭に番号とファイル名を出す。 */
 function markersOf(layout: WaveLayout): ChartMarker[] {
-  if (layout.tracks.length < MIN_TRACKS_FOR_MARKERS) {
+  if (!isMultiTrack(layout)) {
     return [];
   }
   return layout.tracks.map((track, index) => ({

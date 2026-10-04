@@ -22,6 +22,10 @@ const RULER_SECONDARY_OPACITY = 0.6;
 /** 録画ファイルの頭の線の色 */
 const MARKER_COLOR = "color-mix(in srgb, currentColor 50%, transparent)";
 /** 録画ファイルの名前の、文字と下地の色（画面の文字と背景の色） */
+/** 録画ファイルの頭の線と名前を、区間の上に重ねるための値 */
+const MARKER_Z_INDEX = "1";
+/** 区間の枠を、区間の内側に引く（隣の区間に重ならないように） */
+const REGION_OUTLINE_OFFSET = "-1px";
 const MARKER_LABEL_COLOR = "CanvasText";
 const MARKER_LABEL_BACKGROUND = "color-mix(in srgb, Canvas 80%, transparent)";
 
@@ -82,33 +86,11 @@ interface Shown {
   item: ChartRegion;
 }
 
+type Regions = ReturnType<typeof RegionsPlugin.create>;
+
 export function createWaveChart(options: WaveChartOptions): WaveChart {
   const regions = RegionsPlugin.create();
-  const surfer = WaveSurfer.create({
-    container: options.container,
-    peaks: [options.peaks],
-    duration: options.durationMs / MS_PER_SECOND,
-    height: WAVE_HEIGHT_PX,
-    minPxPerSec: options.pxPerSecond,
-    // 声の大きさは素材ごとに違うので、いちばん大きい値が高さいっぱいになるよう伸ばす
-    normalize: true,
-    waveColor: options.waveColor,
-    progressColor: options.waveColor,
-    cursorColor: options.cursorColor,
-    cursorWidth: CURSOR_WIDTH_PX,
-    autoScroll: true,
-    autoCenter: false,
-    dragToSeek: false,
-    plugins: [
-      regions,
-      TimelinePlugin.create({
-        height: RULER_HEIGHT_PX,
-        formatTimeCallback: options.rulerLabel,
-        secondaryLabelOpacity: RULER_SECONDARY_OPACITY,
-      }),
-    ],
-  });
-
+  const surfer = createSurfer(options, regions);
   const shown = new Map<string, Shown>();
   // wavesurfer.js は、描き終える（ready）まで長さを 0 として扱う（それまでに足した区間は、頭に寄せられてしまう）。
   // 区間・再生位置・拡大率は、渡された値を覚えておき、描き終えてから反映する
@@ -119,60 +101,6 @@ export function createWaveChart(options: WaveChartOptions): WaveChart {
   let pxPerSecond = options.pxPerSecond;
   // 区間のクリックは、区間 → 波形の順に届く。区間の外のクリックだけ、選択を外す
   let regionClicked = false;
-
-  const addMarkers = () => {
-    for (const marker of options.markers) {
-      const region = regions.addRegion({
-        id: marker.key,
-        start: marker.atMs / MS_PER_SECOND,
-        content: marker.label,
-        color: MARKER_COLOR,
-        drag: false,
-        resize: false,
-      });
-      if (region.element !== null) {
-        // 区間の色に隠れないよう、区間の上に重ねる。クリックは、下の波形と区間に通す
-        region.element.style.zIndex = "1";
-        region.element.style.pointerEvents = "none";
-      }
-      const label = region.content;
-      if (label !== undefined) {
-        // 線の幅は 0 に近いので、折り返さないようにする。波形と区間の上でも読めるよう、下地を敷く
-        label.style.whiteSpace = "nowrap";
-        label.style.color = MARKER_LABEL_COLOR;
-        label.style.backgroundColor = MARKER_LABEL_BACKGROUND;
-      }
-    }
-  };
-
-  const syncRegions = () => {
-    const keys = new Set(wanted.map((item) => item.key));
-    for (const [key, { region }] of shown) {
-      if (!keys.has(key)) {
-        region.remove();
-        shown.delete(key);
-      }
-    }
-    for (const item of wanted) {
-      const existing = shown.get(item.key);
-      if (existing === undefined) {
-        const region = regions.addRegion({
-          id: item.key,
-          start: item.startMs / MS_PER_SECOND,
-          end: item.endMs / MS_PER_SECOND,
-          color: item.color,
-          drag: false,
-          resize: false,
-        });
-        decorate(region, item);
-        shown.set(item.key, { region, item });
-      } else if (!sameLook(existing.item, item)) {
-        existing.region.setOptions({ color: item.color });
-        decorate(existing.region, item);
-        shown.set(item.key, { region: existing.region, item });
-      }
-    }
-  };
 
   regions.on("region-clicked", (region) => {
     if (shown.has(region.id)) {
@@ -194,8 +122,8 @@ export function createWaveChart(options: WaveChartOptions): WaveChart {
   });
   surfer.on("ready", () => {
     ready = true;
-    addMarkers();
-    syncRegions();
+    addMarkers(regions, options.markers);
+    syncRegions(regions, shown, wanted);
     if (pxPerSecond !== options.pxPerSecond) {
       surfer.zoom(pxPerSecond);
     }
@@ -208,7 +136,7 @@ export function createWaveChart(options: WaveChartOptions): WaveChart {
     setRegions: (items) => {
       wanted = items;
       if (alive && ready) {
-        syncRegions();
+        syncRegions(regions, shown, wanted);
       }
     },
     setTime: (waveMs) => {
@@ -239,6 +167,96 @@ export function createWaveChart(options: WaveChartOptions): WaveChart {
   };
 }
 
+function createSurfer(options: WaveChartOptions, regions: Regions): WaveSurfer {
+  return WaveSurfer.create({
+    container: options.container,
+    peaks: [options.peaks],
+    duration: options.durationMs / MS_PER_SECOND,
+    height: WAVE_HEIGHT_PX,
+    minPxPerSec: options.pxPerSecond,
+    // 声の大きさは素材ごとに違うので、いちばん大きい値が高さいっぱいになるよう伸ばす
+    normalize: true,
+    waveColor: options.waveColor,
+    progressColor: options.waveColor,
+    cursorColor: options.cursorColor,
+    cursorWidth: CURSOR_WIDTH_PX,
+    autoScroll: true,
+    autoCenter: false,
+    dragToSeek: false,
+    plugins: [
+      regions,
+      TimelinePlugin.create({
+        height: RULER_HEIGHT_PX,
+        formatTimeCallback: options.rulerLabel,
+        secondaryLabelOpacity: RULER_SECONDARY_OPACITY,
+      }),
+    ],
+  });
+}
+
+/** 録画ファイルの頭に、線と名前を出す。 */
+function addMarkers(regions: Regions, markers: readonly ChartMarker[]): void {
+  for (const marker of markers) {
+    const region = regions.addRegion({
+      id: marker.key,
+      start: marker.atMs / MS_PER_SECOND,
+      content: marker.label,
+      color: MARKER_COLOR,
+      drag: false,
+      resize: false,
+    });
+    if (region.element !== null) {
+      // 区間の色に隠れないよう、区間の上に重ねる。クリックは、下の波形と区間に通す
+      region.element.style.zIndex = MARKER_Z_INDEX;
+      region.element.style.pointerEvents = "none";
+    }
+    const label = region.content;
+    if (label !== undefined) {
+      // 線の幅は 0 に近いので、折り返さないようにする。波形と区間の上でも読めるよう、下地を敷く
+      label.style.whiteSpace = "nowrap";
+      label.style.color = MARKER_LABEL_COLOR;
+      label.style.backgroundColor = MARKER_LABEL_BACKGROUND;
+    }
+  }
+}
+
+/**
+ * 出ている区間（shown）を、出したい区間（wanted）に合わせる: なくなった区間は消し、増えた区間は足し、
+ * 見た目が変わった区間は作り直さずに書き換える。shown は、この中で書き換える。
+ */
+function syncRegions(
+  regions: Regions,
+  shown: Map<string, Shown>,
+  wanted: readonly ChartRegion[],
+): void {
+  const keys = new Set(wanted.map((item) => item.key));
+  for (const [key, { region }] of shown) {
+    if (!keys.has(key)) {
+      region.remove();
+      shown.delete(key);
+    }
+  }
+  for (const item of wanted) {
+    const existing = shown.get(item.key);
+    if (existing === undefined) {
+      const region = regions.addRegion({
+        id: item.key,
+        start: item.startMs / MS_PER_SECOND,
+        end: item.endMs / MS_PER_SECOND,
+        color: item.color,
+        drag: false,
+        resize: false,
+      });
+      decorate(region, item);
+      shown.set(item.key, { region, item });
+    } else if (!sameLook(existing.item, item)) {
+      existing.region.setOptions({ color: item.color });
+      decorate(existing.region, item);
+      shown.set(item.key, { region: existing.region, item });
+    }
+  }
+}
+
 function sameLook(a: ChartRegion, b: ChartRegion): boolean {
   return a.color === b.color && a.outline === b.outline && a.title === b.title;
 }
@@ -250,7 +268,7 @@ function decorate(region: Region, item: ChartRegion): void {
     return;
   }
   element.style.outline = item.outline ?? "";
-  element.style.outlineOffset = "-1px";
+  element.style.outlineOffset = REGION_OUTLINE_OFFSET;
   element.style.cursor = "pointer";
   element.title = item.title;
 }

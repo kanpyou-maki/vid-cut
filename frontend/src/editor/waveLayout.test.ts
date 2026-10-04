@@ -4,6 +4,7 @@ import { lectureDetail, recordingDetail, suggestion } from "../test/fakeApi";
 import type { EditDraft } from "./edits";
 import {
   buildWaveLayout,
+  isMultiTrack,
   joinPeaks,
   rulerLabel,
   wavePosition,
@@ -57,6 +58,18 @@ describe("buildWaveLayout", () => {
     const layout = buildWaveLayout(lectureDetail());
 
     expect(layout).toEqual({ tracks: [], durationMs: 0 });
+  });
+});
+
+describe("isMultiTrack", () => {
+  it("録画ファイルが 2 本以上のときだけ true", () => {
+    expect(isMultiTrack(LAYOUT)).toBe(true);
+    expect(
+      isMultiTrack(
+        buildWaveLayout(lectureDetail({ recordings: [recordingDetail()] })),
+      ),
+    ).toBe(false);
+    expect(isMultiTrack(buildWaveLayout(lectureDetail()))).toBe(false);
   });
 });
 
