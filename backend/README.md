@@ -154,3 +154,7 @@ Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワー�
 API（`POST /api/lectures/{id}/exports`。上の「手で確かめる」を参照）から依頼する。書き出しの CLI はない。
 保存先と、形式ごとの最後に書き出した日時・最新のジョブは `GET /api/lectures/{id}/exports`（レクチャーの詳細の `exports` と同じ）で読める。
 同じ名前のレクチャーは同じ場所に書き出す（上書きになる。そのときは `shared_with_other_lectures` が true）。
+
+無音を削るときに残す余白（前・後ろ・文の終わりのあと。既定は 150・250・500ms）は、編集画面の「間の設定」か `PUT /api/settings` で変えられる
+（`{"keep_padding": {"before_ms": 150, "after_ms": 250, "after_sentence_ms": 800}}`。0〜2000 の整数。`null` で既定値に戻す）。
+保存した値はワークスペースの SQLite（`settings` 表）に 1 組だけ持ち、すべてのレクチャーに効く。書き出しのジョブは、実行するときにこの値を読む（worker を起動し直す必要はない）。

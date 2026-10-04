@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）と PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）がユーザーの確認とマージ待ち。次は PR 3（間の設定の画面）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）と PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）がユーザーの確認とマージ待ち。PR 3（間の設定。`feat/m8-pause-settings`）を実装した。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -46,7 +46,8 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)。ユーザーの確認とマージ待ち
   - [x] PR 2 `feat/m8-sentence-pause`（PR 1 の上に積む）: 間の調整の計算（文の終わりのあとの余白を長くする。仮の値 500ms）、受け入れの記録用のひな形、PRD 3-2 の作業時間の変更。review-loop は全通過。PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20)（ベースは `test/m8-e2e`。#19 をマージしてから、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち
-  - [ ] PR 3 `feat/m8-pause-settings`: 間の値を編集画面で変えられるようにする（決定事項 40）。値は、ユーザーがプレビューで聞いて決め、決まった値を既定値にする
+  - [x] PR 3 `feat/m8-pause-settings`（PR 2 の上に積む）: 間の値を編集画面で変えられるようにした（決定事項 40）。review-loop と PR は、このあと。
+        そのあと、ユーザーがプレビューで聞いて値を決め（手順は `frontend/README.md` の「手で確かめる（M8 の PR 3: 間の設定）」）、決まった値を既定値にする
   - [ ] PR 4 `fix/m8-acceptance`: 受け入れチェック（forTest01〜03。判定はユーザー。記録は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)）で見つかった直し、フィラー検出の検証（D-5）、
         複数ファイルのレクチャー・300 チャンク超・長いレクチャーの重さの確認（人工データ）、計画の完了処理
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
@@ -269,6 +270,15 @@ _なし_
   提案を受けて、共有の例を足した（文末の長い余白が次の区間の前の余白に届いて短い無音が残る場合、文末のトークンが無音にまたがる場合、無音の開始と同時に始まるトークン）、
   2 本の録画ファイルの例（`plan_export`・`buildTimeline`）、最後の 1 文字の取り方を空の文字でも落ちない形に、E2E の定数の名前と並びの整理、受け入れの記録に下調べの数値の求め方。
   PR 3 への申し送り: 余白の値を画面から受け取るときは、整数と 0 以上（上限 2000）を API の入力で検証する
+- PR 3（`feat/m8-pause-settings`。PR 2 の上に積む）: 間の設定。backend は、domain の `KeepPadding`（0〜2000 の整数）、`settings` 表（スキーマの移行を 1 つ足した）と `SqliteSettingsRepository`、
+  `SettingsService`（既定値は `ExportSettings`、保存した値があればそちら）、`ExportService` の `current_settings`（書き出しのたびに設定を読む）、`GET` / `PUT /api/settings`。
+  `ApiServices.export_settings` は `ApiServices.settings`（`SettingsService`）に替えた。frontend は、`Api.getSettings`・`saveKeepPadding`、`usePadding.ts`（値・0.5 秒遅れの保存・既定に戻す・書き出し前の保存）、
+  `PaddingSettings.tsx`（プレビューの下の折りたたみ）、`buildTimeline` と `useEditing` に余白を渡す引数。テスト: backend 1,209 件 / 99%、frontend 689 件 / 98%、E2E 2 件
+- PR 3 で確かめたこと（E2E。実物の backend と Chrome）: 「文の終わりのあと」を 800 にすると、プレビューの長さがすぐ伸びる。保存を待たずに Premiere XML を頼んでも、XML の各クリップの終わりが 800ms の余白になる（頼む前に保存する）。
+  「既定に戻す」で長さが戻り、次の書き出しは既定値になる。画面は、通常の幅と 800px で画像を撮って確かめた（プレビューのペインを縦に並べる形に変え、狭い幅では動画の高さを 8rem に決めた）
+- PR 3 で踏んだこと: テストで「保存の遅延の 1ms 手前まで待つ」と、実際の時間も進むので、負荷が高いときに保存が先に走って落ちる（遅延の半分まで待つ形にした。3 つ同時に走らせても通ることを確かめた）。
+  書き出しの 2 回目からは、状態の文（最後の書き出しの日時。分まで）が前と同じになりうるので、E2E はファイルの更新時刻で書き直しを待つ（`exportFresh`）
+- 間の設定の制限: 値はワークスペース全体で 1 組（レクチャーごとには持たない）。ほかのタブで変えた値は、開き直すまで反映されない。版による排他はない（後から保存したほうが残る）
 - 文の終わりの判定の制限: 文末の記号のあとに閉じかっこ（」など）が続くと、文の終わりとして扱わない。文字起こしが句点を付けなかった文も同じ（検証素材では 69 チャンク中 37 が「。」で終わる）。
   残す区間の数 × 文の終わりの間の数だけ比べるので、長いレクチャーで重ければ見直す（PR 4 の人工データで確かめる）
 
