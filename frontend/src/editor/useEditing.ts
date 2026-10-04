@@ -21,7 +21,7 @@ import {
   tokenRestorations,
 } from "./edits";
 import { canRedo, canUndo, startHistory } from "./history";
-import { buildTimeline, type Position } from "./timeline";
+import { buildTimeline, type Position, positionAt } from "./timeline";
 import { selectedTokenRange } from "./tokenSelection";
 import {
   buildTranscript,
@@ -151,8 +151,23 @@ export function useEditing(
     () => buildTimeline(detail, draft, keepPadding),
     [detail, draft, keepPadding],
   );
-  const player = usePlayer(timeline, api.proxyUrl);
-  const { seek } = player;
+  const basePlayer = usePlayer(timeline, api.proxyUrl);
+  const { seek } = basePlayer;
+  // 再生位置のバーで位置を移したら、止めたままでも、その位置の文字を出す（波形のクリックと同じ）
+  const seekOutput = useCallback(
+    (outputMs: number) => {
+      const position = positionAt(timeline, outputMs);
+      if (position !== null) {
+        seek(position);
+        revealPosition(transcriptRoot, transcript, position);
+      }
+    },
+    [timeline, seek, transcript],
+  );
+  const player = useMemo(
+    () => ({ ...basePlayer, seekOutput }),
+    [basePlayer, seekOutput],
+  );
   useTranscriptSeek(transcriptRoot, transcript, seek);
   const playingToken = useMemo(
     () => tokenAt(transcript, player.position),
