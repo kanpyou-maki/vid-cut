@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）がユーザーの確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）と PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）がユーザーの確認とマージ待ち。次は PR 3（間の設定の画面）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -45,7 +45,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)。ユーザーの確認とマージ待ち
-  - [x] PR 2 `feat/m8-sentence-pause`（PR 1 の上に積む）: 間の調整の計算（文の終わりのあとの余白を長くする。仮の値 500ms）、受け入れの記録用のひな形、PRD 3-2 の作業時間の変更。review-loop は全通過。ユーザーの確認とマージ待ち
+  - [x] PR 2 `feat/m8-sentence-pause`（PR 1 の上に積む）: 間の調整の計算（文の終わりのあとの余白を長くする。仮の値 500ms）、受け入れの記録用のひな形、PRD 3-2 の作業時間の変更。review-loop は全通過。PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20)（ベースは `test/m8-e2e`。#19 をマージしてから、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち
   - [ ] PR 3 `feat/m8-pause-settings`: 間の値を編集画面で変えられるようにする（決定事項 40）。値は、ユーザーがプレビューで聞いて決め、決まった値を既定値にする
   - [ ] PR 4 `fix/m8-acceptance`: 受け入れチェック（forTest01〜03。判定はユーザー。記録は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)）で見つかった直し、フィラー検出の検証（D-5）、
         複数ファイルのレクチャー・300 チャンク超・長いレクチャーの重さの確認（人工データ）、計画の完了処理
