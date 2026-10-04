@@ -37,11 +37,11 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 6（波形。PR #17）までマージ済み。PR 7（書き出し）は確認待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 6（波形。PR #17）までマージ済み。PR 7（書き出し。PR #18）は確認待ち
 
 ## 次にやること
 
-- [ ] M7: frontend。PR 7（`feat/m7-export`: 書き出しの行、書き出しの状態の API、Finder で開く API、CSP の `data:`・`blob:` の削除）を実装した。
+- [ ] M7: frontend。PR 7（`feat/m7-export`: 書き出しの行、書き出しの状態の API、Finder で開く API、CSP の `data:`・`blob:` の削除）を実装し、PR [#18](https://github.com/kanpyou-maki/vid-cut/pull/18) を作成した。
       ユーザーの手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 7: 書き出し）」）とマージを待っている。マージされたら M7 は終わりで、次は M8（E2E と受け入れ）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）

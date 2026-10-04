@@ -195,7 +195,7 @@ PR 7（`feat/m7-export`）:
 - [x] frontend: 書き出しの行（形式ごとのボタンと進捗、保存先、「Finder で開く」）、保存してから依頼（自動保存の `flush`）、書き出しの間だけの読み直し、失敗と同じボタンでの再実行
 - [x] 実物の backend（worker つき）と、ヘッドレスの Chrome での確認（Premiere XML と MP4 の書き出し・進捗・途中での開き直し・Finder で開く（ログで確認）・失敗と再実行・幅と配色: 53 項目。
       コンソールの失敗と CSP の違反なし。幅が狭いときのラベルの折り返しを見つけて直した）
-- [ ] review-loop → PR
+- [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、Finder で開けないときの文・失敗の出どころの名前・形式の名前の表・読み直しの結果の受け口の分割を反映）→ PR [#18](https://github.com/kanpyou-maki/vid-cut/pull/18)
 - [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 7: 書き出し）」（実際に Finder の窓が開くことは、ここで確かめる）
 
 ### M8: E2E と受け入れ（`test/m8-e2e`）
