@@ -87,5 +87,6 @@
 - **改善候補:** `.claude/agents/self-reviewer.md` のチェックリストに「挙動・表示・文言を変えたら、変える前の文言や機能名で `docs/` と README を検索し、
   前の節・前の手順に古い記述が残っていないかを確かめる」を足す。`frontend/README.md` の「画面の実装で守ること」にも同じ決まりを書く。
   汎用的な改善なので、sync-upstream で master に還元する
-- **対応:** `frontend/README.md` の「画面の実装で守ること」に決まりを足し、`.claude/agents/self-reviewer.md` のチェックリストに「4. ドキュメントの追従」を足した
-- **Status:** resolved（vid-cut: M7 の PR 5。master への還元は未実施。sync-upstream で提案する）
+- **対応:** `frontend/README.md` の「画面の実装で守ること」に決まりを足し、`.claude/agents/self-reviewer.md` のチェックリストに「4. ドキュメントの追従」を足した。
+  master へは sync-upstream で還元した（claude-config-master の PR #5。2026-10-04。master に合わせて、チェック項目から摩擦の番号を外した）
+- **Status:** resolved（vid-cut: M7 の PR 5。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)）

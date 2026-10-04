@@ -238,6 +238,18 @@ describe("波形: 読み込み", () => {
     expect(getPeaks).not.toHaveBeenCalled();
   });
 
+  it("録画ファイルがないレクチャーでは、波形を作らない", async () => {
+    const getPeaks = vi.fn(async () => PEAKS);
+    const fake = editorApi({ ...WAVE, recordings: [] }, { getPeaks });
+    renderEditor(fake.api);
+    await screen.findByRole("region", { name: "波形" });
+    await advance(0);
+
+    expect(wavePane()).toHaveTextContent("波形に出す録画ファイルがありません");
+    expect(waveParts("wrapper")).toHaveLength(0);
+    expect(getPeaks).not.toHaveBeenCalled();
+  });
+
   it("画面を離れたあとに届いたピーク値は、使わない", async () => {
     let deliver: (peaks: Peaks) => void = () => {};
     const { unmount } = await openEditor(SINGLE, {

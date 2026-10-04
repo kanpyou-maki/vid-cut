@@ -77,6 +77,8 @@ export const WaveformPane = memo(function WaveformPane({
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX);
   const selected = regions.find((region) => region.key === selectedKey) ?? null;
   const numbered = layout.tracks.length >= MIN_TRACKS_FOR_NUMBERS;
+  // 長さのない波形は作れない（録画ファイルがないレクチャー）
+  const empty = layout.durationMs === 0;
 
   const chartRegions = useMemo(
     () => regions.map((region) => chartRegion(region, selectedKey)),
@@ -122,11 +124,15 @@ export const WaveformPane = memo(function WaveformPane({
         />
         <Zoom index={zoomIndex} onChange={setZoomIndex} />
       </div>
-      {peaks === null ? (
+      {empty && (
+        <p className={styles.note}>波形に出す録画ファイルがありません</p>
+      )}
+      {!empty && peaks === null && (
         <p role="status" className={styles.note}>
           波形を読み込んでいます…
         </p>
-      ) : (
+      )}
+      {!empty && peaks !== null && (
         <WaveChartView
           layout={layout}
           peaks={peaks}

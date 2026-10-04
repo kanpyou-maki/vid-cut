@@ -45,6 +45,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 - [ ] M7: frontend。PR 6 のあとは PR 7（`feat/m7-export`: 書き出しボタンと進捗、保存先の表示。backend にレクチャーの詳細の保存先と、Finder で開く API を足す）。PR の分け方と順番は実装計画の M7
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
+- [ ] FRIC-005 の対応の master への還元: claude-config-master の PR [#5](https://github.com/kanpyou-maki/claude-config-master/pull/5) を作成済み（ユーザーがレビューしてマージする）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
 
 ## 決定事項
@@ -165,7 +166,7 @@ _なし_
   （フレームごとの記録で、削除区間の中のフレームが 1 つ以下）、再生位置の文字の印、Space での一時停止、「削除した部分も再生する」で削除区間も再生、段落の時刻のクリック、バーの中央のクリック。
   PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 500 件 / カバレッジ 98%（分岐 94%）、backend 1,043 件
 - PR 5 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: Design Doc の PR 3 の節に「プレビューと波形は場所だけ用意する」が残っていた → 修正して PASS）。
-  PR 4 と同じ種類の手戻りが 2 回続いたので、FRIC-005 に記録し、`frontend/README.md` の「画面の実装で守ること」と `.claude/agents/self-reviewer.md` のチェックリストに「ドキュメントの追従」を足した（master への還元は未実施）。
+  PR 4 と同じ種類の手戻りが 2 回続いたので、FRIC-005 に記録し、`frontend/README.md` の「画面の実装で守ること」と `.claude/agents/self-reviewer.md` のチェックリストに「ドキュメントの追従」を足した（master へは、claude-config-master の PR #5 で還元した。2026-10-04）。
   Stage 1 の提案で、残す区間の例を backend と frontend のテストで共有し（`backend/tests/domain/keep_ranges_cases.json`）、テスト用の動画のまねを「`src` を替えると止まる」まで再現した
 - PR 5 の残り・制限: 録画ファイルの切り替えは `src` の差し替えなので、切り替えのときに短い間が空く。複数の録画ファイルのレクチャーは、テストでだけ確かめた（実物では M8 で確かめる）。
   jsdom は再生を実装していないので、テストでは再生の状態と位置だけをまねている（`src/test/setup.ts`。`src` を替えると止まって頭に戻る、まで。読み込めたこと（`loadedmetadata`）は、テストが知らせる）。プレビューは proxy 動画なので、書き出し（中間素材、60fps）とは 1 フレーム未満のずれがありうる
@@ -181,7 +182,7 @@ _なし_
 - PR 6（`feat/m7-waveform`）: 波形。画面の構成はユーザー承認（2026-10-04。推奨案のまま。Design Doc 3-6 の「編集画面の波形」）。`wavesurfer.js` 8.0.1（固定。依存なし、BSD-3-Clause。`npm audit` は既知の脆弱性なし）を足した。
   backend は CSP だけを変えた（`style-src 'self' 'sha256-…'`。`'unsafe-inline'` を外した。API の変更なし）。frontend は、`Api.getPeaks`、波形の配置と区間の計算（`waveLayout.ts`）、
   wavesurfer.js を包む部品（`waveChart.ts`。wavesurfer.js を読み込むのはここだけ）、ピーク値の読み込み（`usePeaks.ts`）、画面への配置（`WaveChartView.tsx`）、ペイン（`WaveformPane.tsx`）。
-  編集の操作は増やしていない（波形からの採否の切り替えは、文字起こしと同じ `restore`・`reapply` を使う）。frontend のテスト 577 件 / カバレッジ 98%（分岐 94%）、backend 1,045 件
+  編集の操作は増やしていない（波形からの採否の切り替えは、文字起こしと同じ `restore`・`reapply` を使う）。frontend のテスト 578 件 / カバレッジ 98%（分岐 94%）、backend 1,045 件
 - PR 6 で確認済み（一時ワークスペース。実物の backend を `--no-worker` で起動、ヘッドレスの Chrome を実際のマウス操作で）: 波形の線が canvas に描かれる、区間の位置と幅が時刻と合う（50px/秒）、
   クリックで再生位置・文字起こしの印が移る、区間の選択 →「戻す」→ 保存 → ダブルクリック → ⌘Z、拡大と縮小（全体では 93 件の区間がすべて出る）、文字起こしのクリックで波形がスクロール、
   波形のクリックで文字起こしがスクロール、再生中の線とページ送り、暗い配色、幅 900px 以下、ピーク値の 404 と再試行。45 項目 OK。
