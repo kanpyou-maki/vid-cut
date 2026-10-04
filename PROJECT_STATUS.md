@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）・PR 3（編集状態と文字起こしの基本）は main にマージ済み（PR #1〜#14）。M7（frontend）を 7 本の PR に分けて実装中。PR 4（要確認・判定理由・通知。`feat/m7-transcript-review`。PR #15）と PR 5（プレビュー。`feat/m7-preview`。PR #16。PR 4 の上に積む）を、ユーザー不在の間に推奨案で実装した（どちらも、画面の構成はユーザー確認待ち）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）〜PR 5（プレビュー）は main にマージ済み（PR #1〜#16）。M7（frontend）を 7 本の PR に分けて実装中。次は PR 6（波形）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,15 +37,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）。PR 5（`feat/m7-preview`）も review-loop を通過し、PR [#16](https://github.com/kanpyou-maki/vid-cut/pull/16) のマージ待ち（PR 4 の上に積んでいる。向き先は `feat/m7-transcript-review`）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 5（プレビュー。PR #16）までマージ済み
 
 ## 次にやること
 
-- [ ] M7 の PR 4 の確認（ユーザー）: 画面の構成（Design Doc 3-6 の「要確認・判定理由・通知」。不在の間に推奨案で実装した。PR の説明の先頭に、選んだ内容と代替案がある）と、
-      手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」）。問題なければマージ
-- [ ] M7 の PR 5 の確認（ユーザー）: 画面の構成（Design Doc 3-6 の「プレビュー」。PR の説明の先頭に、選んだ内容と代替案がある）と、手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 5: プレビュー）」）。
-      PR 5 は PR 4 の上に積んである（PR 4 に直しが入ったら、PR 5 も直す。PR 4 をマージしたあと、PR 5 の向き先を main に変える）
-- [ ] M7: frontend。PR 5 のあとは PR 6（`feat/m7-waveform`: 波形。依存の追加と CSP の確認があるので、ユーザーが戻ってから）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
+- [ ] M7: frontend。次は PR 6（`feat/m7-waveform`: 波形。`wavesurfer.js` 8 を追加し、CSP の違反がないことを確かめる）。そのあと PR 7（`feat/m7-export`: 書き出し）。PR の分け方と順番は実装計画の M7
+- [ ] FRIC-005（挙動を変えたとき、前の節・前の手順が古いまま残る）の対応を、sync-upstream で master に還元する（ユーザー判断。vid-cut では PR #16 で対応済み）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
       波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -148,7 +145,7 @@ _なし_
 - PR 3 の review-loop: Stage 0（self）・Stage 1（arch / style / test）・Stage 2（security / docs）すべて PASS。提案を受けて、トークンの通し番号を画面に並ぶ順に振るようにした
   （削除の判定は、中央の時刻の順の一覧 `byCenter` で行う。チャンクのトークンが時刻の上で入り交じっていても、選択範囲と通し番号がずれない）。
   セキュリティの LOW（情報）: ジョブの `error_message` は backend の定型文をそのまま出す（素材一覧と同じ）。タブを閉じるときは確認を出すだけで、保存は走らない（承認済みの方針）
-- PR 4（`feat/m7-transcript-review`）: 要確認・判定理由・通知。ユーザー不在（2026-10-04 の夜）の間に、画面の構成を推奨案で決めて実装した（**ユーザー確認待ち**。Design Doc 3-6）。
+- PR 4（`feat/m7-transcript-review`）: 要確認・判定理由・通知。ユーザー不在の間に、画面の構成を推奨案で決めて実装し、ユーザーが確認してマージした（PR #15、2026-10-04。Design Doc 3-6）。
   backend に `POST /api/lectures/{id}/dropped-restorations/dismiss` を足した（`EditService.dismiss_dropped_restorations` → `JudgementRepository.dismiss_dropped`。記録の列だけを 1 トランザクションで書き換える）。
   frontend は、`Api.dismissDroppedRestorations`、要確認の印（`transcript.ts` の `lowConfidence`・`unrecognized`・`reviewTargets`）と移動（`useReviewNavigation.ts`。N / Shift+N）、
   判定理由（`CutReason.tsx`。文字起こしを描き直さないよう、カーソルの出入りを `document` で受ける）、戻した候補の表示と「削除に戻す」（`edits.ts` の `tokenRestorations`・`reapplySuggestion`）、通知（`DroppedNotice.tsx`）。
@@ -158,7 +155,7 @@ _なし_
   「言い直し先へ移動」で段落が出て目印が付く、クリックで「戻し済み」になり理由も切り替わる、もう一度クリックで削除に戻って保存される。PR 3 の項目と合わせて 44 項目 OK。frontend のテスト 423 件 / カバレッジ 99%（分岐 96%）、backend 1,029 件
 - PR 4 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: `frontend/README.md` の PR 3 の手順に、PR 4 で変わった表示が古いまま残っていた → 修正して PASS）。
   挙動を変えたら、前の PR の手動確認の手順も、いまの挙動に合わせて直す。セキュリティの指摘なし
-- PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案（**ユーザー確認待ち**。Design Doc 3-6 の「プレビュー」）。
+- PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案で実装し、ユーザーが確認してマージした（PR #16、2026-10-04。Design Doc 3-6 の「プレビュー」）。
   backend は、レクチャーの詳細に `keep_padding`（書き出しの設定の余白）を足した。frontend は、`Api.proxyUrl`、残す区間の計算（`keepRanges.ts`。backend の `keep_ranges` と同じ計算。両側のテストが、同じ例 `backend/tests/domain/keep_ranges_cases.json` を読む）、
   カット後のタイムライン（`timeline.ts`）、再生（`usePlayer.ts`。1 つの `video` を切り替え、フレームごとに確かめて飛ぶ）、表示と操作（`PreviewPane.tsx`）、文字起こしとの同期（`usePlaybackSync.ts`）。
   余白の値（M8 の「間の調整」で変える）は backend から受け取るので、画面には持たない。ただし、残す区間の計算そのものを変えたら、`keepRanges.ts` も合わせる
