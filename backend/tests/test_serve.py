@@ -330,6 +330,19 @@ class TestStaleFrontendBuild:
         self.launch(tmp_path, built)
         assert STALE_NOTE not in capsys.readouterr().out
 
+    def test_a_file_that_cannot_be_read_does_not_stop_the_launch(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # 知らせるための確認で、起動を止めない
+        built = frontend_with_sources(tmp_path, built_at=1_000, changed={"main.tsx": 2_000})
+
+        def unreadable(self: Path, pattern: str) -> Iterator[Path]:
+            raise PermissionError("読めない")
+
+        monkeypatch.setattr(Path, "rglob", unreadable)
+        self.launch(tmp_path, built)
+        assert STALE_NOTE not in capsys.readouterr().out
+
     def test_is_quiet_in_development(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:

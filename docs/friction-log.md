@@ -96,4 +96,8 @@
 - **再発への対応:** `.claude/agents/self-reviewer.md` のチェック項目と `frontend/README.md` の決まりに、
   「値や状態の持ち主・責務を移したときは、前の持ち主についての否定・限定の記述（「持たない」「〜だけ」「しない」）も探し、検索で当たった段落は最後まで読む」を足した。
   汎用的な改善なので、次の sync-upstream で master に還元する
+- **再発 2（2026-10-05。M8 の PR 3・PR 4a・PR 4b）:** 3 回続けて、`PROJECT_STATUS.md` 自身の記述が古いまま残った
+  （PR 3: 「次にやること」の「残りは PR 3 の設定の画面」、PR 4a: 「フィラー検出の精度は未検証」、PR 4b: 「概要」の「PR 4b は未着手」）。
+  設計の文書は検索で拾えるようになったが、状態のファイルは、作業が進むたびに「概要」「進行中」「次にやること」のそれぞれを直す必要があり、1 か所だけ直して残りを忘れる
+- **再発 2 への対応:** `.claude/agents/self-reviewer.md` のチェック項目に、「状態のファイルの『現在のフェーズ』『概要』『進行中』『次にやること』を、いまの状態と 1 行ずつ照らし合わせる」を足した
 - **Status:** resolved（vid-cut: M7 の PR 5、再発への対応は M8 の PR 3。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み。再発への対応の還元は未）

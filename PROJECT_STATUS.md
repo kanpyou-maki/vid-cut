@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、PR 4a（フィラー。`fix/m8-filler-span`。PR #22）がユーザーの確認とマージ待ち。PR 4b（残り）は未着手。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、PR 4a（フィラー。`fix/m8-filler-span`。PR #22）がユーザーの確認とマージ待ち。PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認。`fix/m8-acceptance`）は実装済みで、review-loop の途中（PR は未作成）。計画の完了処理は未。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -39,7 +39,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（フィラー。PR #22）はマージ待ち。残りは PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認・完了処理）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（フィラー。PR #22）はマージ待ち。PR 4b は実装済み。残りは PR 4b の review-loop と PR、ユーザーの聞き直し、計画の完了処理
 
 ## 次にやること
 
@@ -312,7 +312,7 @@ _なし_
 - PR 4b（`fix/m8-acceptance`。PR 4a の上に積む）で入れたもの: 再生位置のバーで位置を移したら、止めていても文字起こしをその位置の文字までスクロールする
   （`useEditing.ts` が、プレーヤーの `seekOutput` を、`revealPosition` も呼ぶものに差し替える。波形のクリックと同じ仕組み。動画の時刻が変わっただけでは、今までどおりスクロールしない）。
   `vidcut serve` は、起動時にビルドがソースより古ければ知らせる（`serve.py` の `frontend_build_is_stale`。`frontend/dist/index.html` と `frontend/src` の更新時刻を比べる。テストは見ない。`--dev` では出さない）。
-  テスト: backend 1,290 件、frontend 701 件
+  テスト: backend 1,291 件、frontend 701 件
 - PR 4b の追加の確認（2026-10-05。一時フォルダ。記録は acceptance-m8.md の「追加の確認」）: 人工の 2 時間のレクチャー（33,240 トークン・2,216 チャンク）で、開く 0.7 秒、編集・取り消し・候補の採否・間の設定は 65〜90ms、
   再生とシークは 50ms を超える処理なし。重いのは、波形を「全体」に切り替えるとき（約 3 秒。1 回だけ）。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（いまは直していない。ユーザーの判断）。
   確認の道具は使い捨て（`backend/tests/e2e/` の舞台と偽の位置合わせを使い、台本を繰り返す素材と、繰り返す偽の文字起こしを足したもの。コミットしていない）

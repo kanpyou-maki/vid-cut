@@ -57,6 +57,7 @@ uv run vidcut serve --dev            # 開発中: Vite の開発サーバー（n
 
 ビルドし直さないと、`vidcut serve` は前のビルドの画面を配信し続ける（backend だけが新しくなる）。
 起動時に、`frontend/dist/index.html` が `frontend/src` のファイル（テストを除く）より古ければ、「画面のビルドが、ソースより古いようです」と出す（`--dev` のときは出さない）。
+更新時刻を比べるだけの目安で、`src` の外（`index.html`・`package.json`・`vite.config.ts`・`public/`）の変更は見ない。ブランチを切り替えただけでも出ることがある。
 
 - 待ち受けは 127.0.0.1 だけ。起動のたびにトークンを作り、画面の HTML に埋め込む（[Design Doc](../docs/design.md) 3-5-1）。
   API を直接呼ぶときは、`X-VidCut-Token` ヘッダーにそのトークンを付ける

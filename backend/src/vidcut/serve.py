@@ -74,20 +74,27 @@ def frontend_build_is_stale(dist: Path | None) -> bool:
 
     ビルドし直さないと、古い画面を配信し続ける（backend だけが新しくなり、画面の機能が出ない）。
     ビルドがない・ソースが隣にない（リポジトリの外に置いたビルド）ときは、比べようがないので False。
-    テストとその補助は、ビルドの出力に入らないので見ない。
+    テストとその補助は、ビルドの出力に入らないので見ない。目安であって、確かではない:
+    src の外（index.html・package.json・vite.config.ts・public/）の変更は見ない。
+    ブランチを切り替えただけで更新時刻が変わったファイルは、古いと見なす。
     """
     if dist is None:
         return False
     index = dist / "index.html"
     sources = dist.parent / "src"
-    if not index.is_file() or not sources.is_dir():
+    try:
+        if not index.is_file() or not sources.is_dir():
+            return False
+        built_at = index.stat().st_mtime
+        return any(
+            path.stat().st_mtime > built_at
+            for path in sources.rglob("*")
+            if path.is_file() and not _is_test_source(path.relative_to(sources))
+        )
+    except OSError:
+        # 知らせるための確認なので、読めないファイルがあっても起動を止めない
+        _logger.warning("画面のビルドが古いかどうかを、確かめられませんでした")
         return False
-    built_at = index.stat().st_mtime
-    return any(
-        path.stat().st_mtime > built_at
-        for path in sources.rglob("*")
-        if path.is_file() and not _is_test_source(path.relative_to(sources))
-    )
 
 
 def _is_test_source(relative: Path) -> bool:
