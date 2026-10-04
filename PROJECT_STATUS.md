@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）〜PR 6（波形）は main にマージ済み（PR #1〜#17）。M7（frontend）を 7 本の PR に分けて実装中。次は PR 7（書き出し）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）〜PR 6（波形）は main にマージ済み（PR #1〜#17）。M7（frontend）の最後の PR 7（書き出し）を実装し、ユーザーの確認を待っている。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,15 +37,12 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 6（波形。PR #17）までマージ済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 6（波形。PR #17）までマージ済み。PR 7（書き出し）は確認待ち
 
 ## 次にやること
 
-- [ ] M7: frontend。次は PR 7（`feat/m7-export`: 書き出しボタンと進捗、保存先の表示。backend にレクチャーの詳細の保存先と、Finder で開く API を足す。決定事項 24、Design Doc 3-5 の「保存先の表示」）。これで M7 は終わり、次は M8（E2E と受け入れ）
-- [ ] PR 7 は、画面の構成と API の形が決まり（決定事項 32。Design Doc 3-5・3-5-1・3-6 に記載済み）、ブランチ `feat/m7-export` で TDD で実装中
-- [x] CSP の `img-src`・`media-src` から `data:`・`blob:` を外した（決定事項 31。`feat/m7-export` の別のコミット。`img-src 'self'`・`media-src 'self'`）。
-      実物の Chrome（一時ワークスペース）で、プレビューの動画が読めて再生が進む・波形が canvas に描かれる・CSP の違反とコンソールの失敗がない・
-      `data:` の画像と `blob:` の動画は止められる、を確認済み。backend のテスト 1,046 件
+- [ ] M7: frontend。PR 7（`feat/m7-export`: 書き出しの行、書き出しの状態の API、Finder で開く API、CSP の `data:`・`blob:` の削除）を実装した。
+      ユーザーの手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 7: 書き出し）」）とマージを待っている。マージされたら M7 は終わりで、次は M8（E2E と受け入れ）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -122,7 +119,7 @@ _なし_
   実物のサーバーを起動するテスト（`tests/test_serve_integration.py`）は、後始末でプロセスグループごと止める。開発中に worker が残っていないかは `pgrep -fl "vidcut.cli"` で確かめられる
 - PR 2 のセキュリティレビューで受け入れたもの: ワークスペース `~/VidCut/` がホーム配下にあり、生成物（`proxy.mp4` など）を録画として取り込める（事故の二重解析はありうる）。フォルダの取り込みは件数を打ち切らない（巨大なフォルダでは時間がかかる）
 - 制限: まとめる・解除のとき、元のレクチャーを処理中のジョブは失敗として残る。ffmpeg の一時ファイルは強制終了で残る（1 日以上前のものは、次に同じ生成物を作るときに消す）
-- M7 で API に足すもの: 書き出し先のパスの表示と Finder で開く API（PR 7。決定事項 24）、`dropped_restored_ids` の通知を閉じる API（PR 4。決定事項 25）
+- M7 で API に足したもの: 書き出しの状態と保存先・Finder で開く API（PR 7。決定事項 24・32）、`dropped_restored_ids` の通知を閉じる API（PR 4。決定事項 25）
 
 ### M7（frontend）の現状
 
@@ -204,6 +201,22 @@ _なし_
 - PR 6 の残り・制限: 区間はマウスでしか選べない（キーボードでは、無音の候補を戻せない）。ドラッグで区間を作る・縁を動かす操作はない（M8 の「間の調整」と合わせて考える）。
   2 本目からの目盛りは、半端な時刻になる（位置が、つなげた全体で決まるため）。手動の削除区間と自動の候補が重なるところは、両方の色が重なって見える。
   長いレクチャー（2 時間で、ピーク値は約 72 万個・区間は数千件）での重さは、実素材で M8 に確かめる
+- PR 7（`feat/m7-export`）: 書き出し。画面の構成と API の形はユーザー承認（2026-10-04。推奨案のまま。決定事項 32。Design Doc 3-5・3-5-1・3-6 の「編集画面の書き出し」）。
+  backend は、`services/export_destinations.py`（`ExportDestinations`: 書き出しの状態と保存先 `status`、Finder で開く `reveal`。読むだけで、フォルダを作らない）、
+  `adapters/finder.py`（`FinderRevealer`: `/usr/bin/open -R <絶対パス>`、`LoggingRevealer`: ログに出すだけ）、`ExportStore` の読むだけの問い合わせ（`directory`・`locate`・`existing_directory`）、
+  `GET /api/lectures/{id}` の `exports`、`GET /api/lectures/{id}/exports`、`POST /api/lectures/{id}/exports/reveal`、環境変数 `VIDCUT_REVEAL=off`（`bootstrap.revealer_from_env`）。
+  frontend は、`Api.requestExport`・`getExports`・`revealExports`、自動保存の `flush`（`autosaver.ts`。`useEditing` の `flushSave`）、形式ごとの状態（`exportView.ts`）、
+  依頼と状態（`useExports.ts`）、書き出しの行（`ExportBar.tsx`。書き出しの間だけ置く `ExportWatcher` が `usePolling` で読む）。frontend のテスト 643 件 / カバレッジ 98%（分岐 94%）、backend 1,103 件 / 99%
+- PR 7 で確認済み（一時ワークスペースに `mezzanine.mp4` も写した。実物の backend を worker つき・`VIDCUT_REVEAL=off` で起動、ヘッドレスの Chrome を実際のマウスとキーの操作で）:
+  行の位置と保存先の表示、編集してすぐ「Premiere XML」→ 保存（PUT）が依頼（POST）より先、待機中 → 最後の書き出しの日時、終わったら読むのをやめる、「Finder で開く」（200。ログに、書き出した XML のパス）、
+  MP4 の進捗（50% から進む。約 2 分半）と `progress` 要素、書き出しの間の編集と ⌘Z、MP4 の間に頼んだ Premiere XML の待機、途中で開き直しても続きが出る、幅 800px での折り返し、暗い配色、
+  残す区間がないときのボタンと理由、失敗の文（`nothing_to_export`）と同じボタンでの再実行。53 項目 OK。書き出し先には XML と MP4 だけが残る。CSP の違反・コンソールの失敗・失敗した要求なし
+- PR 7 で実物から見つけたこと: 幅 800px で「保存先」と「Finder で開く」の文字が途中で折り返した（jsdom では分からない。`white-space: nowrap` にした）。
+  ボタンを `disabled` にすると、Chrome はフォーカスを `body` に移す（止まったボタンにフォーカスが残ってキーが効かなくなることは、なかった）。
+  自動の確認では、キーを送った直後に画面の文を読むと、まだ変わっていないことがある（effect のあとで変わる。少し待ってから読む）
+- PR 7 の残り・制限: 実際に Finder の窓が開くこと（`open -R`）は、自動の確認では確かめていない（`VIDCUT_REVEAL=off`。ユーザーの手動確認で確かめる）。
+  書き出したあとに編集があることの印は出さない。書き出しに入るのは、ジョブが始まった時点で保存済みの内容まで。開いたときに最新の書き出しジョブが失敗なら、前の失敗でもそのまま出す。
+  同じ場所に書き出すレクチャーの判定は、大文字と小文字を区別しない（区別するボリュームでは、出なくてよい注意が出る）。書き出しの進捗の読み直しは、ほかのタブで頼んだ書き出しには、開き直すまで気づかない
 - 素材一覧の残り: 判定の進捗（%）は出していない（窓が 1 つだと 0% のまま）。処理中のボタンは `disabled` にするので、キーボードで ↑ ↓ を続けて押すとフォーカスが外れることがある
 
 ### 素材と解析・判定・書き出しの知見
@@ -218,5 +231,5 @@ _なし_
 - 複数ファイルのレクチャーと 300 チャンク超の窓分割は、検証素材を人工的に分けた確認だけ（結果は変わらず）。実素材では M8 で確かめる
 - 書き出し（M5）の制限: 音声はステレオ前提。レクチャー内で解像度や音声形式が違う録画を混ぜた MP4 は失敗する。同じ名前のレクチャーは同じ `exports/<名前>/` に上書きする。
   MP4 のつなぎ目にフェードはない（プロトタイプは 30ms のフェードを付けていた。必要なら Premiere XML との一致をどうするかと合わせて決める）
-- 書き出しの CLI はない。M6 の API（`POST /api/lectures/{id}/exports`）と M7 の画面から依頼する
+- 書き出しの CLI はない。編集画面の書き出しの行（M7 の PR 7）か、API（`POST /api/lectures/{id}/exports`）から依頼する
 - wav は一括で読み込む（2 時間で約 230MB）。CLI の出力には生のエラー文（ffmpeg の stderr や絶対パス）が出る（自分の端末なので許容）

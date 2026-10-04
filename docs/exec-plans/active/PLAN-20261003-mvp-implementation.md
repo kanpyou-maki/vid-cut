@@ -189,8 +189,14 @@ PR 6（`feat/m7-waveform`。`wavesurfer.js` 8 を追加）:
 PR 7（`feat/m7-export`）:
 
 - [x] CSP の `img-src`・`media-src` から、使っていない `data:`・`blob:` を外す（決定事項 31。別のコミット。実物の Chrome で、プレビューの動画と波形が出て、CSP の違反がないことを確認）
-- [ ] 画面の構成と API の形（提案済み。ユーザーの判断待ち、2026-10-04）
-- [ ] 書き出しボタンと進捗、保存先の表示（backend: レクチャーの詳細に保存先を足す、Finder で開く API）
+- [x] 画面の構成と API の形の提案と承認（ユーザー、2026-10-04。推奨案のまま。決定事項 32。Design Doc 3-5・3-5-1・3-6 の「編集画面の書き出し」）
+- [x] backend: レクチャーの詳細に書き出しの状態と保存先（`exports`）を足す、`GET /api/lectures/{id}/exports`（書き出しの間の読み直し用）、
+      `POST /api/lectures/{id}/exports/reveal`（`/usr/bin/open -R`。開く場所はレクチャーの id から求める）、`VIDCUT_REVEAL=off`（Finder を開かずログに出す）
+- [x] frontend: 書き出しの行（形式ごとのボタンと進捗、保存先、「Finder で開く」）、保存してから依頼（自動保存の `flush`）、書き出しの間だけの読み直し、失敗と同じボタンでの再実行
+- [x] 実物の backend（worker つき）と、ヘッドレスの Chrome での確認（Premiere XML と MP4 の書き出し・進捗・途中での開き直し・Finder で開く（ログで確認）・失敗と再実行・幅と配色: 53 項目。
+      コンソールの失敗と CSP の違反なし。幅が狭いときのラベルの折り返しを見つけて直した）
+- [ ] review-loop → PR
+- [ ] 手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 7: 書き出し）」（実際に Finder の窓が開くことは、ここで確かめる）
 
 ### M8: E2E と受け入れ（`test/m8-e2e`）
 
