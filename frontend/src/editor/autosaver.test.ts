@@ -308,6 +308,18 @@ describe("createAutosaver: close（画面を離れる）", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("離れたあとの retry は、何も送らない", async () => {
+    const { saver, calls } = setup();
+    saver.update("b");
+    saver.close();
+    calls[0].fail(new ApiError("server", "保存できません", 500));
+    await settled();
+
+    saver.retry();
+
+    expect(calls).toHaveLength(1);
+  });
+
   it("版の食い違いで止まっていれば、離れるときも送らない", async () => {
     const { saver, calls } = setup();
     saver.update("b");

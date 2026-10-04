@@ -55,6 +55,8 @@ class ExportStatus:
 
 
 class ExportDestinations:
+    """書き出しの状態と保存先の読み取りと、Finder で開く。フォルダもファイルも作らない。"""
+
     def __init__(
         self,
         *,

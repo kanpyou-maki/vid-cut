@@ -5,6 +5,7 @@ import { usePolling } from "../shared/usePolling";
 import styles from "./ExportBar.module.css";
 import {
   EXPORT_FORMATS,
+  EXPORT_LABELS,
   exportText,
   exportView,
   hasExported,
@@ -38,17 +39,17 @@ export function ExportBar({
 }) {
   const { exports, requesting } = exporting;
   const stopped = locked || exporting.gone;
+  const cannotExport = stopped || nothingToExport;
   return (
     <ExportRow>
-      {EXPORT_FORMATS.map(({ format, label }) => (
+      {EXPORT_FORMATS.map((format) => (
         <FormatControl
           key={format}
-          label={label}
+          label={EXPORT_LABELS[format]}
           file={exports[format]}
           statusId={`export-status-${format}`}
           disabled={
-            stopped ||
-            nothingToExport ||
+            cannotExport ||
             requesting.includes(format) ||
             isExporting(exports[format])
           }
@@ -88,8 +89,8 @@ export function ExportBar({
 export function ExportBarPlaceholder() {
   return (
     <ExportRow>
-      {EXPORT_FORMATS.map(({ format, label }) => (
-        <ExportButton key={format} label={label} disabled />
+      {EXPORT_FORMATS.map((format) => (
+        <ExportButton key={format} label={EXPORT_LABELS[format]} disabled />
       ))}
       <button type="button" disabled>
         Finder で開く

@@ -3,14 +3,14 @@ import { formatDateTime, progressPercent } from "../shared/lectureStatus";
 
 /** 書き出しの行に出す、形式ごとの状態（Design Doc 3-6 の「編集画面の書き出し」）。 */
 
+/** 形式の名前。 */
+export const EXPORT_LABELS: Readonly<Record<ExportFormat, string>> = {
+  premiere_xml: "Premiere XML",
+  mp4: "MP4",
+};
+
 /** 書き出せる形式（画面に出す順）。 */
-export const EXPORT_FORMATS: readonly {
-  format: ExportFormat;
-  label: string;
-}[] = [
-  { format: "premiere_xml", label: "Premiere XML" },
-  { format: "mp4", label: "MP4" },
-];
+export const EXPORT_FORMATS: readonly ExportFormat[] = ["premiere_xml", "mp4"];
 
 const UNKNOWN_FAILURE_MESSAGE = "失敗しました";
 
@@ -30,9 +30,7 @@ export function isExporting(file: ExportFile): boolean {
 
 /** どちらかの形式が、書き出し済み（Finder で見せるものがある）。 */
 export function hasExported(exports: Exports): boolean {
-  return EXPORT_FORMATS.some(
-    ({ format }) => exports[format].exported_at !== null,
-  );
+  return EXPORT_FORMATS.some((format) => exports[format].exported_at !== null);
 }
 
 /** 動いているジョブ・失敗したジョブを先に出す。なければ、ファイルの日時を出す。 */

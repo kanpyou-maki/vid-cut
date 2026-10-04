@@ -206,7 +206,7 @@ _なし_
   `adapters/finder.py`（`FinderRevealer`: `/usr/bin/open -R <絶対パス>`、`LoggingRevealer`: ログに出すだけ）、`ExportStore` の読むだけの問い合わせ（`directory`・`locate`・`existing_directory`）、
   `GET /api/lectures/{id}` の `exports`、`GET /api/lectures/{id}/exports`、`POST /api/lectures/{id}/exports/reveal`、環境変数 `VIDCUT_REVEAL=off`（`bootstrap.revealer_from_env`）。
   frontend は、`Api.requestExport`・`getExports`・`revealExports`、自動保存の `flush`（`autosaver.ts`。`useEditing` の `flushSave`）、形式ごとの状態（`exportView.ts`）、
-  依頼と状態（`useExports.ts`）、書き出しの行（`ExportBar.tsx`。書き出しの間だけ置く `ExportWatcher` が `usePolling` で読む）。frontend のテスト 643 件 / カバレッジ 98%（分岐 94%）、backend 1,103 件 / 99%
+  依頼と状態（`useExports.ts`）、書き出しの行（`ExportBar.tsx`。書き出しの間だけ置く `ExportWatcher` が `usePolling` で読む）。frontend のテスト 644 件 / カバレッジ 98%（分岐 94%）、backend 1,103 件 / 99%
 - PR 7 で確認済み（一時ワークスペースに `mezzanine.mp4` も写した。実物の backend を worker つき・`VIDCUT_REVEAL=off` で起動、ヘッドレスの Chrome を実際のマウスとキーの操作で）:
   行の位置と保存先の表示、編集してすぐ「Premiere XML」→ 保存（PUT）が依頼（POST）より先、待機中 → 最後の書き出しの日時、終わったら読むのをやめる、「Finder で開く」（200。ログに、書き出した XML のパス）、
   MP4 の進捗（50% から進む。約 2 分半）と `progress` 要素、書き出しの間の編集と ⌘Z、MP4 の間に頼んだ Premiere XML の待機、途中で開き直しても続きが出る、幅 800px での折り返し、暗い配色、

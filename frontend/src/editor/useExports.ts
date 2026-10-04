@@ -2,7 +2,12 @@ import { useCallback, useState } from "react";
 import { useApi } from "../api/ApiContext";
 import { ApiError, errorMessage } from "../api/errors";
 import type { ExportFormat, Exports, Job } from "../api/types";
-import { EXPORT_FORMATS, isExporting, withExportJob } from "./exportView";
+import {
+  EXPORT_FORMATS,
+  EXPORT_LABELS,
+  isExporting,
+  withExportJob,
+} from "./exportView";
 
 const NOT_SAVED_MESSAGE = "保存できなかったため、書き出しを依頼していません";
 
@@ -40,10 +45,6 @@ export interface Exporting {
   pollFailed: (error: Error | null) => void;
 }
 
-function labelOf(format: ExportFormat): string {
-  return EXPORT_FORMATS.find((entry) => entry.format === format)?.label ?? "";
-}
-
 function failuresOf(
   messages: Record<ExportFailure["source"], string | null>,
 ): ExportFailure[] {
@@ -70,7 +71,6 @@ export function useExports(
 ): Exporting {
   const [exports, setExports] = useState(initial);
   const [generation, setGeneration] = useState(0);
-  const [pollFailure, setPollFailure] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
   const markGone = useCallback(() => setGone(true), []);
 
@@ -81,41 +81,58 @@ export function useExports(
   const requests = useExportRequests(lectureId, flushSave, queued, markGone);
   const revealer = useReveal(lectureId, markGone);
 
-  const update = useCallback((next: Exports) => {
-    setExports(next);
-    setPollFailure(null);
-  }, []);
-  const pollFailed = useCallback((error: Error | null) => {
-    if (error !== null && isGone(error)) {
-      setGone(true);
-      return;
-    }
-    setPollFailure(
-      error === null
-        ? null
-        : `書き出しの状態を読み取れませんでした: ${errorMessage(error)}`,
-    );
-  }, []);
+  const polled = usePollResults(setExports, markGone);
 
   return {
     exports,
     active:
-      !gone &&
-      EXPORT_FORMATS.some(({ format }) => isExporting(exports[format])),
+      !gone && EXPORT_FORMATS.some((format) => isExporting(exports[format])),
     generation,
     requesting: requests.requesting,
     revealing: revealer.revealing,
     failures: failuresOf({
       request: requests.failure,
-      poll: pollFailure,
+      poll: polled.failure,
       reveal: revealer.failure,
     }),
     gone,
     request: requests.request,
     reveal: revealer.reveal,
-    update,
-    pollFailed,
+    update: polled.update,
+    pollFailed: polled.pollFailed,
   };
+}
+
+/** 読み直しの結果の受け口。読めた状態は onUpdate に渡し、読めなかったら、その文を持つ。 */
+function usePollResults(
+  onUpdate: (exports: Exports) => void,
+  onGone: () => void,
+) {
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const update = useCallback(
+    (next: Exports) => {
+      onUpdate(next);
+      setFailure(null);
+    },
+    [onUpdate],
+  );
+  const pollFailed = useCallback(
+    (error: Error | null) => {
+      if (error !== null && isGone(error)) {
+        onGone();
+        return;
+      }
+      setFailure(
+        error === null
+          ? null
+          : `書き出しの状態を読み取れませんでした: ${errorMessage(error)}`,
+      );
+    },
+    [onGone],
+  );
+
+  return { failure, update, pollFailed };
 }
 
 /** 書き出しの依頼。未保存の変更を保存してから頼み、積まれたジョブを onQueued に渡す。 */
@@ -148,7 +165,7 @@ function useExportRequests(
           }
           const reason = errorMessage(error);
           setFailure(
-            `${labelOf(format)} の書き出しを依頼できませんでした: ${reason}`,
+            `${EXPORT_LABELS[format]} の書き出しを依頼できませんでした: ${reason}`,
           );
         })
         .finally(() => {
