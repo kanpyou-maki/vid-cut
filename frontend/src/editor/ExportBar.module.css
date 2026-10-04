@@ -7,6 +7,13 @@
   font-size: 0.875rem;
 }
 
+/* 幅が狭くても、見出しとボタンの文字は途中で折り返さない（折り返すのは、行と保存先のパス） */
+.heading,
+.bar button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .heading {
   font-weight: 600;
 }

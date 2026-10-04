@@ -55,14 +55,14 @@ export function ExportBar({
           onExport={() => exporting.request(format)}
         />
       ))}
+      {nothingToExport && (
+        <p className={styles.note}>{NOTHING_TO_EXPORT_NOTE}</p>
+      )}
       <Destination
         exports={exports}
         disabled={stopped || exporting.revealing || !hasExported(exports)}
         onReveal={exporting.reveal}
       />
-      {nothingToExport && (
-        <p className={styles.note}>{NOTHING_TO_EXPORT_NOTE}</p>
-      )}
       {exports.shared_with_other_lectures && (
         <p className={styles.note}>{SHARED_NOTE}</p>
       )}

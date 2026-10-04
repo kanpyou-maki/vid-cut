@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useApi } from "../api/ApiContext";
 import { ApiError, errorMessage } from "../api/errors";
-import type { ExportFormat, Exports } from "../api/types";
+import type { ExportFormat, Exports, Job } from "../api/types";
 import { EXPORT_FORMATS, isExporting, withExportJob } from "./exportView";
 
 const NOT_SAVED_MESSAGE = "保存できなかったため、書き出しを依頼していません";
@@ -53,94 +53,117 @@ export function useExports(
   initial: Exports,
   flushSave: () => Promise<boolean>,
 ): Exporting {
-  const api = useApi();
   const [exports, setExports] = useState(initial);
-  const [requesting, setRequesting] = useState<readonly ExportFormat[]>([]);
-  const [revealing, setRevealing] = useState(false);
-  const [requestFailure, setRequestFailure] = useState<string | null>(null);
-  const [revealFailure, setRevealFailure] = useState<string | null>(null);
+  const [generation, setGeneration] = useState(0);
   const [pollFailure, setPollFailure] = useState<string | null>(null);
   const [gone, setGone] = useState(false);
-  const [generation, setGeneration] = useState(0);
+  const markGone = useCallback(() => setGone(true), []);
 
-  const request = useCallback(
-    (format: ExportFormat) => {
-      const send = async () => {
-        if (!(await flushSave())) {
-          setRequestFailure(NOT_SAVED_MESSAGE);
-          return;
-        }
-        const job = await api.requestExport(lectureId, format);
-        setExports((current) => withExportJob(current, format, job));
-        setGeneration((current) => current + 1);
-      };
-      setRequestFailure(null);
-      setRequesting((current) => [...current, format]);
-      send()
-        .catch((error: unknown) => {
-          if (isGone(error)) {
-            setGone(true);
-          } else {
-            setRequestFailure(
-              `${labelOf(format)} の書き出しを依頼できませんでした: ${errorMessage(error)}`,
-            );
-          }
-        })
-        .finally(() => {
-          setRequesting((current) => current.filter((one) => one !== format));
-        });
-    },
-    [api, lectureId, flushSave],
-  );
-
-  const reveal = useCallback(() => {
-    setRevealFailure(null);
-    setRevealing(true);
-    api
-      .revealExports(lectureId)
-      .catch((error: unknown) => {
-        if (isGone(error)) {
-          setGone(true);
-        } else {
-          setRevealFailure(errorMessage(error));
-        }
-      })
-      .finally(() => setRevealing(false));
-  }, [api, lectureId]);
+  const queued = useCallback((format: ExportFormat, job: Job) => {
+    setExports((current) => withExportJob(current, format, job));
+    setGeneration((current) => current + 1);
+  }, []);
+  const requests = useExportRequests(lectureId, flushSave, queued, markGone);
+  const revealer = useReveal(lectureId, markGone);
 
   const update = useCallback((next: Exports) => {
     setExports(next);
     setPollFailure(null);
   }, []);
-
   const pollFailed = useCallback((error: Error | null) => {
-    if (error === null) {
-      setPollFailure(null);
-    } else if (isGone(error)) {
+    if (error !== null && isGone(error)) {
       setGone(true);
-    } else {
-      setPollFailure(
-        `書き出しの状態を読み取れませんでした: ${errorMessage(error)}`,
-      );
+      return;
     }
+    setPollFailure(
+      error === null
+        ? null
+        : `書き出しの状態を読み取れませんでした: ${errorMessage(error)}`,
+    );
   }, []);
 
-  const active =
-    !gone && EXPORT_FORMATS.some(({ format }) => isExporting(exports[format]));
-  const failures = [requestFailure, pollFailure, revealFailure].filter(
-    (failure): failure is string => failure !== null,
-  );
   return {
     exports,
-    active,
+    active:
+      !gone &&
+      EXPORT_FORMATS.some(({ format }) => isExporting(exports[format])),
     generation,
-    requesting,
-    revealing,
-    failures,
+    requesting: requests.requesting,
+    revealing: revealer.revealing,
+    failures: [requests.failure, pollFailure, revealer.failure].filter(
+      (failure): failure is string => failure !== null,
+    ),
     gone,
-    request,
-    reveal,
+    request: requests.request,
+    reveal: revealer.reveal,
     update,
     pollFailed,
   };
+}
+
+/** 書き出しの依頼。未保存の変更を保存してから頼み、積まれたジョブを onQueued に渡す。 */
+function useExportRequests(
+  lectureId: string,
+  flushSave: () => Promise<boolean>,
+  onQueued: (format: ExportFormat, job: Job) => void,
+  onGone: () => void,
+) {
+  const api = useApi();
+  const [requesting, setRequesting] = useState<readonly ExportFormat[]>([]);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const request = useCallback(
+    (format: ExportFormat) => {
+      const send = async () => {
+        if (!(await flushSave())) {
+          setFailure(NOT_SAVED_MESSAGE);
+          return;
+        }
+        onQueued(format, await api.requestExport(lectureId, format));
+      };
+      setFailure(null);
+      setRequesting((current) => [...current, format]);
+      send()
+        .catch((error: unknown) => {
+          if (isGone(error)) {
+            onGone();
+            return;
+          }
+          const reason = errorMessage(error);
+          setFailure(
+            `${labelOf(format)} の書き出しを依頼できませんでした: ${reason}`,
+          );
+        })
+        .finally(() => {
+          setRequesting((current) => current.filter((one) => one !== format));
+        });
+    },
+    [api, lectureId, flushSave, onQueued, onGone],
+  );
+
+  return { requesting, failure, request };
+}
+
+/** 書き出したファイルを Finder で見せるよう頼む（見せる場所は、サーバーが決める）。 */
+function useReveal(lectureId: string, onGone: () => void) {
+  const api = useApi();
+  const [revealing, setRevealing] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const reveal = useCallback(() => {
+    setFailure(null);
+    setRevealing(true);
+    api
+      .revealExports(lectureId)
+      .catch((error: unknown) => {
+        if (isGone(error)) {
+          onGone();
+        } else {
+          setFailure(errorMessage(error));
+        }
+      })
+      .finally(() => setRevealing(false));
+  }, [api, lectureId, onGone]);
+
+  return { revealing, failure, reveal };
 }
