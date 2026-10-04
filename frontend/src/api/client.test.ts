@@ -434,6 +434,34 @@ describe("createApi: 編集画面", () => {
   });
 });
 
+describe("createApi: プレビュー", () => {
+  it("proxyUrl は、録画ファイルの proxy 動画の URL を返す", () => {
+    const api = apiWith(async () => json(200, {}));
+
+    const url = new URL(api.proxyUrl("rec1"));
+
+    expect(url.origin).toBe(BASE_URL);
+    expect(url.pathname).toBe("/api/recordings/rec1/proxy");
+  });
+
+  it("proxyUrl だけは、トークンをクエリに付ける（video 要素はヘッダーを付けられない。ADR-005）", () => {
+    const api = apiWith(async () => json(200, {}));
+
+    const url = new URL(api.proxyUrl("rec1"));
+
+    expect([...url.searchParams.keys()]).toEqual(["token"]);
+    expect(url.searchParams.get("token")).toBe(TOKEN);
+  });
+
+  it("proxyUrl は、id をパスの 1 区切りとして扱う", () => {
+    const api = apiWith(async () => json(200, {}));
+
+    expect(new URL(api.proxyUrl("a/../b?x")).pathname).toBe(
+      "/api/recordings/a%2F..%2Fb%3Fx/proxy",
+    );
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(

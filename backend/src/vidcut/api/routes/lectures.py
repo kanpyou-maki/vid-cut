@@ -41,7 +41,8 @@ def merge_lectures(body: MergeIn, services: Services) -> Envelope[LectureRefOut]
 
 @router.get("/api/lectures/{lecture_id}")
 def get_lecture(lecture_id: PathId, services: Services) -> Envelope[LectureDetailOut]:
-    return ok(to_lecture_detail(services.lecture_views.detail(lecture_id)))
+    detail = services.lecture_views.detail(lecture_id)
+    return ok(to_lecture_detail(detail, services.export_settings))
 
 
 @router.put("/api/lectures/{lecture_id}/order")

@@ -16,6 +16,12 @@
   /* 要確認の印と、移動先の目印の色 */
   --color-review: light-dark(#8a5a00, #f0c060);
   --color-flash: light-dark(#ffe9a8, #6b5410);
+
+  /* プレビューの動画の余白（縦横の比が合わない部分）の色 */
+  --color-video-backdrop: #000;
+
+  /* プレビューの再生位置の文字の背景色 */
+  --color-playing: light-dark(#bfe3c6, #2f6b3a);
 }
 
 body {

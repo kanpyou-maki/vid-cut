@@ -1,0 +1,53 @@
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 残りの高さを動画に使う。縦横の比は保つ */
+.video {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  object-fit: contain;
+  background: var(--color-video-backdrop);
+  border-radius: 0.25rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bar {
+  flex: 1;
+  min-width: 0;
+}
+
+.time {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.option {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, currentColor 60%, transparent);
+}
+
+.failure {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-danger);
+}

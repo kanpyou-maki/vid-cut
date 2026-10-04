@@ -25,6 +25,8 @@ interface Visited {
 export function useReviewNavigation(
   targets: readonly ReviewTarget[],
   root: RefObject<HTMLElement | null>,
+  /** 移動したときに呼ぶ（プレビューの再生位置を合わせる）。呼ぶたびに変わらない関数を渡すこと */
+  onVisit: (target: ReviewTarget) => void,
 ): ReviewNavigation {
   const [visited, setVisited] = useState<Visited | null>(null);
   const found =
@@ -42,8 +44,9 @@ export function useReviewNavigation(
       if (root.current !== null) {
         reveal(root.current, targets[index]);
       }
+      onVisit(targets[index]);
     },
-    [targets, root, visited, found],
+    [targets, root, visited, found, onVisit],
   );
   const next = useCallback(() => move(1), [move]);
   const previous = useCallback(() => move(-1), [move]);

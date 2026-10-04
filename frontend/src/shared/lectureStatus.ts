@@ -21,7 +21,7 @@ const JUDGE_LABEL = "言い直しの判定";
 const ANALYZE_LABEL = "解析";
 const UNKNOWN_FAILURE_MESSAGE = "失敗しました";
 
-const MS_PER_SECOND = 1000;
+export const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const MINUTES_PER_HOUR = 60;
 
@@ -44,6 +44,11 @@ export function formatDuration(durationMs: number): string {
   return hours > 0
     ? `${hours}:${padded(minutes)}:${padded(seconds)}`
     : `${minutes}:${padded(seconds)}`;
+}
+
+/** 再生位置の表記。`formatDuration` と同じ形で、秒未満は切り捨てる（0.9 秒は `0:00`）。 */
+export function formatClock(timeMs: number): string {
+  return formatDuration(Math.floor(timeMs / MS_PER_SECOND) * MS_PER_SECOND);
 }
 
 /**

@@ -63,7 +63,6 @@
   当面の回避策: Biome の整形設定を Prettier の既定に合わせ（2 スペース・80 桁・ダブルクォート・セミコロン）、CSS は両者で結果が同じになる書き方にする
 - **Status:** resolved（フックを修正しテスト 14 件を追加。master: [claude-config-master#3](https://github.com/kanpyou-maki/claude-config-master/pull/3)。vid-cut には同じフックを取り込み済み）
 
-
 ### FRIC-004: Python のルール文書が black / isort を指定しているが、プロジェクトは ruff format を使う
 
 - **日付:** 2026-10-03
@@ -75,3 +74,18 @@
 - **対応:** ルール文書はツールを名指しせず `commands.lint` を正とした。style-reviewer に「整形・lint は `commands.lint` の結果で判定し、ツールの種類は問わない」を追加。
   python-patterns スキルの早見表も同じ方針に直した。vid-cut の `commands.lint` には `ruff format --check` を加え、整形の崩れを機械的に検出する
 - **Status:** resolved（vid-cut: [#6](https://github.com/kanpyou-maki/vid-cut/pull/6)。master: [claude-config-master#4](https://github.com/kanpyou-maki/claude-config-master/pull/4)）
+
+### FRIC-005: 挙動を変えたとき、Design Doc の前の節と README の前の手順が古いまま残る
+
+- **日付:** 2026-10-04
+- **状況:** M7 の PR 4・PR 5 の review-loop で、docs-reviewer が 2 回続けて同じ種類の BLOCK を出した。
+  PR 4 では `frontend/README.md` の PR 3 の手動確認の手順（戻した候補が「普通の文字に戻る」、凡例が 5 項目）、
+  PR 5 では `docs/design.md` 3-6 の PR 3 の節（「プレビューと波形は場所だけ用意する」）が、その PR で変えた挙動に追従していなかった。
+  新しい節と新しい手順は書いているのに、前の PR が書いた記述を直し忘れる
+- **根本原因の仮説:** ガードレール不足。Design Doc と README を PR ごとの節で積み上げているので、後の PR が前の節の内容を古くする。
+  それを確かめる手順が、実装側（Stage 0 の自己評価）にない。Stage 2 の docs-reviewer まで行ってから見つかるので、Stage 2 のやり直しになる
+- **改善候補:** `.claude/agents/self-reviewer.md` のチェックリストに「挙動・表示・文言を変えたら、変える前の文言や機能名で `docs/` と README を検索し、
+  前の節・前の手順に古い記述が残っていないかを確かめる」を足す。`frontend/README.md` の「画面の実装で守ること」にも同じ決まりを書く。
+  汎用的な改善なので、sync-upstream で master に還元する
+- **対応:** `frontend/README.md` の「画面の実装で守ること」に決まりを足し、`.claude/agents/self-reviewer.md` のチェックリストに「4. ドキュメントの追従」を足した
+- **Status:** resolved（vid-cut: M7 の PR 5。master への還元は未実施。sync-upstream で提案する）

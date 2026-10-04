@@ -125,3 +125,14 @@
 .manual {
   background: var(--color-cut-manual);
 }
+
+/* 段落の開始時刻は、クリックでその段落の頭へ再生位置を移せる */
+.time[data-chunk-time] {
+  cursor: pointer;
+}
+
+/* プレビューの再生位置の文字 */
+.playing {
+  background: var(--color-playing);
+  border-radius: 0.125rem;
+}

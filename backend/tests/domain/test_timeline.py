@@ -1,3 +1,7 @@
+import json
+from pathlib import Path
+from typing import Any
+
 import pytest
 
 from vidcut.domain.intervals import Interval
@@ -11,6 +15,31 @@ from vidcut.domain.timeline import (
 )
 
 DURATION = 5000
+
+SHARED_CASES_PATH = Path(__file__).parent / "keep_ranges_cases.json"
+"""frontend のプレビューも同じ計算を持つ（frontend/src/editor/keepRanges.ts）。
+
+両側のテストがこのファイルを読んで、同じ入力から同じ結果になることを確かめる。
+計算を変えたら、ここに例を足して、両側のテストを通すこと。
+"""
+
+
+def _spans(pairs: list[list[int]]) -> list[Interval]:
+    return [Interval(start, end) for start, end in pairs]
+
+
+@pytest.mark.parametrize(
+    "case", json.loads(SHARED_CASES_PATH.read_text()), ids=lambda case: str(case["name"])
+)
+def test_keep_ranges_matches_the_cases_shared_with_the_frontend(case: dict[str, Any]) -> None:
+    kept = keep_ranges(
+        case["duration_ms"],
+        cuts=_spans(case["cuts"]),
+        silences=_spans(case["silences"]),
+        pad_before_ms=case["pad_before_ms"],
+        pad_after_ms=case["pad_after_ms"],
+    )
+    assert kept == tuple(_spans(case["expected"]))
 
 
 class TestKeepRanges:

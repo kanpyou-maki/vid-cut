@@ -575,6 +575,16 @@ export interface components {
          */
         JobStatus: "queued" | "running" | "succeeded" | "failed";
         /**
+         * KeepPaddingOut
+         * @description 書き出しが、残す発話の前後に付ける余白（隣の無音の中にだけ伸ばす。Design Doc 3-4）。
+         */
+        KeepPaddingOut: {
+            /** After Ms */
+            after_ms: number;
+            /** Before Ms */
+            before_ms: number;
+        };
+        /**
          * LectureDetailOut
          * @description 編集画面に必要なもの一式。
          *
@@ -582,6 +592,7 @@ export interface components {
          *     戻したものを除き、manual_cuts を足したもの。
          *     judged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。
          *     dropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。
+         *     keep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。
          */
         LectureDetailOut: {
             /** Dropped Restored Ids */
@@ -595,6 +606,7 @@ export interface components {
             judged: boolean;
             /** Judged Suggestions */
             judged_suggestions: components["schemas"]["SuggestionOut"][];
+            keep_padding: components["schemas"]["KeepPaddingOut"];
             /** Recordings */
             recordings: components["schemas"]["RecordingDetailOut"][];
             status: components["schemas"]["LectureStatus"];

@@ -21,14 +21,26 @@ import {
   tokenRestorations,
 } from "./edits";
 import { canRedo, canUndo, startHistory } from "./history";
+import { buildTimeline } from "./timeline";
 import { selectedTokenRange } from "./tokenSelection";
-import { buildTranscript, type Transcript } from "./transcript";
+import {
+  buildTranscript,
+  type ReviewTarget,
+  type Transcript,
+} from "./transcript";
 import { useAutosave } from "./useAutosave";
 import {
   useEditorKeys,
   useHasTokenSelection,
   useUnloadWarning,
 } from "./useEditorKeys";
+import {
+  reviewPosition,
+  tokenAt,
+  usePlayingToken,
+  useTranscriptSeek,
+} from "./usePlaybackSync";
+import { type Player, usePlayer } from "./usePlayer";
 import {
   type ReviewNavigation,
   useReviewNavigation,
@@ -55,6 +67,8 @@ export interface Editing extends EditActions {
   restoredIds: readonly string[];
   /** まだ確認が要る箇所の間の移動 */
   review: ReviewNavigation;
+  /** カット後のプレビューの再生 */
+  player: Player;
   /** 文字起こしの要素に付ける（選択範囲をトークンの範囲に直すのに使う） */
   transcriptRoot: RefObject<HTMLDivElement | null>;
   hasSelection: boolean;
@@ -109,7 +123,27 @@ export function useEditing(detail: LectureDetail): Editing {
   const transcriptRoot = useRef<HTMLDivElement>(null);
   const hasSelection = useHasTokenSelection(transcriptRoot);
   const actions = useEditActions(dispatch, transcriptRoot);
-  const review = useReviewNavigation(reviewTargets, transcriptRoot);
+
+  const timeline = useMemo(() => buildTimeline(detail, draft), [detail, draft]);
+  const player = usePlayer(timeline, api.proxyUrl);
+  const { seek } = player;
+  useTranscriptSeek(transcriptRoot, transcript, seek);
+  const playingToken = useMemo(
+    () => tokenAt(transcript, player.position),
+    [transcript, player.position],
+  );
+  usePlayingToken(transcriptRoot, playingToken?.index ?? null, player.playing);
+  // 要確認の箇所へ移ったら、そこから聞けるよう、再生位置も合わせる
+  const visit = useCallback(
+    (target: ReviewTarget) => {
+      const position = reviewPosition(transcript, target);
+      if (position !== null) {
+        seek(position);
+      }
+    },
+    [transcript, seek],
+  );
+  const review = useReviewNavigation(reviewTargets, transcriptRoot, visit);
 
   useEditorKeys(!locked, {
     onDelete: actions.deleteSelection,
@@ -117,6 +151,7 @@ export function useEditing(detail: LectureDetail): Editing {
     onRedo: actions.redo,
     onNextReview: review.next,
     onPreviousReview: review.previous,
+    onTogglePlay: player.toggle,
   });
   useUnloadWarning(!locked && status.name !== "saved");
 
@@ -127,6 +162,7 @@ export function useEditing(detail: LectureDetail): Editing {
     restored,
     restoredIds: draft.restoredIds,
     review,
+    player,
     transcriptRoot,
     hasSelection,
     canUndo: canUndo(history),

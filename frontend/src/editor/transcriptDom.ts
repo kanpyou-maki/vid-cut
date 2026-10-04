@@ -5,6 +5,8 @@
 
 /** 判定の理由を出す対象（自動の削除候補。削除済み・戻し済み）の id。CutReason が読む。 */
 export const SUGGESTION_ID_ATTRIBUTE = "data-suggestion-id";
+/** 段落の開始時刻の表示（クリックで、その段落の頭へ再生位置を移す） */
+export const CHUNK_TIME_ATTRIBUTE = "data-chunk-time";
 /** 段落のチャンクの id（言い直し先への移動に使う） */
 export const CHUNK_ID_ATTRIBUTE = "data-chunk-id";
 /** 未認識の発話の印の id（要確認の箇所への移動に使う） */

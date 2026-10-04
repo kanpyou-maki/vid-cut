@@ -11,6 +11,7 @@ from tests.pipeline.judge_fakes import FakeModel
 from vidcut.api.app import ApiSettings, create_app
 from vidcut.api.security import TOKEN_HEADER, local_guard
 from vidcut.bootstrap import Api, MlTools, build_api, build_app
+from vidcut.pipeline.export import ExportSettings
 
 TOKEN = "test-token-" + "x" * 32
 BASE_URL = "http://127.0.0.1:8765"
@@ -76,13 +77,17 @@ class ApiEnv:
         return lectures
 
 
-def build_env(tmp_path: Path, media: FakeMediaTool | None = None) -> ApiEnv:
+def build_env(
+    tmp_path: Path,
+    media: FakeMediaTool | None = None,
+    export_settings: ExportSettings | None = None,
+) -> ApiEnv:
     """ホームは tmp_path/home、ワークスペースはその下の VidCut。"""
     home = tmp_path / "home"
     home.mkdir()
     workspace = home / "VidCut"
     media_tool = media or FakeMediaTool()
-    api = build_api(workspace, media=media_tool)
+    api = build_api(workspace, media=media_tool, export_settings=export_settings)
     app = create_app(api, ApiSettings(guard=local_guard(TOKEN, port=8765), home=home))
     client = TestClient(
         app, base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN}, raise_server_exceptions=False

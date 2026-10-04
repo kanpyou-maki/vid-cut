@@ -17,6 +17,7 @@ from vidcut.api.outputs import (
     ImportResultOut,
     JobListItemOut,
     JobOut,
+    KeepPaddingOut,
     LectureDetailOut,
     LectureRefOut,
     LectureSummaryOut,
@@ -40,6 +41,7 @@ from vidcut.domain.models import (
     Token,
 )
 from vidcut.pipeline.analysis_result import Analysis
+from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.ports import Peaks, StoredJob
 from vidcut.services.file_browser import Listing
 from vidcut.services.imports import ImportResult
@@ -206,7 +208,7 @@ def to_edit_state(state: EditState) -> EditStateOut:
     )
 
 
-def to_lecture_detail(detail: LectureDetail) -> LectureDetailOut:
+def to_lecture_detail(detail: LectureDetail, settings: ExportSettings) -> LectureDetailOut:
     summary = detail.summary
     judgement = detail.judgement
     return LectureDetailOut(
@@ -225,6 +227,9 @@ def to_lecture_detail(detail: LectureDetail) -> LectureDetailOut:
         judged=judgement is not None,
         judged_suggestions=[to_suggestion(s) for s in (judgement.suggestions if judgement else ())],
         dropped_restored_ids=list(judgement.dropped_restored_ids) if judgement else [],
+        keep_padding=KeepPaddingOut(
+            before_ms=settings.pad_before_ms, after_ms=settings.pad_after_ms
+        ),
         edit_state=to_edit_state(detail.edit_state),
     )
 
