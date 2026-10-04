@@ -402,9 +402,27 @@ describe("createApi: 編集画面", () => {
     });
   });
 
+  it("dismissDroppedRestorations は、表示した id を送り、残っている id を返す", async () => {
+    const { api, sent } = recordingApi({ dropped_restored_ids: ["b"] });
+
+    await expect(
+      api.dismissDroppedRestorations("lec1", ["a", "c"]),
+    ).resolves.toEqual(["b"]);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(
+      `${BASE_URL}/api/lectures/lec1/dropped-restorations/dismiss`,
+    );
+    expect(sent[0].body).toEqual({ ids: ["a", "c"] });
+  });
+
   it.each<[string, (api: ReturnType<typeof apiWith>) => Promise<unknown>]>([
     ["getLecture", (api) => api.getLecture("lec1")],
     ["saveEdits", (api) => api.saveEdits("lec1", EDIT_STATE)],
+    [
+      "dismissDroppedRestorations",
+      (api) => api.dismissDroppedRestorations("lec1", ["a"]),
+    ],
   ])("%s は、トークンをヘッダーにだけ付ける", async (_name, call) => {
     const { api, sent } = recordingApi(DETAIL);
 

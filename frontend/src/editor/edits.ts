@@ -1,6 +1,7 @@
 import type { CutKind, EditState, Edits, ManualCut } from "../api/types";
 import {
   doubledCenter,
+  type ReviewTarget,
   type Transcript,
   type TranscriptToken,
 } from "./transcript";
@@ -24,6 +25,12 @@ export interface TokenCut {
   /** 候補の id か、手動の区間の id */
   id: string;
   kind: CutKind | "manual";
+}
+
+/** 戻した候補（自動の削除候補のうち、利用者が削除しないと決めたもの）。 */
+export interface RestoredSuggestion {
+  id: string;
+  kind: CutKind;
 }
 
 /** 選んだトークンの範囲（Transcript.tokens の添字。last を含む）。 */
@@ -65,12 +72,12 @@ export function tokenCuts(
 ): readonly (TokenCut | null)[] {
   const restored = new Set(draft.restoredIds);
   // あとのものが、先のものを上書きする
-  const spans: readonly (Span & { cut: TokenCut })[] = [
+  return markTokens<TokenCut>(transcript, [
     ...draft.manualCuts.map((cut) => ({
       recordingId: cut.recording_id,
       startMs: cut.start_ms,
       endMs: cut.end_ms,
-      cut: { source: "manual", id: cut.id, kind: "manual" } as const,
+      mark: { source: "manual", id: cut.id, kind: "manual" } as const,
     })),
     ...transcript.suggestions
       .filter((suggestion) => !restored.has(suggestion.id))
@@ -78,20 +85,49 @@ export function tokenCuts(
         recordingId: suggestion.recording_id,
         startMs: suggestion.start_ms,
         endMs: suggestion.end_ms,
-        cut: {
+        mark: {
           source: "suggestion",
           id: suggestion.id,
           kind: suggestion.kind,
         } as const,
       })),
-  ];
+  ]);
+}
+
+/**
+ * トークンごとの、戻した候補（戻した候補に入っていないトークンは null）。Transcript.tokens と同じ並び。
+ * 画面は、削除されていないトークンにだけ「戻し済み」の印を出す（手動の区間と重なれば、削除済みが勝つ）。
+ */
+export function tokenRestorations(
+  transcript: Transcript,
+  draft: EditDraft,
+): readonly (RestoredSuggestion | null)[] {
+  const restored = new Set(draft.restoredIds);
+  return markTokens<RestoredSuggestion>(
+    transcript,
+    transcript.suggestions
+      .filter((suggestion) => restored.has(suggestion.id))
+      .map((suggestion) => ({
+        recordingId: suggestion.recording_id,
+        startMs: suggestion.start_ms,
+        endMs: suggestion.end_ms,
+        mark: { id: suggestion.id, kind: suggestion.kind },
+      })),
+  );
+}
+
+/** 中央が区間 [start, end) に入っているトークンに、その区間の印を付ける（あとの区間が勝つ）。 */
+function markTokens<T>(
+  transcript: Transcript,
+  spans: readonly (Span & { mark: T })[],
+): (T | null)[] {
   const tokensByRecording = new Map(
     transcript.recordings.map((recording) => [
       recording.id,
       recording.byCenter,
     ]),
   );
-  const cuts = new Array<TokenCut | null>(transcript.tokens.length).fill(null);
+  const marks = new Array<T | null>(transcript.tokens.length).fill(null);
   for (const span of spans) {
     const tokens = tokensByRecording.get(span.recordingId) ?? [];
     for (
@@ -100,10 +136,10 @@ export function tokenCuts(
       doubledCenter(tokens[position]) < 2 * span.endMs;
       position += 1
     ) {
-      cuts[tokens[position].index] = span.cut;
+      marks[tokens[position].index] = span.mark;
     }
   }
-  return cuts;
+  return marks;
 }
 
 /** 中央が timeMs 以降の、最初のトークンの位置（tokens は中央の順に並んでいる）。 */
@@ -196,4 +232,32 @@ export function restoreCut(draft: EditDraft, cut: TokenCut): EditDraft {
   return draft.restoredIds.includes(cut.id)
     ? draft
     : { ...draft, restoredIds: [...draft.restoredIds, cut.id] };
+}
+
+/** 戻した候補を、削除に戻す（「戻した候補」から外す）。 */
+export function reapplySuggestion(
+  draft: EditDraft,
+  suggestionId: string,
+): EditDraft {
+  return draft.restoredIds.includes(suggestionId)
+    ? {
+        ...draft,
+        restoredIds: draft.restoredIds.filter((id) => id !== suggestionId),
+      }
+    : draft;
+}
+
+/**
+ * まだ確認が要る箇所。トークンがすべて削除済みの箇所は、聞いて確かめなくてよいので除く
+ * （未認識の発話は、トークンがないので常に残す）。
+ */
+export function pendingReviewTargets(
+  transcript: Transcript,
+  cuts: readonly (TokenCut | null)[],
+): ReviewTarget[] {
+  return transcript.reviewTargets.filter(
+    (target) =>
+      target.kind === "marker" ||
+      cuts.slice(target.first, target.last + 1).some((cut) => cut === null),
+  );
 }

@@ -12,3 +12,9 @@
 .line {
   margin: 0;
 }
+
+.review {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}

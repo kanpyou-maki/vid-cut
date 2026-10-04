@@ -134,6 +134,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/lectures/{lecture_id}/dropped-restorations/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss Dropped Restorations
+         * @description 引き継げなかった「戻した候補」の通知を閉じる。消すのは、画面が表示した id だけ。
+         */
+        post: operations["dismiss_dropped_restorations_api_lectures__lecture_id__dropped_restorations_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lectures/{lecture_id}/edits": {
         parameters: {
             query?: never;
@@ -283,6 +303,22 @@ export interface components {
          * @enum {string}
          */
         CutKind: "silence" | "filler" | "retake" | "misspeak" | "noise";
+        /**
+         * DismissDroppedIn
+         * @description 閉じる通知に出ていた id（画面が表示したものだけ）。
+         */
+        DismissDroppedIn: {
+            /** Ids */
+            ids: string[];
+        };
+        /**
+         * DroppedRestoredOut
+         * @description 通知を閉じたあとに残っている、引き継げなかった「戻した候補」。
+         */
+        DroppedRestoredOut: {
+            /** Dropped Restored Ids */
+            dropped_restored_ids: string[];
+        };
         /** EditStateOut */
         EditStateOut: {
             /** Manual Cuts */
@@ -300,6 +336,14 @@ export interface components {
             restored_suggestion_ids: string[];
             /** Version */
             version: number;
+        };
+        /** Envelope[DroppedRestoredOut] */
+        Envelope_DroppedRestoredOut_: {
+            data?: components["schemas"]["DroppedRestoredOut"] | null;
+            /** Error */
+            error?: string | null;
+            /** Success */
+            success: boolean;
         };
         /** Envelope[EditStateOut] */
         Envelope_EditStateOut_: {
@@ -1167,6 +1211,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_LectureDetailOut_"];
+                };
+            };
+            /** @description トークンが正しくない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Host または Origin が受け付けられない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 指定されたデータが見つからない */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 入力が正しくない */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 想定していない失敗（詳細はログ） */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    dismiss_dropped_restorations_api_lectures__lecture_id__dropped_restorations_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lecture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DismissDroppedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DroppedRestoredOut_"];
                 };
             };
             /** @description トークンが正しくない */

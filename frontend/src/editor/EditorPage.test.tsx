@@ -279,7 +279,8 @@ describe("EditorPage: 文字起こしの表示", () => {
       name: "「かきく」を元に戻す（言い直し）",
     });
     expect(cut).toHaveTextContent("かきく");
-    expect(cut).toHaveAttribute("title", "言い直し（クリックで元に戻す）");
+    // 自動の候補の説明は、理由と一緒に出す（title は付けない。二重に出るため）
+    expect(cut).not.toHaveAttribute("title");
   });
 
   it("戻した候補は、普通の文字として表示する", async () => {
@@ -308,10 +309,10 @@ describe("EditorPage: 文字起こしの表示", () => {
 
     expect(
       screen.getByRole("button", { name: "「いう」を元に戻す（手動）" }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute("title", "手動（クリックで元に戻す）");
   });
 
-  it("削除の種類の凡例を表示する（無音は文字起こしに出さないので、載せない）", async () => {
+  it("削除の種類・戻し済み・要確認の凡例を表示する（無音は文字起こしに出さないので、載せない）", async () => {
     renderEditor(editorApi(DETAIL).api);
     await transcriptPane();
 
@@ -320,7 +321,15 @@ describe("EditorPage: 文字起こしの表示", () => {
       within(legend)
         .getAllByRole("listitem")
         .map((item) => item.textContent),
-    ).toEqual(["言い直し", "言い間違い", "雑音", "フィラー", "手動"]);
+    ).toEqual([
+      "言い直し",
+      "言い間違い",
+      "雑音",
+      "フィラー",
+      "手動",
+      "戻し済み",
+      "要確認",
+    ]);
   });
 
   it("録画ファイルが 1 本なら、ファイル名の見出しを出さない", async () => {

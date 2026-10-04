@@ -8,11 +8,17 @@ import pytest
 from tests.pipeline.fakes import DURATION_MS, NoRecordings, make_recording
 from vidcut.adapters.sqlite.database import open_database
 from vidcut.adapters.sqlite.edit_states import SqliteEditStateRepository
+from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
 from vidcut.adapters.sqlite.lectures import SqliteLectureRepository
 from vidcut.adapters.sqlite.recordings import SqliteRecordingRepository
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import EditState, Lecture, ManualCut
-from vidcut.pipeline.ports import InvalidInputError, NotFoundError, VersionConflictError
+from vidcut.pipeline.ports import (
+    InvalidInputError,
+    Judgement,
+    NotFoundError,
+    VersionConflictError,
+)
 from vidcut.services.edits import EditService
 
 
@@ -20,6 +26,7 @@ from vidcut.services.edits import EditService
 class Env:
     conn: sqlite3.Connection
     edit_states: SqliteEditStateRepository
+    judgements: SqliteJudgementRepository
     service: EditService
 
 
@@ -34,8 +41,11 @@ def env(tmp_path: Path) -> Iterator[Env]:
     lectures.save(Lecture(id="l1", title="S05-12", recording_ids=("r1", "r2")))
     lectures.save(Lecture(id="l2", title="S05-13", recording_ids=("r3",)))
     edit_states = SqliteEditStateRepository(conn)
-    service = EditService(lectures=lectures, recordings=recordings, edit_states=edit_states)
-    yield Env(conn=conn, edit_states=edit_states, service=service)
+    judgements = SqliteJudgementRepository(conn)
+    service = EditService(
+        lectures=lectures, recordings=recordings, edit_states=edit_states, judgements=judgements
+    )
+    yield Env(conn=conn, edit_states=edit_states, judgements=judgements, service=service)
     conn.close()
 
 
@@ -105,6 +115,23 @@ class TestSave:
             lectures=SqliteLectureRepository(env.conn),
             recordings=NoRecordings(),
             edit_states=env.edit_states,
+            judgements=env.judgements,
         )
         with pytest.raises(NotFoundError, match="録画ファイル"):
             service.save(edits(0, cut("m1")))
+
+
+class TestDismissDroppedRestorations:
+    def test_removes_the_shown_ids_and_returns_the_rest(self, env: Env) -> None:
+        env.judgements.save(Judgement("l1", "k", (), dropped_restored_ids=("a", "b")))
+        assert env.service.dismiss_dropped_restorations("l1", ["a"]) == ("b",)
+        judgement = env.judgements.get("l1")
+        assert judgement is not None
+        assert judgement.dropped_restored_ids == ("b",)
+
+    def test_unjudged_lecture_has_nothing_to_dismiss(self, env: Env) -> None:
+        assert env.service.dismiss_dropped_restorations("l1", ["a"]) == ()
+
+    def test_unknown_lecture(self, env: Env) -> None:
+        with pytest.raises(NotFoundError):
+            env.service.dismiss_dropped_restorations("nope", ["a"])

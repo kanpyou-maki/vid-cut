@@ -76,3 +76,38 @@ class TestSqliteJudgementRepository:
         conn.execute("UPDATE judgements SET suggestions = '[{\"id\": 1}]'")
         with pytest.raises(ValueError, match="判定結果"):
             repo.get("l1")
+
+
+class TestDismissDropped:
+    def dropped(self, *ids: str) -> Judgement:
+        return Judgement(lecture_id="l1", input_key="k1", suggestions=(), dropped_restored_ids=ids)
+
+    def test_removes_only_the_given_ids_and_returns_the_rest(
+        self, repo: SqliteJudgementRepository
+    ) -> None:
+        repo.save(self.dropped("a", "b", "c"))
+        assert repo.dismiss_dropped("l1", frozenset({"a", "c"})) == ("b",)
+        saved = repo.get("l1")
+        assert saved is not None
+        assert saved.dropped_restored_ids == ("b",)
+
+    def test_keeps_the_rest_of_the_judgement(self, repo: SqliteJudgementRepository) -> None:
+        repo.save(judgement())
+        repo.dismiss_dropped("l1", frozenset({"r1-c0009-judged"}))
+        saved = repo.get("l1")
+        assert saved is not None
+        assert saved == Judgement("l1", "k1", judgement().suggestions, ())
+
+    def test_unknown_ids_are_ignored(self, repo: SqliteJudgementRepository) -> None:
+        repo.save(self.dropped("a"))
+        assert repo.dismiss_dropped("l1", frozenset({"zzz"})) == ("a",)
+
+    def test_unjudged_lecture_has_nothing_to_dismiss(self, repo: SqliteJudgementRepository) -> None:
+        assert repo.dismiss_dropped("l1", frozenset({"a"})) == ()
+        assert repo.get("l1") is None
+
+    def test_ids_added_by_a_newer_judgement_are_kept(self, repo: SqliteJudgementRepository) -> None:
+        """画面が見たのは a だけ。そのあと判定がやり直されて b が増えても、b は消さない。"""
+        repo.save(self.dropped("a"))
+        repo.save(self.dropped("a", "b"))
+        assert repo.dismiss_dropped("l1", frozenset({"a"})) == ("b",)

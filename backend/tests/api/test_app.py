@@ -62,7 +62,7 @@ class TestOpenApi:
         schema = env.app.openapi()
         assert "HTTPValidationError" not in schema["components"]["schemas"]
         operations = [op for path in schema["paths"].values() for op in path.values()]
-        assert len(operations) == 14
+        assert len(operations) == 15
         for operation in operations:
             for status in ("401", "403", "404", "422", "500"):
                 content = operation["responses"][status]["content"]["application/json"]

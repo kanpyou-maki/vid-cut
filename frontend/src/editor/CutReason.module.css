@@ -1,0 +1,32 @@
+/* 判定の理由。位置（top / bottom / left）は CutReason.tsx が決める。
+   幅は CutReason.tsx の WIDTH_PX と同じ値にすること */
+.reason {
+  position: fixed;
+  z-index: 10;
+  box-sizing: border-box;
+  width: 352px;
+  max-width: calc(100vw - 16px);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background: Canvas;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 0.375rem;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+}
+
+.kind {
+  margin: 0;
+  font-weight: 600;
+}
+
+.line {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, currentColor 60%, transparent);
+}

@@ -7,7 +7,7 @@ import json
 import sqlite3
 from typing import Any
 
-from vidcut.adapters.sqlite.database import NOW
+from vidcut.adapters.sqlite.database import NOW, transaction
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, CutSuggestion
 from vidcut.pipeline.ports import Judgement, NotFoundError
@@ -54,6 +54,27 @@ class SqliteJudgementRepository:
             )
         except sqlite3.IntegrityError as e:
             raise NotFoundError(f"レクチャーがありません: {judgement.lecture_id}") from e
+
+    def dismiss_dropped(self, lecture_id: str, ids: frozenset[str]) -> tuple[str, ...]:
+        # 判定結果の本体（input_key・suggestions）には触れず、記録の列だけを書き換える
+        with transaction(self._conn):
+            row = self._conn.execute(
+                "SELECT dropped_restored_ids FROM judgements WHERE lecture_id = ?", (lecture_id,)
+            ).fetchone()
+            if row is None:
+                return ()
+            try:
+                recorded = tuple(str(i) for i in json.loads(row["dropped_restored_ids"]))
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"保存された判定結果の形が不正です（{lecture_id}）: {e}") from e
+            remaining = tuple(i for i in recorded if i not in ids)
+            if remaining != recorded:
+                self._conn.execute(
+                    f"UPDATE judgements SET dropped_restored_ids = ?, updated_at = {NOW}"
+                    " WHERE lecture_id = ?",
+                    (json.dumps(list(remaining)), lecture_id),
+                )
+            return remaining
 
 
 def _from_suggestion(suggestion: CutSuggestion) -> dict[str, str | int | None]:

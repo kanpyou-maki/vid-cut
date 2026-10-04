@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）は main にマージ済み（PR #1〜#13）。M7（frontend）を 7 本の PR に分けて実装中。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、ユーザーの手動確認とマージ待ち。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）・PR 2（素材一覧）・PR 3（編集状態と文字起こしの基本）は main にマージ済み（PR #1〜#14）。M7（frontend）を 7 本の PR に分けて実装中。PR 4（要確認・判定理由・通知。`feat/m7-transcript-review`）を、ユーザー不在の間に推奨案で実装した（画面の構成はユーザー確認待ち）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -37,12 +37,13 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 2（素材一覧。PR #13）までマージ済み。PR 3（編集状態と文字起こしの基本。`feat/m7-editor-state`）は review-loop を通過し、PR [#14](https://github.com/kanpyou-maki/vid-cut/pull/14) のマージ待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 3（編集状態と文字起こしの基本。PR #14）までマージ済み。PR 4（`feat/m7-transcript-review`）は review-loop を通過し、PR [#15](https://github.com/kanpyou-maki/vid-cut/pull/15) のマージ待ち（画面の構成はユーザー確認待ち）
 
 ## 次にやること
 
-- [ ] M7 の PR 3 の手動確認（ユーザー）: `frontend/README.md` の「手で確かめる（M7 の PR 3: 編集状態と文字起こしの基本）」。問題なければマージ
-- [ ] M7: frontend。PR 3 のあとは PR 4（`feat/m7-transcript-review`: 要確認の印と移動キー、判定理由、`dropped_restored_ids` の通知）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
+- [ ] M7 の PR 4 の確認（ユーザー）: 画面の構成（Design Doc 3-6 の「要確認・判定理由・通知」。不在の間に推奨案で実装した。PR の説明の先頭に、選んだ内容と代替案がある）と、
+      手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 4: 要確認・判定理由・通知）」）。問題なければマージ
+- [ ] M7: frontend。PR 4 のあとは PR 5（`feat/m7-preview`: プレビュー）。ユーザー不在の間は、PR 4 の上に積んで進める（PR 4 に直しが入ったら、PR 5 も直す。今夜は PR 5 まで。PR 6 と PR 7 は、ユーザーが戻ってから）。PR の分け方と順番は実装計画の M7（PR 1 土台 → 2 素材一覧 → 3 編集状態と文字起こしの基本 → 4 要確認・判定理由・通知 → 5 プレビュー → 6 波形 → 7 書き出し）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない。
       波形の部品を入れたあと（PR 6）、CSP の違反がコンソールに出ないかを確かめ、`style-src 'unsafe-inline'` を外せるか試す
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -145,10 +146,22 @@ _なし_
 - PR 3 の review-loop: Stage 0（self）・Stage 1（arch / style / test）・Stage 2（security / docs）すべて PASS。提案を受けて、トークンの通し番号を画面に並ぶ順に振るようにした
   （削除の判定は、中央の時刻の順の一覧 `byCenter` で行う。チャンクのトークンが時刻の上で入り交じっていても、選択範囲と通し番号がずれない）。
   セキュリティの LOW（情報）: ジョブの `error_message` は backend の定型文をそのまま出す（素材一覧と同じ）。タブを閉じるときは確認を出すだけで、保存は走らない（承認済みの方針）
+- PR 4（`feat/m7-transcript-review`）: 要確認・判定理由・通知。ユーザー不在（2026-10-04 の夜）の間に、画面の構成を推奨案で決めて実装した（**ユーザー確認待ち**。Design Doc 3-6）。
+  backend に `POST /api/lectures/{id}/dropped-restorations/dismiss` を足した（`EditService.dismiss_dropped_restorations` → `JudgementRepository.dismiss_dropped`。記録の列だけを 1 トランザクションで書き換える）。
+  frontend は、`Api.dismissDroppedRestorations`、要確認の印（`transcript.ts` の `lowConfidence`・`unrecognized`・`reviewTargets`）と移動（`useReviewNavigation.ts`。N / Shift+N）、
+  判定理由（`CutReason.tsx`。文字起こしを描き直さないよう、カーソルの出入りを `document` で受ける）、戻した候補の表示と「削除に戻す」（`edits.ts` の `tokenRestorations`・`reapplySuggestion`）、通知（`DroppedNotice.tsx`）。
+  自動の候補の説明は理由の表示に移したので、削除済みの候補の `title` はなくなった（手動の削除には残る）
+- PR 4 で確認済み（PR 3 と同じ一時ワークスペース。引き継げなかった候補 2 件と、未認識の発話 1 件を足した）: 通知の件数と「閉じる」（サーバーの記録からも消える）、
+  要確認の数・波線・未認識の発話の行、ボタンと N / Shift+N での移動（選択されて見える位置に出る）、カーソルを合わせると理由がすぐ下に出る、理由の上へカーソルを移しても消えない、
+  「言い直し先へ移動」で段落が出て目印が付く、クリックで「戻し済み」になり理由も切り替わる、もう一度クリックで削除に戻って保存される。PR 3 の項目と合わせて 44 項目 OK。frontend のテスト 423 件 / カバレッジ 99%（分岐 96%）、backend 1,029 件
+- PR 4 の review-loop: Stage 0・Stage 1・Stage 2 すべて PASS（docs-reviewer は 1 回 BLOCK: `frontend/README.md` の PR 3 の手順に、PR 4 で変わった表示が古いまま残っていた → 修正して PASS）。
+  挙動を変えたら、前の PR の手動確認の手順も、いまの挙動に合わせて直す。セキュリティの指摘なし
+- PR 4 で踏んだこと: 要素ごとの `mouseenter` / `mouseleave`（React の `onMouseEnter` と、要素に直接付けたリスナー）を混ぜると、「対象から出た」と「理由に入った」の順序が食い違い、理由の上に移ったときに消える
+  （jsdom のテストでは見つからず、実物の Chrome で見つけた。カーソルの出入りは `document` の `mouseover` 1 か所で受ける。再発を防ぐテストを足し、旧い受け方に戻すと落ちることを確かめた）。段落に `tabIndex={-1}` を付けると、クリックでフォーカスの枠が付く（移動先の目印は、クラスの付け外しによる一時的な背景色にした）
 - 編集画面で踏んだこと: `Transcript.tsx` と `transcript.ts` を同じフォルダに置くと、macOS（大文字と小文字を区別しない）で読み込みを取り違える（部品は `TranscriptView.tsx` にした）。
   選択範囲とトークンの重なりは、トークンの要素ではなく中の文字（テキストノード）の範囲で比べる（要素で比べると、文字の境目で始まる選択が隣のトークンにも重なって見える）。
   画面のテストでタイマーを偽物にするときは `vi.useFakeTimers({ shouldAdvanceTime: true })` を使い、描いた直後は `advance(0)` で effect を流してからキーを送る（`src/test/editorPage.tsx`）
-- 編集画面の残り・制限: 無音の候補はトークンを持たないので文字起こしに出ず、波形（PR 6）まで画面から戻せない。編集できる状態になったあとは読み直さない（別のタブでの並べ替えや判定のやり直しは、版が変わらなければ気づかない。PR 4 の通知で扱う）。
+- 編集画面の残り・制限: 無音の候補はトークンを持たないので文字起こしに出ず、波形（PR 6）まで画面から戻せない。編集できる状態になったあとは読み直さない（別のタブでの並べ替えや判定のやり直しは、版が変わらなければ気づかない。PR 4 の通知は、開いたときの分だけを出す。開いている間の変化を知らせる仕組みは、まだない）。
   解析結果が読めない録画ファイルは、解析し直す必要があることを伝えるだけ（再解析は API のみ。決定事項 18）。サーバーを起動し直すとトークンが変わるので、未保存の編集は保存できず、読み込み直すと失われる。
   編集してから 1 秒以内に素材一覧へ戻り、すぐ同じレクチャーを開き直すと、離れるときの保存と読み込みが前後して、次の編集で 409 のダイアログが出ることがある（読み込み直せば続けられる）。
   編集のたびに文字起こし全体を描き直す（検証素材の 1,505 トークンでは問題なし。長い素材で重ければ、段落ごとに描き直しを抑える）

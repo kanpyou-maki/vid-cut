@@ -7,7 +7,7 @@ import { Link } from "../shared/navigation";
 import { LIBRARY_PATH } from "../shared/routes";
 import { usePolling } from "../shared/usePolling";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
-import { draftOf, tokenCuts } from "./edits";
+import { draftOf, tokenCuts, tokenRestorations } from "./edits";
 import styles from "./LectureGate.module.css";
 import { type LecturePhase, lecturePhase } from "./lecturePhase";
 import { TranscriptView } from "./TranscriptView";
@@ -109,13 +109,21 @@ function Waiting({
 /** 判定を待つ間の、読み取り専用の文字起こし（終わると削除候補が差し替わるので、編集させない）。 */
 function ReadOnlyPanes({ detail }: { detail: LectureDetail }) {
   const transcript = useMemo(() => buildTranscript(detail), [detail]);
-  const cuts = useMemo(
-    () => tokenCuts(transcript, draftOf(detail.edit_state)),
-    [transcript, detail],
+  const draft = useMemo(() => draftOf(detail.edit_state), [detail]);
+  const cuts = useMemo(() => tokenCuts(transcript, draft), [transcript, draft]);
+  const restored = useMemo(
+    () => tokenRestorations(transcript, draft),
+    [transcript, draft],
   );
   return (
     <EditorPanes
-      transcript={<TranscriptView transcript={transcript} cuts={cuts} />}
+      transcript={
+        <TranscriptView
+          transcript={transcript}
+          cuts={cuts}
+          restored={restored}
+        />
+      }
     />
   );
 }

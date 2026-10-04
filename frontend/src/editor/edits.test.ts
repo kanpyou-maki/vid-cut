@@ -11,9 +11,12 @@ import {
   deleteTokens,
   draftOf,
   type EditDraft,
+  pendingReviewTargets,
+  reapplySuggestion,
   restoreCut,
   toEdits,
   tokenCuts,
+  tokenRestorations,
 } from "./edits";
 import { buildTranscript } from "./transcript";
 
@@ -341,5 +344,96 @@ describe("restoreCut", () => {
     );
 
     expect(draft.manualCuts).toEqual([keep]);
+  });
+});
+
+describe("tokenRestorations", () => {
+  const detail = detailWith({
+    judged_suggestions: [
+      suggestion({ id: "j1", recording_id: "r1", start_ms: 100, end_ms: 300 }),
+      suggestion({
+        id: "j2",
+        recording_id: "r1",
+        kind: "misspeak",
+        start_ms: 1000,
+        end_ms: 1100,
+      }),
+    ],
+  });
+  const transcript = buildTranscript(detail);
+
+  it("戻した候補に中央が入っているトークンに、その候補を対応させる", () => {
+    const restored = tokenRestorations(transcript, {
+      restoredIds: ["j1"],
+      manualCuts: [],
+    });
+
+    expect(restored.map((mark) => mark?.id ?? "・").join("")).toBe(
+      "・j1j1・・・・・・・・",
+    );
+    expect(restored[1]).toEqual({ id: "j1", kind: "retake" });
+  });
+
+  it("戻していない候補は、対応させない", () => {
+    const restored = tokenRestorations(transcript, EMPTY);
+
+    expect(restored.every((mark) => mark === null)).toBe(true);
+  });
+});
+
+describe("reapplySuggestion", () => {
+  it("戻した候補から外す（削除に戻る）", () => {
+    const draft = reapplySuggestion(
+      { restoredIds: ["j0", "j1"], manualCuts: [] },
+      "j1",
+    );
+
+    expect(draft.restoredIds).toEqual(["j0"]);
+  });
+
+  it("戻していない候補なら、何もしない", () => {
+    const before: EditDraft = { restoredIds: ["j0"], manualCuts: [] };
+
+    expect(reapplySuggestion(before, "j1")).toBe(before);
+  });
+});
+
+describe("pendingReviewTargets", () => {
+  const detail = lectureDetail({
+    recordings: [
+      recordingDetail({
+        id: "r1",
+        tokens: tokens("c0", "あいうえお", 0),
+        review_marks: [
+          { kind: "low_confidence", start_ms: 0, end_ms: 200 },
+          { kind: "unrecognized_speech", start_ms: 600, end_ms: 900 },
+          { kind: "low_confidence", start_ms: 300, end_ms: 500 },
+        ],
+      }),
+    ],
+  });
+  const transcript = buildTranscript(detail);
+
+  it("削除されていないトークンを含む箇所と、未認識の発話を残す", () => {
+    const cuts = tokenCuts(transcript, {
+      restoredIds: [],
+      manualCuts: [manualCut({ start_ms: 0, end_ms: 100 })],
+    });
+
+    expect(pendingReviewTargets(transcript, cuts)).toEqual(
+      transcript.reviewTargets,
+    );
+  });
+
+  it("トークンがすべて削除済みの箇所は、確認しなくてよいので除く", () => {
+    const cuts = tokenCuts(transcript, {
+      restoredIds: [],
+      manualCuts: [manualCut({ start_ms: 0, end_ms: 200 })],
+    });
+
+    expect(pendingReviewTargets(transcript, cuts)).toEqual([
+      { kind: "tokens", first: 3, last: 4 },
+      { kind: "marker", id: "r1-u0" },
+    ]);
   });
 });

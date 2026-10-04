@@ -16,6 +16,7 @@ export type RecordingDetail = Schemas["RecordingDetailOut"];
 export type Chunk = Schemas["ChunkOut"];
 export type Token = Schemas["TokenOut"];
 export type Suggestion = Schemas["SuggestionOut"];
+export type ReviewMark = Schemas["ReviewMarkOut"];
 export type CutKind = Schemas["CutKind"];
 export type EditState = Schemas["EditStateOut"];
 export type ManualCut = Schemas["ManualCutOut"];

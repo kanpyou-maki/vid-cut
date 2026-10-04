@@ -1,6 +1,7 @@
 import {
   deleteTokens,
   type EditDraft,
+  reapplySuggestion,
   restoreCut,
   type TokenCut,
   type TokenRange,
@@ -12,6 +13,8 @@ export type EditorAction =
   /** seed は、新しい削除区間の id のもと（操作のたびに違う値。reducer の中では作らない） */
   | { type: "delete"; range: TokenRange; seed: string }
   | { type: "restore"; cut: TokenCut }
+  /** 戻した候補を、削除に戻す */
+  | { type: "reapply"; id: string }
   | { type: "undo" }
   | { type: "redo" };
 
@@ -29,6 +32,8 @@ export function createEditorReducer(transcript: Transcript) {
         );
       case "restore":
         return record(history, restoreCut(history.present, action.cut));
+      case "reapply":
+        return record(history, reapplySuggestion(history.present, action.id));
       case "undo":
         return undo(history);
       case "redo":

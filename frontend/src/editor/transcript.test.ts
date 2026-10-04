@@ -142,4 +142,87 @@ describe("buildTranscript", () => {
     expect(transcript.tokens).toEqual([]);
     expect(transcript.recordings[0].chunks).toEqual([]);
   });
+
+  it("確信度が低い区間に中央が入っているトークンに、要確認の印を付ける", () => {
+    const detail = lectureDetail({
+      recordings: [
+        recordingDetail({
+          tokens: tokens("c0", "あいうえ", 0),
+          review_marks: [
+            { kind: "low_confidence", start_ms: 100, end_ms: 300 },
+          ],
+        }),
+      ],
+    });
+
+    const transcript = buildTranscript(detail);
+
+    expect(transcript.tokens.map((token) => token.lowConfidence)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it("未認識の発話は、録画ファイルごとの印として持つ", () => {
+    const detail = lectureDetail({
+      recordings: [
+        recordingDetail({
+          id: "r1",
+          tokens: tokens("c0", "あ", 0),
+          review_marks: [
+            { kind: "unrecognized_speech", start_ms: 600, end_ms: 900 },
+          ],
+        }),
+      ],
+    });
+
+    expect(buildTranscript(detail).recordings[0].unrecognized).toEqual([
+      { id: "r1-u0", startMs: 600, endMs: 900 },
+    ]);
+  });
+
+  it("要確認の箇所を、画面に並ぶ順（録画ファイルの順、時刻の順）に並べる", () => {
+    const detail = lectureDetail({
+      recordings: [
+        recordingDetail({
+          id: "r1",
+          tokens: [...tokens("c0", "あいう", 0), ...tokens("c1", "かき", 2000)],
+          review_marks: [
+            { kind: "low_confidence", start_ms: 2000, end_ms: 2200 },
+            { kind: "unrecognized_speech", start_ms: 600, end_ms: 900 },
+            { kind: "low_confidence", start_ms: 100, end_ms: 200 },
+          ],
+        }),
+        recordingDetail({
+          id: "r2",
+          tokens: tokens("c2", "さ", 0),
+          review_marks: [{ kind: "low_confidence", start_ms: 0, end_ms: 100 }],
+        }),
+      ],
+    });
+
+    expect(buildTranscript(detail).reviewTargets).toEqual([
+      { kind: "tokens", first: 1, last: 1 },
+      { kind: "marker", id: "r1-u0" },
+      { kind: "tokens", first: 3, last: 4 },
+      { kind: "tokens", first: 5, last: 5 },
+    ]);
+  });
+
+  it("トークンが 1 つも入らない確信度の印は、要確認の箇所にしない", () => {
+    const detail = lectureDetail({
+      recordings: [
+        recordingDetail({
+          tokens: tokens("c0", "あ", 0),
+          review_marks: [
+            { kind: "low_confidence", start_ms: 5000, end_ms: 5100 },
+          ],
+        }),
+      ],
+    });
+
+    expect(buildTranscript(detail).reviewTargets).toEqual([]);
+  });
 });

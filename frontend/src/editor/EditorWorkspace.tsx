@@ -4,10 +4,13 @@ import { Modal } from "../shared/Modal";
 import { Link } from "../shared/navigation";
 import { LIBRARY_PATH } from "../shared/routes";
 import type { SaveStatus } from "./autosaver";
+import { CutReason } from "./CutReason";
+import { DroppedNotice } from "./DroppedNotice";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
 import styles from "./EditorWorkspace.module.css";
 import { TranscriptView } from "./TranscriptView";
 import { type Editing, useEditing } from "./useEditing";
+import type { ReviewNavigation } from "./useReviewNavigation";
 
 const SAVE_LABELS: Readonly<Record<SaveStatus["name"], string>> = {
   saved: "保存済み",
@@ -43,15 +46,27 @@ export function EditorWorkspace({
         </p>
       )}
       <FailedJobsNotice detail={detail} />
+      <DroppedNotice
+        lectureId={detail.id}
+        droppedIds={detail.dropped_restored_ids}
+      />
       <EditorPanes
+        transcriptTools={<ReviewTools review={editing.review} />}
         transcript={
           <TranscriptView
             transcript={editing.transcript}
             cuts={editing.cuts}
+            restored={editing.restored}
             onRestore={locked ? undefined : editing.restore}
+            onReapply={locked ? undefined : editing.reapply}
             rootRef={editing.transcriptRoot}
           />
         }
+      />
+      <CutReason
+        root={editing.transcriptRoot}
+        transcript={editing.transcript}
+        restoredIds={editing.restoredIds}
       />
       {saveStatus.name === "conflict" && <ConflictDialog onReload={onReload} />}
     </EditorLayout>
@@ -91,6 +106,43 @@ function Toolbar({ editing }: { editing: Editing }) {
       </button>
     </>
   );
+}
+
+/** 要確認の箇所の数と、その間の移動（キーは N / Shift+N）。 */
+function ReviewTools({ review }: { review: ReviewNavigation }) {
+  const none = review.count === 0;
+  return (
+    <div className={styles.review}>
+      <span data-testid="review-count" className={styles.status}>
+        {reviewText(review)}
+      </span>
+      <button
+        type="button"
+        disabled={none}
+        title="前の要確認へ（Shift+N）"
+        onClick={review.previous}
+      >
+        前の要確認へ
+      </button>
+      <button
+        type="button"
+        disabled={none}
+        title="次の要確認へ（N）"
+        onClick={review.next}
+      >
+        次の要確認へ
+      </button>
+    </div>
+  );
+}
+
+function reviewText(review: ReviewNavigation): string {
+  if (review.count === 0) {
+    return "要確認の箇所はありません";
+  }
+  return review.position === null
+    ? `要確認 ${review.count} 件`
+    : `要確認 ${review.position + 1} / ${review.count}`;
 }
 
 function SaveStatusView({

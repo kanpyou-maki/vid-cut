@@ -7,6 +7,8 @@ function handlers(deleted = true) {
     onDelete: vi.fn(() => deleted),
     onUndo: vi.fn(),
     onRedo: vi.fn(),
+    onNextReview: vi.fn(),
+    onPreviousReview: vi.fn(),
   };
 }
 
@@ -70,6 +72,41 @@ describe("useEditorKeys", () => {
     expect(keys.onDelete).not.toHaveBeenCalled();
     expect(keys.onUndo).not.toHaveBeenCalled();
     expect(keys.onRedo).not.toHaveBeenCalled();
+  });
+
+  it("N で次の要確認へ、Shift+N で前の要確認へ（キーの位置で見る）", () => {
+    const keys = handlers();
+    render(<Keys enabled {...keys} />);
+
+    // 入力方式によっては key が変わる。code（キーの位置）が N なら受ける
+    const prevented = fireEvent.keyDown(document.body, {
+      key: "Process",
+      code: "KeyN",
+    });
+    fireEvent.keyDown(document.body, {
+      key: "N",
+      code: "KeyN",
+      shiftKey: true,
+    });
+
+    expect(prevented).toBe(false);
+    expect(keys.onNextReview).toHaveBeenCalledTimes(1);
+    expect(keys.onPreviousReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("⌘N や Alt+N（ブラウザや OS の操作）は、横取りしない", () => {
+    const keys = handlers();
+    render(<Keys enabled {...keys} />);
+
+    const meta = fireEvent.keyDown(document.body, {
+      key: "n",
+      code: "KeyN",
+      metaKey: true,
+    });
+    fireEvent.keyDown(document.body, { key: "n", code: "KeyN", altKey: true });
+
+    expect(meta).toBe(true);
+    expect(keys.onNextReview).not.toHaveBeenCalled();
   });
 
   it("enabled が false の間は、キーを受けない", () => {

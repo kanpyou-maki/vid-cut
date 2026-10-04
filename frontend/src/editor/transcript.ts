@@ -1,4 +1,9 @@
-import type { LectureDetail, RecordingDetail, Suggestion } from "../api/types";
+import type {
+  LectureDetail,
+  RecordingDetail,
+  ReviewMark,
+  Suggestion,
+} from "../api/types";
 
 /**
  * 文字起こしを描くための形（Design Doc 3-6）。読み込んだ詳細から 1 回だけ作る
@@ -14,7 +19,23 @@ export interface TranscriptToken {
   text: string;
   startMs: number;
   endMs: number;
+  /** 確信度が低い（要確認の印を付ける） */
+  lowConfidence: boolean;
 }
+
+/** 未認識の発話（声はあるが、文字起こしがない区間）。段落の間に印として出す。 */
+export interface UnrecognizedMark {
+  id: string;
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * 要確認の箇所（Design Doc 3-6）: 確信度が低いトークンの範囲（通し番号。last を含む）か、未認識の発話の印。
+ */
+export type ReviewTarget =
+  | { kind: "tokens"; first: number; last: number }
+  | { kind: "marker"; id: string };
 
 /** 1 チャンク = 1 段落。 */
 export interface TranscriptChunk {
@@ -29,6 +50,9 @@ export interface TranscriptRecording {
   chunks: readonly TranscriptChunk[];
   /** この録画ファイルのトークン。中央の時刻の順（削除区間に入るトークンを二分探索で探すのに使う） */
   byCenter: readonly TranscriptToken[];
+  unrecognized: readonly UnrecognizedMark[];
+  /** この録画ファイルの要確認の箇所（時刻の順） */
+  reviewTargets: readonly ReviewTarget[];
 }
 
 export interface Transcript {
@@ -37,6 +61,8 @@ export interface Transcript {
   tokens: readonly TranscriptToken[];
   /** 自動の削除候補。録画ファイルの候補（無音・フィラー）、判定の候補の順 */
   suggestions: readonly Suggestion[];
+  /** 要確認の箇所（録画ファイルの順、その中は時刻の順） */
+  reviewTargets: readonly ReviewTarget[];
 }
 
 export function buildTranscript(detail: LectureDetail): Transcript {
@@ -56,6 +82,7 @@ export function buildTranscript(detail: LectureDetail): Transcript {
       ...detail.recordings.flatMap((recording) => recording.suggestions),
       ...detail.judged_suggestions,
     ],
+    reviewTargets: recordings.flatMap((recording) => recording.reviewTargets),
   };
 }
 
@@ -63,6 +90,9 @@ function buildRecording(
   recording: RecordingDetail,
   firstIndex: number,
 ): TranscriptRecording {
+  const lowConfidence = recording.review_marks.filter(
+    (mark) => mark.kind === "low_confidence",
+  );
   // 中央の時刻の順に並べてから、チャンクごとにまとめる
   const groups = groupsByChunk(
     recording.tokens
@@ -73,6 +103,10 @@ function buildRecording(
         text: token.text,
         startMs: token.start_ms,
         endMs: token.end_ms,
+      }))
+      .map((token) => ({
+        ...token,
+        lowConfidence: lowConfidence.some((mark) => contains(mark, token)),
       }))
       .toSorted(byCenter),
   );
@@ -95,12 +129,59 @@ function buildRecording(
       })),
     };
   });
+  const tokens = chunks.flatMap((chunk) => chunk.tokens);
+  const unrecognized = recording.review_marks
+    .filter((mark) => mark.kind === "unrecognized_speech")
+    .map((mark, number) => ({
+      id: `${recording.id}-u${number}`,
+      startMs: mark.start_ms,
+      endMs: mark.end_ms,
+    }));
   return {
     id: recording.id,
     name: recording.name,
     chunks,
-    byCenter: chunks.flatMap((chunk) => chunk.tokens).toSorted(byCenter),
+    byCenter: tokens.toSorted(byCenter),
+    unrecognized,
+    reviewTargets: reviewTargets(lowConfidence, tokens, unrecognized),
   };
+}
+
+/** トークンの中央が、印の区間 [start, end) に入っているか。 */
+function contains(mark: ReviewMark, token: Timed): boolean {
+  return (
+    2 * mark.start_ms <= doubledCenter(token) &&
+    doubledCenter(token) < 2 * mark.end_ms
+  );
+}
+
+/** 確信度の印（トークンが入っているものだけ）と未認識の発話を、時刻の順に並べる。 */
+function reviewTargets(
+  lowConfidence: readonly ReviewMark[],
+  tokens: readonly TranscriptToken[],
+  unrecognized: readonly UnrecognizedMark[],
+): ReviewTarget[] {
+  const tokenTargets = lowConfidence.flatMap((mark) => {
+    const indexes = tokens
+      .filter((token) => contains(mark, token))
+      .map((token) => token.index);
+    if (indexes.length === 0) {
+      return [];
+    }
+    const target: ReviewTarget = {
+      kind: "tokens",
+      first: Math.min(...indexes),
+      last: Math.max(...indexes),
+    };
+    return [{ startMs: mark.start_ms, target }];
+  });
+  const markerTargets = unrecognized.map((mark) => {
+    const target: ReviewTarget = { kind: "marker", id: mark.id };
+    return { startMs: mark.startMs, target };
+  });
+  return [...tokenTargets, ...markerTargets]
+    .toSorted((a, b) => a.startMs - b.startMs)
+    .map((entry) => entry.target);
 }
 
 /** 時刻の範囲を持つもの（トークン）。 */

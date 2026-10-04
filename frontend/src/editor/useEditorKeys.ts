@@ -6,18 +6,30 @@ export interface EditorKeyHandlers {
   onDelete: () => boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onNextReview: () => void;
+  onPreviousReview: () => void;
 }
+
+// 要確認の箇所への移動は、N（次）と Shift+N（前）。キーの位置（code）で見る
+// （入力方式や配列によって、key が変わることがあるため）
+const REVIEW_KEY_CODE = "KeyN";
 
 /**
  * 編集画面のキー操作（Design Doc 3-6）: Delete / Backspace で削除、⌘Z / Ctrl+Z で取り消し、
- * ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y でやり直し。
+ * ⇧⌘Z / Ctrl+Shift+Z / Ctrl+Y でやり直し、N / Shift+N で次・前の要確認の箇所へ移動。
  *
  * 文字起こしは入力欄ではなく、選択してもフォーカスは移らないので、document で受ける。
  * handlers には、呼ぶたびに変わらない関数を渡すこと。
  */
 export function useEditorKeys(
   enabled: boolean,
-  { onDelete, onUndo, onRedo }: EditorKeyHandlers,
+  {
+    onDelete,
+    onUndo,
+    onRedo,
+    onNextReview,
+    onPreviousReview,
+  }: EditorKeyHandlers,
 ): void {
   useEffect(() => {
     if (!enabled) {
@@ -39,18 +51,22 @@ export function useEditorKeys(
       } else if (event.ctrlKey && key === "y") {
         event.preventDefault();
         onRedo();
-      } else if (
-        !command &&
-        !event.altKey &&
-        (key === "delete" || key === "backspace") &&
-        onDelete()
-      ) {
+      } else if (command || event.altKey) {
+        return;
+      } else if (event.code === REVIEW_KEY_CODE) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          onPreviousReview();
+        } else {
+          onNextReview();
+        }
+      } else if ((key === "delete" || key === "backspace") && onDelete()) {
         event.preventDefault();
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [enabled, onDelete, onUndo, onRedo]);
+  }, [enabled, onDelete, onUndo, onRedo, onNextReview, onPreviousReview]);
 }
 
 /** 入力欄で打っている間は、キーを横取りしない。 */
