@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -7,7 +8,7 @@ from tests.api.conftest import ApiEnv, build_env
 from tests.pipeline.judge_fakes import delete_output
 from vidcut.adapters.sqlite.judgements import SqliteJudgementRepository
 from vidcut.pipeline.export import ExportSettings
-from vidcut.pipeline.ports import Judgement
+from vidcut.pipeline.ports import Judgement, RevealFailedError
 
 RETAKE = delete_output({"id": 0, "kind": "retake", "reason": "<b>言い直し</b>", "superseded_by": 1})
 
@@ -320,3 +321,132 @@ class TestExports:
         env.error(422, "POST", f"/api/lectures/{lecture['id']}/exports", json={"format": "gif"})
         env.error(422, "POST", f"/api/lectures/{lecture['id']}/exports", json={})
         env.error(404, "POST", "/api/lectures/nope/exports", json={"format": "mp4"})
+
+
+class TestExportStatus:
+    """書き出しの状態と保存先（Design Doc 3-5）。詳細にも、軽い API にも同じものが出る。"""
+
+    def url(self, lecture_id: str) -> str:
+        return f"/api/lectures/{lecture_id}/exports"
+
+    def test_detail_tells_where_the_exports_go(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("S05-12.mov")
+        directory = env.workspace / "exports" / "S05-12"
+        never = {"exported_at": None, "job": None}
+        assert env.data("GET", f"/api/lectures/{lecture['id']}")["exports"] == {
+            "directory": str(directory),
+            "shared_with_other_lectures": False,
+            "premiere_xml": {"path": str(directory / "S05-12.xml"), **never},
+            "mp4": {"path": str(directory / "S05-12.mp4"), **never},
+        }
+        assert not (env.workspace / "exports").exists()  # 読むだけで、フォルダは作らない
+
+    def test_status_follows_the_job_and_then_the_file(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("S05-12.mov")
+        job = env.data("POST", self.url(lecture["id"]), json={"format": "premiere_xml"})
+        waiting = env.data("GET", self.url(lecture["id"]))
+        assert waiting["premiere_xml"]["job"] == job
+        assert (job["status"], waiting["premiere_xml"]["exported_at"]) == ("queued", None)
+        assert waiting["mp4"] == {"path": waiting["mp4"]["path"], "exported_at": None, "job": None}
+
+        env.run_worker()
+        done = env.data("GET", self.url(lecture["id"]))
+        assert done["premiere_xml"]["job"]["status"] == "succeeded"
+        exported = env.workspace / "exports" / "S05-12" / "S05-12.xml"
+        assert datetime.fromisoformat(
+            done["premiere_xml"]["exported_at"]
+        ) == datetime.fromtimestamp(exported.stat().st_mtime, tz=UTC)
+        assert env.data("GET", f"/api/lectures/{lecture['id']}")["exports"] == done
+
+    def test_failed_export_shows_the_kind_and_a_fixed_sentence(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        rid = lecture["recordings"][0]["id"]
+        everything = {"id": "m1", "recording_id": rid, "start_ms": 0, "end_ms": 10_000}
+        env.data(
+            "PUT",
+            f"/api/lectures/{lecture['id']}/edits",
+            json={"version": 0, "restored_suggestion_ids": [], "manual_cuts": [everything]},
+        )
+        env.data("POST", self.url(lecture["id"]), json={"format": "mp4"})
+        env.run_worker()
+        response = env.client.get(self.url(lecture["id"]))
+        job = response.json()["data"]["mp4"]["job"]
+        assert (job["status"], job["error_code"]) == ("failed", "nothing_to_export")
+        assert job["error_message"] == "残す区間がありません（すべて削除されています）"
+        assert response.json()["data"]["mp4"]["exported_at"] is None
+
+    def test_tells_when_another_lecture_has_the_same_name(self, env: ApiEnv) -> None:
+        first, second = env.imported("a.mov", "retake/a.mov")
+        assert (first["title"], second["title"]) == ("a", "a")
+        for lecture in (first, second):
+            assert env.data("GET", self.url(lecture["id"]))["shared_with_other_lectures"] is True
+
+    def test_unknown_lecture_or_unexpected_id(self, env: ApiEnv) -> None:
+        env.error(404, "GET", self.url("nope"))
+        env.error(422, "GET", self.url("a.b"))
+
+
+class TestRevealExports:
+    """Finder で開く（Design Doc 3-5・3-5-1）。開く場所はレクチャーの id から求める。"""
+
+    def url(self, lecture_id: str) -> str:
+        return f"/api/lectures/{lecture_id}/exports/reveal"
+
+    def exported(self, env: ApiEnv, export_format: str = "premiere_xml") -> dict[str, Any]:
+        (lecture,) = env.imported("S05-12.mov")
+        env.data("POST", f"/api/lectures/{lecture['id']}/exports", json={"format": export_format})
+        env.run_worker()
+        return lecture
+
+    def test_selects_the_exported_file(self, env: ApiEnv) -> None:
+        lecture = self.exported(env)
+        assert env.data("POST", self.url(lecture["id"])) == {"target": "file"}
+        exported = (env.workspace / "exports" / "S05-12" / "S05-12.xml").resolve()
+        assert env.revealer.revealed == [exported]
+
+    def test_a_path_in_the_request_is_not_used(self, env: ApiEnv) -> None:
+        lecture = self.exported(env)
+        env.data("POST", self.url(lecture["id"]), json={"path": "/etc/passwd", "target": "/etc"})
+        (revealed,) = env.revealer.revealed
+        assert revealed.is_relative_to((env.workspace / "exports").resolve())
+
+    def test_nothing_was_exported_yet(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        assert "まだありません" in env.error(422, "POST", self.url(lecture["id"]))
+        assert env.revealer.revealed == []
+        assert not (env.workspace / "exports").exists()
+
+    def test_symlinked_destination_is_refused_without_telling_the_path(self, env: ApiEnv) -> None:
+        (lecture,) = env.imported("a.mov")
+        outside = env.home / "outside"
+        outside.mkdir()
+        (env.workspace / "exports").mkdir()
+        (env.workspace / "exports" / "a").symlink_to(outside, target_is_directory=True)
+        message = env.error(422, "POST", self.url(lecture["id"]))
+        assert "シンボリックリンク" in message
+        assert str(env.home) not in message
+        assert env.revealer.revealed == []
+
+    def test_failure_of_finder_is_a_fixed_sentence(self, env: ApiEnv) -> None:
+        lecture = self.exported(env)
+        env.revealer.error = RevealFailedError(f"open: {env.workspace}/exports: 生のエラー文")
+        response = env.client.post(self.url(lecture["id"]))
+        assert response.status_code == 500
+        assert response.json() == {
+            "success": False,
+            "data": None,
+            "error": "Finder で開けませんでした。"
+            "詳しくは vidcut serve を起動したターミナルのログを確認してください",
+        }
+        assert str(env.workspace) not in response.text
+        assert "content-security-policy" in response.headers
+
+    def test_unknown_lecture(self, env: ApiEnv) -> None:
+        env.error(404, "POST", self.url("nope"))
+        assert env.revealer.revealed == []
+
+    def test_requires_the_token(self, env: ApiEnv) -> None:
+        lecture = self.exported(env)
+        response = env.client.post(self.url(lecture["id"]), headers={"X-VidCut-Token": "wrong"})
+        assert response.status_code == 401
+        assert env.revealer.revealed == []

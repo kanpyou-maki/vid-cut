@@ -7,6 +7,7 @@ import { ApiError, errorMessage } from "../api/errors";
  * - 内容は不変のオブジェクトとして比べる（保存済みと同じオブジェクトなら、保存しない）
  * - 版の食い違い（409）とレクチャーの消失（404）のあとは、保存をやめる（読み込み直しが要る）
  * - 画面の部品が消えたあとも、送りかけの保存を最後まで行えるよう、React の外で持つ
+ * - 書き出しの前など、保存済みであることが要るときは、flush で待たずに送って結果を待つ
  */
 
 export type SaveStatus =
@@ -37,6 +38,12 @@ export interface Autosaver<T> {
   /** 失敗した保存を、待たずに送り直す */
   retry: () => void;
   /**
+   * 未保存の変更を待たずに送り、画面の今の内容が保存済みになったら true を返す
+   * （保存の途中なら、それが終わるのを待つ。途中の変更も送る。待っていた保存が失敗したら、1 回だけ送り直す）。
+   * 保存に失敗した・保存をやめている（409・404）・画面を離れたあとは false
+   */
+  flush: () => Promise<boolean>;
+  /**
    * 画面を離れる。未保存の変更があれば待たずに送り（失敗して残っていた変更も、ここで 1 回送る）、
    * それ以降は状態を知らせない（離れたあとの失敗は、出す場所がない。それ以上は送り直さない）
    */
@@ -55,6 +62,9 @@ export function createAutosaver<T>(options: AutosaverOptions<T>): Autosaver<T> {
   let saving = false;
   let halted = false;
   let closed = false;
+  // 最後に送った保存（終わるまで待てるように持つ）と、それが失敗したか
+  let inFlight: Promise<void> = Promise.resolve();
+  let lastFailed = false;
 
   const notify = (status: SaveStatus) => {
     if (!closed) {
@@ -79,20 +89,26 @@ export function createAutosaver<T>(options: AutosaverOptions<T>): Autosaver<T> {
     }
   };
 
-  const run = async (): Promise<void> => {
+  /** 送るものがあれば送る。返すのは、最後に送った保存（送らなかったときは、その前のもの）。 */
+  const run = (): Promise<void> => {
     cancelTimer();
-    if (saving || halted || current === saved) {
-      return;
+    if (!saving && !halted && current !== saved) {
+      inFlight = send(current);
     }
-    const sending = current;
+    return inFlight;
+  };
+
+  const send = async (sending: T): Promise<void> => {
     saving = true;
     notify(SAVING);
     try {
       const result = await options.save(sending, version);
       version = result.version;
       saved = sending;
+      lastFailed = false;
     } catch (error) {
       saving = false;
+      lastFailed = true;
       fail(error);
       return;
     }
@@ -129,6 +145,21 @@ export function createAutosaver<T>(options: AutosaverOptions<T>): Autosaver<T> {
     close: () => {
       closed = true;
       void run();
+    },
+    flush: async () => {
+      while (!halted && !closed) {
+        if (saving) {
+          await inFlight;
+        } else if (current === saved) {
+          return true;
+        } else {
+          await run();
+          if (lastFailed) {
+            return false;
+          }
+        }
+      }
+      return false;
     },
   };
 }

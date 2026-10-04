@@ -1,0 +1,53 @@
+/* 書き出しの行。上の行のすぐ下に置く。幅が狭ければ折り返す */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+/* 幅が狭くても、見出しとボタンの文字は途中で折り返さない（折り返すのは、行と保存先のパス） */
+.heading,
+.bar button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.heading {
+  font-weight: 600;
+}
+
+.format,
+.destination {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.status {
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.progress {
+  width: 6rem;
+}
+
+/* 保存先のパスは長くなりうる（レクチャー名が入る）。どこででも折り返す */
+.path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+}
+
+.note {
+  margin: 0;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.failure {
+  margin: 0;
+  color: var(--color-danger);
+}

@@ -11,6 +11,8 @@ from vidcut.api.messages import ERROR_MESSAGES, error_message
 from vidcut.api.outputs import (
     ChunkOut,
     EditStateOut,
+    ExportFileOut,
+    ExportsOut,
     FsEntryOut,
     FsListingOut,
     ImportFailureOut,
@@ -43,6 +45,7 @@ from vidcut.domain.models import (
 from vidcut.pipeline.analysis_result import Analysis
 from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.ports import Peaks, StoredJob
+from vidcut.services.export_destinations import ExportFileStatus, ExportStatus
 from vidcut.services.file_browser import Listing
 from vidcut.services.imports import ImportResult
 from vidcut.services.lecture_views import JobView, LectureDetail, LectureSummary
@@ -208,7 +211,26 @@ def to_edit_state(state: EditState) -> EditStateOut:
     )
 
 
-def to_lecture_detail(detail: LectureDetail, settings: ExportSettings) -> LectureDetailOut:
+def to_export_file(status: ExportFileStatus) -> ExportFileOut:
+    return ExportFileOut(
+        path=str(status.file.path),
+        exported_at=status.file.exported_at,
+        job=None if status.job is None else to_job(status.job),
+    )
+
+
+def to_exports(status: ExportStatus) -> ExportsOut:
+    return ExportsOut(
+        directory=str(status.directory),
+        shared_with_other_lectures=status.shared_with_other_lectures,
+        premiere_xml=to_export_file(status.premiere),
+        mp4=to_export_file(status.mp4),
+    )
+
+
+def to_lecture_detail(
+    detail: LectureDetail, settings: ExportSettings, exports: ExportStatus
+) -> LectureDetailOut:
     summary = detail.summary
     judgement = detail.judgement
     return LectureDetailOut(
@@ -231,6 +253,7 @@ def to_lecture_detail(detail: LectureDetail, settings: ExportSettings) -> Lectur
             before_ms=settings.pad_before_ms, after_ms=settings.pad_after_ms
         ),
         edit_state=to_edit_state(detail.edit_state),
+        exports=to_exports(exports),
     )
 
 

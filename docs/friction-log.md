@@ -89,4 +89,4 @@
   汎用的な改善なので、sync-upstream で master に還元する
 - **対応:** `frontend/README.md` の「画面の実装で守ること」に決まりを足し、`.claude/agents/self-reviewer.md` のチェックリストに「4. ドキュメントの追従」を足した。
   master へは sync-upstream で還元した（claude-config-master の PR #5。2026-10-04。master に合わせて、チェック項目から摩擦の番号を外した）
-- **Status:** resolved（vid-cut: M7 の PR 5。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)）
+- **Status:** resolved（vid-cut: M7 の PR 5。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み）

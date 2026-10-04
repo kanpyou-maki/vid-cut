@@ -34,6 +34,7 @@ VERSION_CONFLICT = (
 )
 INVALID_REQUEST = "入力の形式が正しくありません"
 SERVER_ERROR = f"サーバーで問題が起きました。{LOG_HINT}"
+REVEAL_FAILED = f"Finder で開けませんでした。{LOG_HINT}"
 HTTP_ERRORS: dict[int, str] = {
     404: "この URL はありません",
     405: "この操作はできません",

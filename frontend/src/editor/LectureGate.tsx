@@ -7,6 +7,7 @@ import { Link } from "../shared/navigation";
 import { LIBRARY_PATH } from "../shared/routes";
 import { usePolling } from "../shared/usePolling";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
+import { ExportBarPlaceholder } from "./ExportBar";
 import { draftOf, tokenCuts, tokenRestorations } from "./edits";
 import styles from "./LectureGate.module.css";
 import { type LecturePhase, lecturePhase } from "./lecturePhase";
@@ -51,19 +52,23 @@ export function LectureGate({
         </p>
       )}
       {detail === null && !error && <p>読み込み中…</p>}
-      {detail !== null && phase !== null && (
-        <Waiting detail={detail} phase={phase} />
+      {detail !== null && phase !== null && phase !== "editable" && (
+        <>
+          <ExportBarPlaceholder />
+          <Waiting detail={detail} phase={phase} />
+        </>
       )}
     </EditorLayout>
   );
 }
 
+/** 編集できる状態（editable）は、onReady に渡した。呼ぶ側が、描く前に編集画面へ切り替える。 */
 function Waiting({
   detail,
   phase,
 }: {
   detail: LectureDetail;
-  phase: LecturePhase;
+  phase: Exclude<LecturePhase, "editable">;
 }) {
   switch (phase) {
     case "unreadable":
@@ -100,9 +105,6 @@ function Waiting({
           <ReadOnlyPanes detail={detail} />
         </>
       );
-    case "editable":
-      // onReady に渡した。呼ぶ側が、描く前に編集画面へ切り替える
-      return null;
   }
 }
 

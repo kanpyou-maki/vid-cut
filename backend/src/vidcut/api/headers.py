@@ -12,13 +12,14 @@ WAVEFORM_STYLE_HASH = "sha256-XGW/cX2BkTPWNNT3NdyASrPEWZfPnKdPJaJ2aN7R+v8="
 # 読み込めるのは自分自身（'self'）のものだけ。スクリプトのインライン実行は許可しない。
 # スタイルのインラインも許可しない（style 属性も不可）。
 # 例外は、波形の部品が差し込む style 要素 1 つだけ。
-# 動画と画像は、画面が作る blob: と data: も使う。
+# 動画と画像も自分自身のものだけ（data: と blob: は許可しない。proxy 動画は自分自身の URL から読み、
+# 波形は canvas に描くので、画面はどちらも使わない）。
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
         f"style-src 'self' '{WAVEFORM_STYLE_HASH}'",
-        "img-src 'self' data: blob:",
-        "media-src 'self' blob:",
+        "img-src 'self'",
+        "media-src 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
         "base-uri 'none'",

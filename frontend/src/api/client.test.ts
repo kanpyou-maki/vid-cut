@@ -500,6 +500,104 @@ describe("createApi: 波形", () => {
   });
 });
 
+describe("createApi: 書き出し", () => {
+  const JOB = {
+    id: "job9",
+    kind: "export_mp4",
+    target_id: "lec1",
+    status: "queued",
+    stage: null,
+    progress: 0,
+    error_code: null,
+    error_message: null,
+  };
+  const EXPORTS = {
+    directory: "/Users/me/VidCut/exports/a",
+    shared_with_other_lectures: false,
+    premiere_xml: {
+      path: "/Users/me/VidCut/exports/a/a.xml",
+      exported_at: "2026-10-04T06:02:00Z",
+      job: null,
+    },
+    mp4: {
+      path: "/Users/me/VidCut/exports/a/a.mp4",
+      exported_at: null,
+      job: JOB,
+    },
+  };
+
+  it("requestExport は、形式を送って書き出しを頼み、積まれたジョブを返す", async () => {
+    const { api, sent } = recordingApi(JOB);
+
+    await expect(api.requestExport("lec1", "mp4")).resolves.toEqual(JOB);
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec1/exports`);
+    expect(sent[0].body).toEqual({ format: "mp4" });
+  });
+
+  it("getExports は、書き出しの状態と保存先を読む", async () => {
+    const { api, sent } = recordingApi(EXPORTS);
+
+    await expect(api.getExports("lec1")).resolves.toEqual(EXPORTS);
+
+    expect(sent[0].method).toBe("GET");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec1/exports`);
+  });
+
+  it("getExports の中断は、そのまま伝える", async () => {
+    const controller = new AbortController();
+    const api = apiWith(
+      (request) =>
+        new Promise((_resolve, reject) => {
+          request.signal.addEventListener("abort", () =>
+            reject(request.signal.reason),
+          );
+        }),
+    );
+
+    const pending = caught(api.getExports("lec1", controller.signal));
+    controller.abort();
+
+    expect(await pending).toMatchObject({ name: "AbortError" });
+  });
+
+  it("revealExports は、本文なしで頼む（開く場所を、画面から送らない）", async () => {
+    const { api, sent } = recordingApi({ target: "file" });
+
+    await expect(api.revealExports("lec1")).resolves.toBeUndefined();
+
+    expect(sent[0].method).toBe("POST");
+    expect(sent[0].url).toBe(`${BASE_URL}/api/lectures/lec1/exports/reveal`);
+    expect(sent[0].body).toBeNull();
+  });
+
+  it("revealExports は、まだ書き出していなければ（422）backend の文を持つ失敗にする", async () => {
+    const api = apiWith(async () =>
+      failure(422, "書き出したファイルがまだありません"),
+    );
+
+    const error = await caught(api.revealExports("lec1"));
+
+    expect(error).toMatchObject({ kind: "invalid" });
+    expect(errorMessage(error)).toBe("書き出したファイルがまだありません");
+  });
+
+  it.each<[string, (api: ReturnType<typeof apiWith>) => Promise<unknown>]>([
+    ["requestExport", (api) => api.requestExport("lec1", "premiere_xml")],
+    ["getExports", (api) => api.getExports("lec1")],
+    ["revealExports", (api) => api.revealExports("lec1")],
+  ])("%s は、トークンをヘッダーにだけ付ける", async (_name, call) => {
+    const { api, sent } = recordingApi(EXPORTS);
+
+    await call(api);
+
+    expect(sent[0].headers.get("X-VidCut-Token")).toBe(TOKEN);
+    expect(sent[0].url).not.toContain(TOKEN);
+    expect(JSON.stringify(sent[0].body)).not.toContain(TOKEN);
+  });
+});
+
 describe("errorMessage", () => {
   it("API の失敗は、その文を返す", () => {
     const error = new ApiError(

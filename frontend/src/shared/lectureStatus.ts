@@ -51,6 +51,21 @@ export function formatClock(timeMs: number): string {
   return formatDuration(Math.floor(timeMs / MS_PER_SECOND) * MS_PER_SECOND);
 }
 
+/** 日時を、画面の時刻帯の `2026/10/04 15:02` の形で表す。日時として読めなければ、空の文字列。 */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const padded = (value: number) => String(value).padStart(2, "0");
+  const day = [
+    date.getFullYear(),
+    padded(date.getMonth() + 1),
+    padded(date.getDate()),
+  ].join("/");
+  return `${day} ${padded(date.getHours())}:${padded(date.getMinutes())}`;
+}
+
 /**
  * 状態の名前。解析中は、動いている解析ジョブの進捗を足す。
  * 判定の進捗は窓の数で進む（窓が 1 つだと最後まで 0%）ので、出さない。
@@ -65,10 +80,11 @@ export function statusText(lecture: LectureProgress): string {
   );
   return running === undefined
     ? label
-    : `${label} ${percent(running.progress)}%`;
+    : `${label} ${progressPercent(running.progress)}%`;
 }
 
-function percent(progress: number): number {
+/** ジョブの進捗（0〜1）を、0〜100 の整数にする。 */
+export function progressPercent(progress: number): number {
   return Math.round(Math.min(Math.max(progress, 0), 1) * 100);
 }
 

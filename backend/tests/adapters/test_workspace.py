@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -153,6 +154,80 @@ class TestFileExportStore:
     ) -> None:
         with pytest.raises(ValueError):
             FileExportStore(tmp_path).path("L", suffix)
+
+
+class TestExportLocations:
+    """読むだけの問い合わせ。フォルダを作らず、リンクの先を調べない。"""
+
+    def test_directory_is_named_after_the_lecture_and_is_not_created(self, tmp_path: Path) -> None:
+        directory = FileExportStore(tmp_path).directory("a/b: 講座. ")
+        assert directory == tmp_path / "exports" / "a_b_ 講座"
+        assert not (tmp_path / "exports").exists()
+
+    def test_file_that_was_never_exported_has_no_time(self, tmp_path: Path) -> None:
+        located = FileExportStore(tmp_path).locate("L", ".xml")
+        assert located.path == tmp_path / "exports" / "L" / "L.xml"
+        assert located.exported_at is None
+        assert not (tmp_path / "exports").exists()
+
+    def test_exported_file_tells_when_it_was_last_written(self, tmp_path: Path) -> None:
+        store = FileExportStore(tmp_path)
+        path = store.write_text("L", ".xml", "<x/>")
+        os.utime(path, (1_800_000_000, 1_800_000_000))
+        located = store.locate("L", ".xml")
+        assert located.path == path
+        assert located.exported_at == datetime.fromtimestamp(1_800_000_000, tz=UTC)
+
+    def test_file_that_is_a_symlink_or_a_directory_is_not_an_export(self, tmp_path: Path) -> None:
+        outside = tmp_path / "outside.mp4"
+        outside.write_bytes(b"x")
+        store = FileExportStore(tmp_path / "ws")
+        store.path("L", ".mp4").symlink_to(outside)
+        (tmp_path / "ws" / "exports" / "L" / "L.xml").mkdir()
+        assert store.locate("L", ".mp4").exported_at is None
+        assert store.locate("L", ".xml").exported_at is None
+
+    @pytest.mark.parametrize("linked", ["exports", "exports/L"])
+    def test_files_behind_a_symlinked_directory_are_not_looked_at(
+        self, tmp_path: Path, linked: str
+    ) -> None:
+        outside = tmp_path / "outside"
+        (outside / "L").mkdir(parents=True)
+        (outside / "L.xml").write_text("<x/>")
+        (outside / "L" / "L.xml").write_text("<x/>")
+        workspace = tmp_path / "ws"
+        link = workspace / linked
+        link.parent.mkdir(parents=True)
+        link.symlink_to(outside, target_is_directory=True)
+        store = FileExportStore(workspace)
+        assert store.locate("L", ".xml").exported_at is None
+        with pytest.raises(ValueError, match="シンボリックリンク"):
+            store.existing_directory("L")
+
+    @pytest.mark.parametrize("suffix", ["", "xml", ".x/y", "../.xml"])
+    def test_locate_rejects_suffixes_that_are_not_a_plain_extension(
+        self, tmp_path: Path, suffix: str
+    ) -> None:
+        with pytest.raises(ValueError):
+            FileExportStore(tmp_path).locate("L", suffix)
+
+    def test_existing_directory_is_none_until_something_was_exported(self, tmp_path: Path) -> None:
+        store = FileExportStore(tmp_path)
+        assert store.existing_directory("L") is None
+        (tmp_path / "exports").mkdir()
+        (tmp_path / "exports" / "L").write_text("フォルダではない")
+        assert store.existing_directory("L") is None
+
+    def test_existing_directory_is_resolved(self, tmp_path: Path) -> None:
+        real = tmp_path / "real"
+        real.mkdir()
+        workspace = tmp_path / "ws"
+        workspace.symlink_to(
+            real, target_is_directory=True
+        )  # ワークスペースそのものはリンクでもよい
+        store = FileExportStore(workspace)
+        store.write_text("L", ".xml", "<x/>")
+        assert store.existing_directory("L") == real.resolve() / "exports" / "L"
 
 
 class TestFileFingerprint:

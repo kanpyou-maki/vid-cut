@@ -26,7 +26,12 @@ export function useAutosave<T>({
   initial: T;
   version: number;
   save: (draft: T, version: number) => Promise<{ version: number }>;
-}): { status: SaveStatus; retry: () => void } {
+}): {
+  status: SaveStatus;
+  retry: () => void;
+  /** 未保存の変更を待たずに送り、保存済みになったら true（autosaver.ts の flush） */
+  flush: () => Promise<boolean>;
+} {
   const [status, setStatus] = useState<SaveStatus>(SAVED);
   const saver = useRef<Autosaver<T> | null>(null);
 
@@ -51,5 +56,9 @@ export function useAutosave<T>({
   }, [draft, initial, version, save]);
 
   const retry = useCallback(() => saver.current?.retry(), []);
-  return { status, retry };
+  const flush = useCallback(
+    () => saver.current?.flush() ?? Promise.resolve(false),
+    [],
+  );
+  return { status, retry, flush };
 }

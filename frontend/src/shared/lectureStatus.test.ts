@@ -3,7 +3,9 @@ import { job, lectureSummary, recording } from "../test/fakeApi";
 import {
   failedJobs,
   formatClock,
+  formatDateTime,
   formatDuration,
+  progressPercent,
   statusText,
 } from "./lectureStatus";
 
@@ -132,5 +134,37 @@ describe("failedJobs", () => {
 
   it("失敗がなければ空", () => {
     expect(failedJobs(lectureSummary({ jobs: [job()] }))).toEqual([]);
+  });
+});
+
+describe("formatDateTime", () => {
+  it("画面の時刻帯で、年月日と時分を表す", () => {
+    // 画面の時刻帯での 2026/10/04 15:02 を、API が返す形（UTC の ISO 8601）にする
+    const iso = new Date(2026, 9, 4, 15, 2, 59).toISOString();
+
+    expect(formatDateTime(iso)).toBe("2026/10/04 15:02");
+  });
+
+  it("1 桁の月日と時分は、0 で埋める", () => {
+    const iso = new Date(2027, 0, 5, 3, 7).toISOString();
+
+    expect(formatDateTime(iso)).toBe("2027/01/05 03:07");
+  });
+
+  it("日時として読めなければ、空の文字列にする", () => {
+    expect(formatDateTime("いつか")).toBe("");
+  });
+});
+
+describe("progressPercent", () => {
+  it.each([
+    [0, 0],
+    [0.424, 42],
+    [0.995, 100],
+    [1, 100],
+    [-0.5, 0],
+    [1.5, 100],
+  ])("進捗 %f を %i% と表す", (progress, percent) => {
+    expect(progressPercent(progress)).toBe(percent);
   });
 });

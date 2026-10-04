@@ -6,7 +6,13 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tests.pipeline.fakes import FakeAligner, FakeMediaTool, FakeTranscriber, FakeVad
+from tests.pipeline.fakes import (
+    FakeAligner,
+    FakeMediaTool,
+    FakeRevealer,
+    FakeTranscriber,
+    FakeVad,
+)
 from tests.pipeline.judge_fakes import FakeModel
 from vidcut.api.app import ApiSettings, create_app
 from vidcut.api.security import TOKEN_HEADER, local_guard
@@ -29,6 +35,7 @@ class ApiEnv:
     workspace: Path
     home: Path
     media: FakeMediaTool
+    revealer: FakeRevealer
 
     def video(self, name: str) -> Path:
         """ホームの Movies に動画ファイルを作る（中身は名前ごとに違う）。"""
@@ -45,6 +52,7 @@ class ApiEnv:
             media=self.media,
             ml=MlTools(vad=FakeVad(), transcriber=FakeTranscriber(), aligner=FakeAligner()),
             model=FakeModel(list(outputs)),
+            revealer=self.revealer,
         )
         try:
             app.worker().run_until_idle()
@@ -87,12 +95,22 @@ def build_env(
     home.mkdir()
     workspace = home / "VidCut"
     media_tool = media or FakeMediaTool()
-    api = build_api(workspace, media=media_tool, export_settings=export_settings)
+    # Finder を実際には開かない
+    revealer = FakeRevealer()
+    api = build_api(workspace, media=media_tool, export_settings=export_settings, revealer=revealer)
     app = create_app(api, ApiSettings(guard=local_guard(TOKEN, port=8765), home=home))
     client = TestClient(
         app, base_url=BASE_URL, headers={TOKEN_HEADER: TOKEN}, raise_server_exceptions=False
     )
-    return ApiEnv(app=app, client=client, api=api, workspace=workspace, home=home, media=media_tool)
+    return ApiEnv(
+        app=app,
+        client=client,
+        api=api,
+        workspace=workspace,
+        home=home,
+        media=media_tool,
+        revealer=revealer,
+    )
 
 
 @pytest.fixture

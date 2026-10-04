@@ -181,13 +181,39 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Get Exports
+         * @description 書き出しの状態と保存先。書き出しの間、画面が進捗を知るために読む（詳細より軽い）。
+         */
+        get: operations["get_exports_api_lectures__lecture_id__exports_get"];
         put?: never;
         /**
          * Request Export
          * @description 書き出しジョブを積む。同じ書き出しが待機中なら、そのジョブを返す。
          */
         post: operations["request_export_api_lectures__lecture_id__exports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lectures/{lecture_id}/exports/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reveal Exports
+         * @description 書き出したファイル（なければフォルダ）を Finder で選んで見せる。
+         *
+         *     見せる場所はレクチャーの id から求める。要求からパスは受け取らない（Design Doc 3-5-1）。
+         */
+        post: operations["reveal_exports_api_lectures__lecture_id__exports_reveal_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -353,6 +379,14 @@ export interface components {
             /** Success */
             success: boolean;
         };
+        /** Envelope[ExportsOut] */
+        Envelope_ExportsOut_: {
+            data?: components["schemas"]["ExportsOut"] | null;
+            /** Error */
+            error?: string | null;
+            /** Success */
+            success: boolean;
+        };
         /** Envelope[FsListingOut] */
         Envelope_FsListingOut_: {
             data?: components["schemas"]["FsListingOut"] | null;
@@ -404,6 +438,14 @@ export interface components {
         /** Envelope[PeaksOut] */
         Envelope_PeaksOut_: {
             data?: components["schemas"]["PeaksOut"] | null;
+            /** Error */
+            error?: string | null;
+            /** Success */
+            success: boolean;
+        };
+        /** Envelope[RevealOut] */
+        Envelope_RevealOut_: {
+            data?: components["schemas"]["RevealOut"] | null;
             /** Error */
             error?: string | null;
             /** Success */
@@ -466,6 +508,20 @@ export interface components {
              */
             success: false;
         };
+        /**
+         * ExportFileOut
+         * @description 1 つの形式の書き出し先。
+         *
+         *     exported_at は最後に書き出した日時（ファイルの更新日時）。まだなければ null。
+         *     job は、この形式の最新の書き出しジョブ。依頼したことがなければ null。
+         */
+        ExportFileOut: {
+            /** Exported At */
+            exported_at: string | null;
+            job: components["schemas"]["JobOut"] | null;
+            /** Path */
+            path: string;
+        };
         /** ExportIn */
         ExportIn: {
             /**
@@ -473,6 +529,21 @@ export interface components {
              * @enum {string}
              */
             format: "premiere_xml" | "mp4";
+        };
+        /**
+         * ExportsOut
+         * @description 書き出しの状態と保存先。directory と path は絶対パス（画面でエスケープして表示すること）。
+         *
+         *     shared_with_other_lectures が true なら、同じ場所に書き出すレクチャーがほかにある
+         *     （書き出すと上書きになり、exported_at もほかのレクチャーのものでありうる）。
+         */
+        ExportsOut: {
+            /** Directory */
+            directory: string;
+            mp4: components["schemas"]["ExportFileOut"];
+            premiere_xml: components["schemas"]["ExportFileOut"];
+            /** Shared With Other Lectures */
+            shared_with_other_lectures: boolean;
         };
         /** FsEntryOut */
         FsEntryOut: {
@@ -593,11 +664,13 @@ export interface components {
          *     judged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。
          *     dropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。
          *     keep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。
+         *     exports は、開いたときの書き出しの状態と保存先（書き出しの間は、GET …/exports で読み直す）。
          */
         LectureDetailOut: {
             /** Dropped Restored Ids */
             dropped_restored_ids: string[];
             edit_state: components["schemas"]["EditStateOut"];
+            exports: components["schemas"]["ExportsOut"];
             /** Id */
             id: string;
             /** Jobs */
@@ -737,6 +810,17 @@ export interface components {
             source_path: string;
             /** Width */
             width: number;
+        };
+        /**
+         * RevealOut
+         * @description Finder で選んで見せたもの（書き出したファイルか、ファイルがなければフォルダ）。
+         */
+        RevealOut: {
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "file" | "directory";
         };
         /**
          * ReviewMarkKind
@@ -1423,6 +1507,73 @@ export interface operations {
             };
         };
     };
+    get_exports_api_lectures__lecture_id__exports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lecture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ExportsOut_"];
+                };
+            };
+            /** @description トークンが正しくない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Host または Origin が受け付けられない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 指定されたデータが見つからない */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 入力が正しくない */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 想定していない失敗（詳細はログ） */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
     request_export_api_lectures__lecture_id__exports_post: {
         parameters: {
             query?: never;
@@ -1445,6 +1596,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_JobOut_"];
+                };
+            };
+            /** @description トークンが正しくない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Host または Origin が受け付けられない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 指定されたデータが見つからない */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 入力が正しくない */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 想定していない失敗（詳細はログ） */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    reveal_exports_api_lectures__lecture_id__exports_reveal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lecture_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RevealOut_"];
                 };
             };
             /** @description トークンが正しくない */

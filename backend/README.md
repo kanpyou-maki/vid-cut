@@ -37,6 +37,8 @@ uv run vidcut eval judge --lecture s05-12sample \
 ```
 
 ワークスペースは既定で `~/VidCut/`（環境変数 `VIDCUT_WORKSPACE` で変更）。
+環境変数 `VIDCUT_REVEAL=off` を付けると、「Finder で開く」（`POST /api/lectures/{id}/exports/reveal`）が `open` を実行せず、見せるはずだった場所をログに出すだけになる
+（自動の確認と E2E 用。`off` 以外の値は起動時に失敗する。[Design Doc](../docs/design.md) 3-5-1）。
 
 ## 画面と API のサーバー
 
@@ -106,7 +108,12 @@ api -X PUT -H "Content-Type: application/json" \
   $BASE/api/lectures/$LECTURE/edits | show     # version が 1 つ進む。同じ内容をもう一度送ると 409
 api -X POST -H "Content-Type: application/json" -d '{"format": "premiere_xml"}' \
   $BASE/api/lectures/$LECTURE/exports | show   # worker が処理し、~/VidCut-check/exports/s05-12sample/ にできる
+api $BASE/api/lectures/$LECTURE/exports | show # 保存先、形式ごとのパス・最後に書き出した日時・最新のジョブ
+api -X POST $BASE/api/lectures/$LECTURE/exports/reveal | show  # Finder の窓が開き、書き出した XML が選ばれる
 ```
+
+`reveal` は、実際に Finder の窓を開く（開かせたくなければ、サーバーを `VIDCUT_REVEAL=off` を付けて起動する）。
+まだ書き出していないレクチャーでは 422（「書き出したファイルがまだありません」）。
 
 **6. 断られることの確認**
 
@@ -128,4 +135,7 @@ rm -rf ~/VidCut-check
 
 Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワークスペースの `exports/<レクチャー名>/` に書き出す
 （`<レクチャー名>.xml` と `<レクチャー名>.mp4`。Premiere XML は `recordings/<id>/mezzanine.mp4` を参照する）。
-書き出しは API（`POST /api/lectures/{id}/exports`。上の「手で確かめる」を参照）と、M7 の画面から依頼する。
+書き出しは、編集画面の書き出しの行（[frontend/README.md](../frontend/README.md) の「手で確かめる（M7 の PR 7: 書き出し）」）か、
+API（`POST /api/lectures/{id}/exports`。上の「手で確かめる」を参照）から依頼する。書き出しの CLI はない。
+保存先と、形式ごとの最後に書き出した日時・最新のジョブは `GET /api/lectures/{id}/exports`（レクチャーの詳細の `exports` と同じ）で読める。
+同じ名前のレクチャーは同じ場所に書き出す（上書きになる。そのときは `shared_with_other_lectures` が true）。

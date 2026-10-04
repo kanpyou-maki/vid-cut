@@ -16,7 +16,12 @@ from vidcut.api.envelope import failure
 from vidcut.api.frontend import PageFallback
 from vidcut.api.headers import SECURITY_HEADERS
 from vidcut.api.security import route_path
-from vidcut.pipeline.ports import InvalidInputError, NotFoundError, VersionConflictError
+from vidcut.pipeline.ports import (
+    InvalidInputError,
+    NotFoundError,
+    RevealFailedError,
+    VersionConflictError,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -36,6 +41,12 @@ def install_error_handlers(app: FastAPI, page_fallback: PageFallback | None = No
     @app.exception_handler(VersionConflictError)
     async def conflict(request: Request, error: VersionConflictError) -> JSONResponse:
         return failure(409, messages.VERSION_CONFLICT)
+
+    @app.exception_handler(RevealFailedError)
+    async def reveal_failed(request: Request, error: RevealFailedError) -> JSONResponse:
+        # 例外の文は、絶対パスと open の出力を含む。ログにだけ出す
+        _logger.error("%s %s: %s", request.method, request.url.path, error)
+        return failure(500, messages.REVEAL_FAILED)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:

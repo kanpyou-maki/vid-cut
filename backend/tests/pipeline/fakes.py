@@ -183,3 +183,16 @@ class NoRecordings:
 
     def list_all(self) -> tuple[Recording, ...]:
         return ()
+
+
+class FakeRevealer:
+    """FileRevealer の偽物。見せるはずだった場所を覚えるだけで、何も開かない。"""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.revealed: list[Path] = []
+        self.error = error
+
+    def reveal(self, path: Path) -> None:
+        self.revealed.append(path)
+        if self.error is not None:
+            raise self.error

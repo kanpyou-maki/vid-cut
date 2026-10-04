@@ -28,6 +28,10 @@ class LoginRequiredError(ExternalToolError):
     """`claude` にログインしていない。利用者が `/login` を実行する必要がある。"""
 
 
+class RevealFailedError(RuntimeError):
+    """書き出したファイルを、ファイル管理の画面（Finder）で見せられなかった。"""
+
+
 class UnsupportedMediaError(ValueError):
     """録画ファイルが処理できない形式（映像または音声のトラックがない等）。"""
 
@@ -198,8 +202,22 @@ class ArtifactStore(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class ExportedFile:
+    """書き出すファイルの場所と、最後に書き出した日時（ファイルの更新日時）。
+
+    exported_at は、通常のファイルとしてまだなければ None。
+    """
+
+    path: Path
+    exported_at: datetime | None
+
+
 class ExportStore(Protocol):
-    """書き出し先。ワークスペースの exports/<レクチャー名>/<レクチャー名><suffix>。"""
+    """書き出し先。ワークスペースの exports/<レクチャー名>/<レクチャー名><suffix>。
+
+    directory・locate・existing_directory は読むだけで、フォルダを作らない（画面の表示に使う）。
+    """
 
     def path(self, title: str, suffix: str) -> Path:
         """書き出すファイルの場所。親のディレクトリは作っておく。"""
@@ -207,6 +225,29 @@ class ExportStore(Protocol):
 
     def write_text(self, title: str, suffix: str, text: str) -> Path:
         """書き終えてから置き換え、書いたファイルの場所を返す。"""
+        ...
+
+    def directory(self, title: str) -> Path:
+        """書き出し先のフォルダの場所（あるかどうかは問わない）。"""
+        ...
+
+    def locate(self, title: str, suffix: str) -> ExportedFile:
+        """書き出すファイルの場所と、最後に書き出した日時。リンクの先は調べない。"""
+        ...
+
+    def existing_directory(self, title: str) -> Path | None:
+        """いまある書き出し先のフォルダの、解決済みの絶対パス。まだなければ None。
+
+        シンボリックリンクなら ValueError（ワークスペースの外を見せない）。
+        """
+        ...
+
+
+class FileRevealer(Protocol):
+    """ファイルやフォルダを、利用者のファイル管理の画面（Finder）で選んで見せる。"""
+
+    def reveal(self, path: Path) -> None:
+        """path は解決済みの絶対パス。開いたり起動したりはしない。失敗は RevealFailedError。"""
         ...
 
 

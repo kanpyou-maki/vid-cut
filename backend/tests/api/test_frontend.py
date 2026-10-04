@@ -237,6 +237,15 @@ class TestSecurityHeaders:
         assert shared["hash"] == WAVEFORM_STYLE_HASH
         assert f"style-src 'self' '{shared['hash']}'" in policy.split("; ")
 
+    def test_images_and_media_come_only_from_the_app_itself(self, client: TestClient) -> None:
+        # 画面は data: も blob: も使わない（proxy 動画は自分自身の URL、波形は canvas に描く）
+        policy = client.get("/").headers["content-security-policy"]
+        directives = dict(part.split(" ", 1) for part in policy.split("; "))
+        assert directives["img-src"] == "'self'"
+        assert directives["media-src"] == "'self'"
+        assert "data:" not in policy
+        assert "blob:" not in policy
+
     def test_startup_and_shutdown_pass_through(self, tmp_path: Path, dist: Path) -> None:
         with make_client(tmp_path, dist) as client:
             assert client.get("/").status_code == 200

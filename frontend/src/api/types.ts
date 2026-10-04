@@ -22,5 +22,10 @@ export type EditState = Schemas["EditStateOut"];
 export type ManualCut = Schemas["ManualCutOut"];
 /** 波形のピーク値。1 秒あたり per_second 個の、0〜1 の値 */
 export type Peaks = Schemas["PeaksOut"];
+/** 書き出しの状態と保存先。directory と path は絶対パス */
+export type Exports = Schemas["ExportsOut"];
+/** 1 つの形式の書き出し先・最後に書き出した日時・最新の書き出しジョブ */
+export type ExportFile = Schemas["ExportFileOut"];
+export type ExportFormat = Schemas["ExportIn"]["format"];
 /** 保存する編集状態（version は、読み込んだときの版） */
 export type Edits = Schemas["EditsIn"];
