@@ -12,6 +12,8 @@ htmlcov/
 node_modules/
 dist/
 coverage/
+# E2E の実行のたびに作り直すもの（ビルドの出力・ワークスペース・素材・失敗時の画像）
+frontend/e2e/run/
 
 # 素材・生成物（動画は大きいのでコミットしない）
 *.mov

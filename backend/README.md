@@ -131,6 +131,21 @@ api -o /dev/null -w "%{http_code}\n" "$BASE/api/fs?path=/etc"                   
 rm -rf ~/VidCut-check
 ```
 
+## E2E 用の起動スクリプト（`tests/e2e/`）
+
+画面の E2E（`frontend/e2e/`。Playwright）が使う。ML と判定だけを偽の実装に差し替えて、serve と worker を起動する（[Design Doc](../docs/design.md) 6 章）。
+
+```bash
+uv run python -m tests.e2e.serve --root <フォルダ> --port 8799 --frontend-dist <ビルドの出力>
+```
+
+- 本体（`src`）には、差し替えのための環境変数も偽の実装もない。差し替えは、`build_app` の引数（`ml`・`model`）、`cli.main` の `build`、`serve` の `start_worker` で行う
+- `--root` には、ワークスペース（`workspace/`）と素材（`home/`。ffmpeg の `lavfi` で作る 13 秒の録画 2 本）を、実行のたびに作り直す。
+  消すのは、このスクリプトが作ったフォルダ（目印のファイル `vidcut-e2e-root` がある）だけで、ほかのフォルダを指定すると、消さずに失敗する
+- ワークスペースは `<root>/workspace` に固定（`VIDCUT_WORKSPACE` は見ない）。`VIDCUT_REVEAL=off` を自分で付ける
+- 台本（素材の発話の区間と、偽の文字起こし・偽の判定が返す内容）は `tests/e2e/script.json`。画面側の E2E も同じファイルを読む
+- 通常のテスト（`uv run pytest`）は、台本・偽の実装・フォルダの守り・取り込みから書き出しまで（実物の ffmpeg）を確かめる。サーバーの起動は、画面の E2E が確かめる
+
 ## 書き出し
 
 Premiere XML と MP4 は、ジョブ `export_premiere` / `export_mp4` がワークスペースの `exports/<レクチャー名>/` に書き出す

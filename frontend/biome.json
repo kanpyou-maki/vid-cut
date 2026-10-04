@@ -5,6 +5,7 @@
       "**",
       "!dist",
       "!coverage",
+      "!e2e/run",
       "!node_modules",
       "!src/api/generated",
       "!public"

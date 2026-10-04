@@ -13,7 +13,7 @@ Claude Code の作業指示。**常に日本語で応答すること。**
 
 - **技術スタック:** Python 3.12（uv / FastAPI / mlx-whisper・WhisperX・Silero VAD / ffmpeg）+ TypeScript（React / Vite）— [ADR-001](./docs/adr/ADR-001-language-and-stack.md)
 - **構成:** `backend/`（uv、解析パイプライン + API）、`frontend/`（npm、編集 UI）。各 README に開発コマンド
-- **テスト:** `.claude/harness.json` の `commands.test`（backend は pytest、frontend は vitest）
+- **テスト:** `.claude/harness.json` の `commands.test`（backend は pytest、frontend は vitest）。E2E は `commands.e2e`（Playwright）
 - **前提ツール:** ffmpeg、uv、Node.js、ログイン済みの `claude` CLI
 - **検証素材:** `~/Desktop/s05-12sample.mov`。正解データは `docs/references/prototype/`
 
