@@ -6,6 +6,12 @@ import { EXPORT_FORMATS, isExporting, withExportJob } from "./exportView";
 
 const NOT_SAVED_MESSAGE = "保存できなかったため、書き出しを依頼していません";
 
+/** 行に出す失敗。source は出どころ、message は画面に出してよい文。 */
+export interface ExportFailure {
+  source: "request" | "poll" | "reveal";
+  message: string;
+}
+
 /** 書き出しの行に渡すもの。 */
 export interface Exporting {
   /** いま分かっている、書き出しの状態と保存先 */
@@ -21,8 +27,8 @@ export interface Exporting {
   requesting: readonly ExportFormat[];
   /** Finder で開くよう頼んでいる間 */
   revealing: boolean;
-  /** 行に出す失敗の文（依頼・状態の読み取り・Finder で開く） */
-  failures: readonly string[];
+  /** 行に出す失敗（依頼・状態の読み取り・Finder で開く。それぞれ 1 件まで） */
+  failures: readonly ExportFailure[];
   /** レクチャーがなくなった（依頼か、状態の読み取りが 404 を返した） */
   gone: boolean;
   /** 未保存の変更を保存してから、書き出しを頼む */
@@ -36,6 +42,15 @@ export interface Exporting {
 
 function labelOf(format: ExportFormat): string {
   return EXPORT_FORMATS.find((entry) => entry.format === format)?.label ?? "";
+}
+
+function failuresOf(
+  messages: Record<ExportFailure["source"], string | null>,
+): ExportFailure[] {
+  return (["request", "poll", "reveal"] as const).flatMap((source) => {
+    const message = messages[source];
+    return message === null ? [] : [{ source, message }];
+  });
 }
 
 function isGone(error: unknown): boolean {
@@ -90,9 +105,11 @@ export function useExports(
     generation,
     requesting: requests.requesting,
     revealing: revealer.revealing,
-    failures: [requests.failure, pollFailure, revealer.failure].filter(
-      (failure): failure is string => failure !== null,
-    ),
+    failures: failuresOf({
+      request: requests.failure,
+      poll: pollFailure,
+      reveal: revealer.failure,
+    }),
     gone,
     request: requests.request,
     reveal: revealer.reveal,

@@ -23,7 +23,7 @@ from vidcut.services.lecture_views import JobView
 _SUFFIXES = (PREMIERE_SUFFIX, MP4_SUFFIX)
 # この 2 つの文は、そのまま画面に出る（パスを入れない）
 _NOTHING_EXPORTED = "書き出したファイルがまだありません"
-_DESTINATION_IS_SYMLINK = "書き出し先がシンボリックリンクになっているため、開けません"
+_DESTINATION_REFUSED = "書き出し先がシンボリックリンクか、ワークスペースの外にあるため、開けません"
 
 
 class RevealTarget(StrEnum):
@@ -93,7 +93,7 @@ class ExportDestinations:
         try:
             directory = self._exports.existing_directory(lecture.title)
         except ValueError as e:
-            raise InvalidInputError(_DESTINATION_IS_SYMLINK) from e
+            raise InvalidInputError(_DESTINATION_REFUSED) from e
         if directory is None:
             raise InvalidInputError(_NOTHING_EXPORTED)
         written = [

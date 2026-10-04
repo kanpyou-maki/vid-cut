@@ -67,8 +67,8 @@ export function ExportBar({
         <p className={styles.note}>{SHARED_NOTE}</p>
       )}
       {exporting.failures.map((failure) => (
-        <p key={failure} role="alert" className={styles.failure}>
-          {failure}
+        <p key={failure.source} role="alert" className={styles.failure}>
+          {failure.message}
         </p>
       ))}
       {exporting.active && (
