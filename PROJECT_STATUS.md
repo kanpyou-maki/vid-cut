@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 と FRIC-004 の解消、M7 の PR 1（土台）〜PR 6（波形）は main にマージ済み（PR #1〜#17）。M7（frontend）の最後の PR 7（書き出し）を実装し、ユーザーの確認を待っている。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。次は M8（E2E と受け入れ）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -33,16 +33,19 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M6 
 - [x] M4: 言い直しの判定（claude adapter・判定の指示文と出力の検証・窓分割・`judge_lecture` ジョブ・`vidcut eval judge`）。検証素材で適合率・再現率とも 100%（実際の解析結果で 3 回）— 2026-10-03
 - [x] M5: 書き出し（Premiere XML・MP4・`export_premiere` / `export_mp4` ジョブ。テスト 602 件 / カバレッジ 98%。review-loop 全通過）。検証素材の書き出しを Premiere で読み込み、音ズレなし（ユーザー確認）— 2026-10-03
 - [x] スパイク S-1（Premiere XML）: 元素材の参照は不可、中間素材の参照は OK（最後のフレームを延ばす修正込み）→ ADR-002 — 2026-10-03
+- [x] M7: frontend（7 本の PR: 土台・素材一覧・編集状態と文字起こし・要確認と判定理由と通知・プレビュー・波形・書き出し。PR #12〜#18。テスト: frontend 644 件 / カバレッジ 98%、backend 1,103 件 / 99%。
+      PR ごとに、実物の backend とヘッドレスの Chrome での確認と、ユーザーの手動確認を行った）— 2026-10-04
 - [x] M6: API（services と保存まわり・FastAPI とローカル API の防御・`vidcut serve`・frontend の配信・OpenAPI からの型生成。テスト 1,015 件 / カバレッジ 99%。review-loop 全通過。PR #9〜#11）。`~/VidCut/` の写しで手動確認し、問題なし（ユーザー確認）— 2026-10-04
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M6 完了。M7 は PR 6（波形。PR #17）までマージ済み。PR 7（書き出し。PR #18）は確認待ち
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。次は M8
 
 ## 次にやること
 
-- [ ] M7: frontend。PR 7（`feat/m7-export`: 書き出しの行、書き出しの状態の API、Finder で開く API、CSP の `data:`・`blob:` の削除）を実装し、PR [#18](https://github.com/kanpyou-maki/vid-cut/pull/18) を作成した。
-      ユーザーの手動確認（`frontend/README.md` の「手で確かめる（M7 の PR 7: 書き出し）」）とマージを待っている。マージされたら M7 は終わりで、次は M8（E2E と受け入れ）
+- [ ] M8: E2E と受け入れ（`test/m8-e2e`。実装計画の M8）: Playwright の E2E（投入 → 解析 → 編集 → 書き出し。ML と判定は偽の実装に差し替え）、
+      間の調整（文の終わりのあとの間を長くする）、実際の撮影素材 3 本での受け入れチェック（PRD 3-2）、フィラーを含む素材があればフィラー検出の検証（D-5）。
+      着手前に、進め方（PR の分け方、E2E の偽の実装の差し替え方と Playwright の導入、間の調整の仕様）を提案して、ユーザーの判断を待つ
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
 - [ ] 間の調整（M8 に追加済み）: 文の終わりのあとの間を長くする。一通り仕上げてから、編集画面のプレビューで聞きながら決める（ユーザー決定、2026-10-03）
@@ -201,7 +204,7 @@ _なし_
 - PR 6 の残り・制限: 区間はマウスでしか選べない（キーボードでは、無音の候補を戻せない）。ドラッグで区間を作る・縁を動かす操作はない（M8 の「間の調整」と合わせて考える）。
   2 本目からの目盛りは、半端な時刻になる（位置が、つなげた全体で決まるため）。手動の削除区間と自動の候補が重なるところは、両方の色が重なって見える。
   長いレクチャー（2 時間で、ピーク値は約 72 万個・区間は数千件）での重さは、実素材で M8 に確かめる
-- PR 7（`feat/m7-export`）: 書き出し。画面の構成と API の形はユーザー承認（2026-10-04。推奨案のまま。決定事項 32。Design Doc 3-5・3-5-1・3-6 の「編集画面の書き出し」）。
+- PR 7（`feat/m7-export`）: 書き出し。ユーザーが確認してマージした（PR #18、2026-10-04。実際に Finder の窓が開くことも、手動確認で確かめた）。画面の構成と API の形はユーザー承認（2026-10-04。推奨案のまま。決定事項 32。Design Doc 3-5・3-5-1・3-6 の「編集画面の書き出し」）。
   backend は、`services/export_destinations.py`（`ExportDestinations`: 書き出しの状態と保存先 `status`、Finder で開く `reveal`。読むだけで、フォルダを作らない）、
   `adapters/finder.py`（`FinderRevealer`: `/usr/bin/open -R <絶対パス>`、`LoggingRevealer`: ログに出すだけ）、`ExportStore` の読むだけの問い合わせ（`directory`・`locate`・`existing_directory`）、
   `GET /api/lectures/{id}` の `exports`、`GET /api/lectures/{id}/exports`、`POST /api/lectures/{id}/exports/reveal`、環境変数 `VIDCUT_REVEAL=off`（`bootstrap.revealer_from_env`）。
@@ -218,7 +221,7 @@ _なし_
   提案を受けて、Finder で開けないときの文（シンボリックリンクか、ワークスペースの外）・失敗の出どころの名前・形式の名前の表（`EXPORT_LABELS`）・読み直しの結果の受け口の分割（`usePollResults`）・
   離れたあとの `retry` のテスト・`PROJECT_STATUS.md` の古い表現を反映した。セキュリティの LOW（対応は任意。見送り）: トークンを持つ呼び出し元が「Finder で開く」を連打すると、窓が何度も開く
   （同じ Mac のほかのプログラムだけ。受け入れ済みの前提の範囲）。`open` の出力とパスをログに出す（ローカルのログだけ）。絶対パスでないパスを渡したときの `ValueError` は、汎用の 500 の定型文になる（通常は起きない）
-- PR 7 の残り・制限: 実際に Finder の窓が開くこと（`open -R`）は、自動の確認では確かめていない（`VIDCUT_REVEAL=off`。ユーザーの手動確認で確かめる）。
+- PR 7 の残り・制限: 実際に Finder の窓が開くこと（`open -R`）は、自動の確認では確かめない（`VIDCUT_REVEAL=off`。PR 7 では、ユーザーが手動確認で確かめた）。
   書き出したあとに編集があることの印は出さない。書き出しに入るのは、ジョブが始まった時点で保存済みの内容まで。開いたときに最新の書き出しジョブが失敗なら、前の失敗でもそのまま出す。
   同じ場所に書き出すレクチャーの判定は、大文字と小文字を区別しない（区別するボリュームでは、出なくてよい注意が出る）。書き出しの進捗の読み直しは、ほかのタブで頼んだ書き出しには、開き直すまで気づかない
 - 素材一覧の残り: 判定の進捗（%）は出していない（窓が 1 つだと 0% のまま）。処理中のボタンは `disabled` にするので、キーボードで ↑ ↓ を続けて押すとフォーカスが外れることがある
