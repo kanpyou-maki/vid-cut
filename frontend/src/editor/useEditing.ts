@@ -93,6 +93,8 @@ export interface Editing extends EditActions {
   canRedo: boolean;
   saveStatus: SaveStatus;
   retrySave: () => void;
+  /** 未保存の変更をいますぐ保存し、保存済みになったら true（書き出しの前に使う） */
+  flushSave: () => Promise<boolean>;
   /** 版の食い違い・レクチャーの消失のあと。編集しても保存できないので、操作を止める */
   locked: boolean;
 }
@@ -120,7 +122,7 @@ export function useEditing(detail: LectureDetail): Editing {
       api.saveEdits(detail.id, toEdits(edited, version)),
     [api, detail.id],
   );
-  const { status, retry } = useAutosave({
+  const { status, retry, flush } = useAutosave({
     draft,
     initial,
     version: detail.edit_state.version,
@@ -188,6 +190,7 @@ export function useEditing(detail: LectureDetail): Editing {
     canRedo: canRedo(history),
     saveStatus: status,
     retrySave: retry,
+    flushSave: flush,
     locked,
   };
 }

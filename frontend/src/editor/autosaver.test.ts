@@ -320,3 +320,121 @@ describe("createAutosaver: close（画面を離れる）", () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe("createAutosaver: flush（いますぐ保存して、結果を待つ）", () => {
+  it("保存済みなら、何も送らずに true を返す", async () => {
+    const { saver, calls } = setup();
+
+    await expect(saver.flush()).resolves.toBe(true);
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it("未保存の変更があれば、1 秒を待たずに送り、保存できたら true を返す", async () => {
+    const { saver, calls, last } = setup();
+    saver.update("b");
+
+    const flushed = saver.flush();
+    expect(calls).toEqual([
+      expect.objectContaining({ draft: "b", version: 3 }),
+    ]);
+    calls[0].succeed();
+
+    await expect(flushed).resolves.toBe(true);
+    expect(last()).toEqual({ name: "saved" });
+    // 待っていた 1 秒がたっても、もう一度は送らない
+    await vi.advanceTimersByTimeAsync(DELAY_MS);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("保存の途中なら、その保存が終わるのを待つ（保存を重ねない）", async () => {
+    const { saver, calls } = setup();
+    saver.update("b");
+    vi.advanceTimersByTime(DELAY_MS);
+
+    let result: boolean | undefined;
+    void saver.flush().then((value) => {
+      result = value;
+    });
+    await settled();
+    expect(calls).toHaveLength(1);
+    expect(result).toBeUndefined();
+
+    calls[0].succeed();
+    await settled();
+    expect(result).toBe(true);
+  });
+
+  it("保存の途中に変更があれば、その変更も保存し終えてから true を返す", async () => {
+    const { saver, calls } = setup();
+    saver.update("b");
+    vi.advanceTimersByTime(DELAY_MS);
+    saver.update("c");
+
+    let result: boolean | undefined;
+    void saver.flush().then((value) => {
+      result = value;
+    });
+    calls[0].succeed();
+    await settled();
+    expect(result).toBeUndefined();
+    expect(calls[1]).toMatchObject({ draft: "c", version: 4 });
+
+    calls[1].succeed();
+    await settled();
+    expect(result).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("保存に失敗したら false を返し、失敗を知らせる", async () => {
+    const { saver, calls, last } = setup();
+    saver.update("b");
+
+    const flushed = saver.flush();
+    calls[0].fail(new ApiError("server", "保存できません", 500));
+
+    await expect(flushed).resolves.toBe(false);
+    expect(last()).toEqual({ name: "failed", message: "保存できません" });
+  });
+
+  it("前の保存が失敗して残っている変更も、送り直す", async () => {
+    const { saver, calls } = setup();
+    saver.update("b");
+    vi.advanceTimersByTime(DELAY_MS);
+    calls[0].fail(new ApiError("server", "保存できません", 500));
+    await settled();
+
+    const flushed = saver.flush();
+    expect(calls[1]).toMatchObject({ draft: "b", version: 3 });
+    calls[1].succeed();
+
+    await expect(flushed).resolves.toBe(true);
+  });
+
+  it.each<[string, number]>([
+    ["conflict", 409],
+    ["not_found", 404],
+  ])(
+    "%s で止まったら false を返し、それ以降も送らない",
+    async (kind, status) => {
+      const { saver, calls } = setup();
+      saver.update("b");
+
+      const flushed = saver.flush();
+      calls[0].fail(
+        new ApiError(kind as "conflict" | "not_found", "止まった", status),
+      );
+      await expect(flushed).resolves.toBe(false);
+
+      await expect(saver.flush()).resolves.toBe(false);
+      expect(calls).toHaveLength(1);
+    },
+  );
+
+  it("画面を離れたあとは、false を返す", async () => {
+    const { saver } = setup();
+    saver.close();
+
+    await expect(saver.flush()).resolves.toBe(false);
+  });
+});

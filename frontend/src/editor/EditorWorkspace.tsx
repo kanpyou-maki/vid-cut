@@ -8,9 +8,11 @@ import { CutReason } from "./CutReason";
 import { DroppedNotice } from "./DroppedNotice";
 import { EditorLayout, EditorPanes } from "./EditorLayout";
 import styles from "./EditorWorkspace.module.css";
+import { ExportBar } from "./ExportBar";
 import { PreviewPane } from "./PreviewPane";
 import { TranscriptView } from "./TranscriptView";
 import { type Editing, useEditing } from "./useEditing";
+import { useExports } from "./useExports";
 import type { ReviewNavigation } from "./useReviewNavigation";
 import { WaveformPane } from "./WaveformPane";
 
@@ -24,7 +26,7 @@ const SAVE_LABELS: Readonly<Record<SaveStatus["name"], string>> = {
 };
 
 /**
- * 編集できる状態のレクチャーの編集画面（Design Doc 3-6）: 編集状態と履歴、自動保存、文字起こしの操作。
+ * 編集できる状態のレクチャーの編集画面（Design Doc 3-6）: 編集状態と履歴、自動保存、文字起こしの操作、書き出し。
  *
  * detail は読み込んだときのまま変えないこと。読み込み直すとき（onReload）は、この部品ごと作り直す
  * （履歴と、まだ保存されていない変更は消える）。
@@ -38,10 +40,17 @@ export function EditorWorkspace({
 }) {
   const editing = useEditing(detail);
   const { saveStatus, locked } = editing;
+  const exporting = useExports(detail.id, detail.exports, editing.flushSave);
 
   return (
     <EditorLayout title={detail.title} toolbar={<Toolbar editing={editing} />}>
-      {saveStatus.name === "gone" && (
+      <ExportBar
+        lectureId={detail.id}
+        exporting={exporting}
+        locked={locked}
+        nothingToExport={editing.player.durationMs === 0}
+      />
+      {(saveStatus.name === "gone" || exporting.gone) && (
         <p role="alert" className={styles.failure}>
           このレクチャーはなくなりました（別の画面でまとめた・解除した可能性があります）。
           <Link to={LIBRARY_PATH}>素材一覧へ</Link>

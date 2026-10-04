@@ -4,8 +4,11 @@ import type { paths } from "./generated/schema";
 import type {
   EditState,
   Edits,
+  ExportFormat,
+  Exports,
   FsListing,
   ImportResult,
+  Job,
   JobListItem,
   LectureDetail,
   LectureRef,
@@ -70,6 +73,18 @@ export interface Api {
   proxyUrl(recordingId: string): string;
   /** 録画ファイルの波形のピーク値。解析のピーク値の段が終わるまでは、not_found の失敗になる */
   getPeaks(recordingId: string, signal?: AbortSignal): Promise<Peaks>;
+  /**
+   * 書き出しのジョブを積む（同じ形式の書き出しが待機中なら、そのジョブを返す）。
+   * ジョブは、始まった時点で保存済みの編集状態を読む。未保存の変更は、先に保存しておくこと
+   */
+  requestExport(lectureId: string, format: ExportFormat): Promise<Job>;
+  /** 書き出しの状態と保存先。書き出しの間、進捗を知るために読む（レクチャーの詳細より軽い） */
+  getExports(lectureId: string, signal?: AbortSignal): Promise<Exports>;
+  /**
+   * 書き出したファイル（なければフォルダ）を、Finder で選んで見せる。
+   * 見せる場所は、サーバーがレクチャーの id から求める（画面からパスを送らない）
+   */
+  revealExports(lectureId: string): Promise<void>;
 }
 
 export interface ApiOptions {
@@ -160,6 +175,27 @@ export function createApi(options: ApiOptions): Api {
           signal,
         }),
       ),
+    requestExport: (lectureId, format) =>
+      unwrap(
+        client.POST("/api/lectures/{lecture_id}/exports", {
+          params: { path: { lecture_id: lectureId } },
+          body: { format },
+        }),
+      ),
+    getExports: (lectureId, signal) =>
+      unwrap(
+        client.GET("/api/lectures/{lecture_id}/exports", {
+          params: { path: { lecture_id: lectureId } },
+          signal,
+        }),
+      ),
+    revealExports: async (lectureId) => {
+      await unwrap(
+        client.POST("/api/lectures/{lecture_id}/exports/reveal", {
+          params: { path: { lecture_id: lectureId } },
+        }),
+      );
+    },
   };
 }
 
