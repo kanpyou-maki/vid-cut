@@ -5,9 +5,10 @@ import { expect, test } from "./fixtures.ts";
 import {
   cut,
   expectSaved,
+  exportAndWait,
   importLessons,
-  JOB_TIMEOUT_MS,
   openLecture,
+  phrase,
   restored,
   selectText,
   token,
@@ -35,7 +36,20 @@ const CUT_LENGTH = /\/ 0:06$/;
 const LENGTH_WITH_RETAKE = /\/ 0:08$/;
 const EXPORTED_SECONDS = 6.7;
 const SECONDS_TOLERANCE = 0.3;
-const KEPT_CLIPS = 3;
+// 2 本ぶんで約 12.5 秒。1 つ目のシナリオが 1 本目のフィラーを戻していれば、約 13.0 秒
+const MERGED_LENGTH = /\/ 0:1[23]$/;
+// 手動で削除して、取り消す部分（3 行目の中）
+const DELETED_LINE = 2;
+const DELETED_PHRASE = "話をします";
+// フィラーを戻したあとに残る発話は、1・3・4 行目（2 行目は言い直しで削除）。それぞれが、前後の余白つきで 1 つのクリップになる
+const KEPT_LINES = [0, 2, 3];
+// 残す発話の前後に付く余白（書き出しの設定の既定値）と、書き出しのフレームレート
+const PAD_BEFORE_MS = 150;
+const PAD_AFTER_MS = 250;
+const FPS = 60;
+const MS_PER_SECOND = 1000;
+// 無音の検出（実物の ffmpeg）の端は、音の切り替わりから少しずれる
+const FRAME_TOLERANCE = 3;
 
 test.describe.configure({ mode: "serial" });
 
@@ -71,13 +85,13 @@ test("投入した録画ファイルが解析され、編集して、書き出�
   });
 
   await test.step("文字を選んで削除し、取り消す", async () => {
-    // 3 行目の「話をします」
-    await selectText(page, token(page, 2, 6), token(page, 2, 10));
+    const [first, last] = phrase(page, DELETED_LINE, DELETED_PHRASE);
+    await selectText(page, first, last);
     await page.keyboard.press("Delete");
-    await expect(cut(page, "話をします", "手動")).toBeVisible();
+    await expect(cut(page, DELETED_PHRASE, "手動")).toBeVisible();
     await expectSaved(page);
     await page.keyboard.press("Meta+z");
-    await expect(cut(page, "話をします", "手動")).toHaveCount(0);
+    await expect(cut(page, DELETED_PHRASE, "手動")).toHaveCount(0);
     await expectSaved(page);
   });
 
@@ -106,22 +120,21 @@ test("投入した録画ファイルが解析され、編集して、書き出�
   const directory = path.join(WORKSPACE, "exports", FIRST);
 
   await test.step("Premiere XML に、残す区間だけが並ぶ", async () => {
-    await page.getByRole("button", { name: "Premiere XML を書き出す" }).click();
-    await expect(page.getByTestId("export-status-premiere_xml")).toHaveText(
-      /^最後の書き出し: /,
-      { timeout: JOB_TIMEOUT_MS },
+    await exportAndWait(page, "Premiere XML", "premiere_xml");
+    const clips = videoClips(
+      readFileSync(exported(directory, ".xml"), "utf-8"),
     );
-    const xml = readFileSync(exported(directory, ".xml"), "utf-8");
-    // 映像のトラックのクリップ（id が v- で始まる）
-    expect(xml.match(/<clipitem id="v-\d+"/g)).toHaveLength(KEPT_CLIPS);
+    expect(clips).toHaveLength(KEPT_LINES.length);
+    for (const [index, line] of KEPT_LINES.entries()) {
+      // 戻したフィラーは 4 行目の頭なので、4 行目のクリップも行の頭（の余白）から始まる
+      const { start_ms, end_ms } = SCRIPT.lines[line];
+      expectNear(clips[index].in, toFrames(start_ms - PAD_BEFORE_MS));
+      expectNear(clips[index].out, toFrames(end_ms + PAD_AFTER_MS));
+    }
   });
 
   await test.step("MP4 が、カット後の長さになる", async () => {
-    await page.getByRole("button", { name: "MP4 を書き出す" }).click();
-    await expect(page.getByTestId("export-status-mp4")).toHaveText(
-      /^最後の書き出し: /,
-      { timeout: JOB_TIMEOUT_MS },
-    );
+    await exportAndWait(page, "MP4", "mp4");
     const seconds = durationSeconds(exported(directory, ".mp4"));
     expect(Math.abs(seconds - EXPORTED_SECONDS)).toBeLessThan(
       SECONDS_TOLERANCE,
@@ -159,7 +172,7 @@ test("2 本をまとめたレクチャーで、波形がつながり、動画が
 
   // どちらの録画ファイルの言い直しも、削除されている
   await expect(cut(page, RETAKE, "言い直し")).toHaveCount(2);
-  await expect(page.getByTestId("preview-time")).toHaveText(/\/ 0:1[23]$/);
+  await expect(page.getByTestId("preview-time")).toHaveText(MERGED_LENGTH);
   const wave = page.getByRole("region", { name: "波形" });
   await expect(wave.locator("canvas").first()).toBeVisible();
   await expect(wave).toContainText(SECOND_LESSON);
@@ -177,6 +190,24 @@ function exported(directory: string, suffix: string): string {
   const names = readdirSync(directory).filter((name) => name.endsWith(suffix));
   expect(names).toHaveLength(1);
   return path.join(directory, names[0]);
+}
+
+/** 映像のトラックのクリップ（id が v- で始まる）の、素材の中の開始と終了（フレーム）。 */
+function videoClips(xml: string): { in: number; out: number }[] {
+  const pattern =
+    /<clipitem id="v-\d+">[\s\S]*?<in>(\d+)<\/in><out>(\d+)<\/out>/g;
+  return [...xml.matchAll(pattern)].map((match) => ({
+    in: Number(match[1]),
+    out: Number(match[2]),
+  }));
+}
+
+function toFrames(ms: number): number {
+  return Math.round((ms * FPS) / MS_PER_SECOND);
+}
+
+function expectNear(frame: number, expected: number): void {
+  expect(Math.abs(frame - expected)).toBeLessThanOrEqual(FRAME_TOLERANCE);
 }
 
 function durationSeconds(file: string): number {

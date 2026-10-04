@@ -108,6 +108,7 @@ class TestWorker:
             assert fake_worker.main([PARENT_PID_FLAG, "123"], run=run) == 0
             (app,) = built
             assert app.workspace == tmp_path
+            # 偽の判定が組み込まれたことを確かめる手段が、ほかにない（本体は変えない）
             assert isinstance(app.judge._model, ScriptedJudge)
         finally:
             for app in built:

@@ -70,6 +70,22 @@ export function token(
   return transcript(page).locator(`[data-token-index="${index}"]`);
 }
 
+/** 台本の line 行目の中の text の、最初と最後の文字のトークン。 */
+export function phrase(
+  page: Page,
+  line: number,
+  text: string,
+): [first: Locator, last: Locator] {
+  const offset = SCRIPT.lines[line].text.indexOf(text);
+  if (offset < 0) {
+    throw new Error(`台本の ${line + 1} 行目に「${text}」がありません`);
+  }
+  return [
+    token(page, line, offset),
+    token(page, line, offset + text.length - 1),
+  ];
+}
+
 /** first の頭から last の終わりまでを、マウスのドラッグで選ぶ。 */
 export async function selectText(
   page: Page,
@@ -108,4 +124,17 @@ export function restored(page: Page, text: string, kind: string): Locator {
 
 export async function expectSaved(page: Page): Promise<void> {
   await expect(page.getByTestId("save-status")).toHaveText("保存済み");
+}
+
+/** 書き出しを頼み、終わるまで待つ。label はボタンの名前、format は API の形式の名前。 */
+export async function exportAndWait(
+  page: Page,
+  label: string,
+  format: string,
+): Promise<void> {
+  await page.getByRole("button", { name: `${label} を書き出す` }).click();
+  await expect(page.getByTestId(`export-status-${format}`)).toHaveText(
+    /^最後の書き出し: /,
+    { timeout: JOB_TIMEOUT_MS },
+  );
 }

@@ -73,7 +73,7 @@ frontend: app → library / editor → shared → api（画面は `Api` のイ�
           frontend のテストは、backend のテスト用のデータ（`backend/tests/` の JSON）だけを読んでよい
           （両側のテストが同じ値を確かめるため: `keep_ranges_cases.json`・`waveform_style_hash.json`・`e2e/script.json`）
           frontend の E2E（`frontend/e2e/`）は、画面をブラウザで操作し、結果は書き出されたファイルで確かめる（backend のコードを import しない。`@playwright/test` を使うのは `frontend/e2e/` と `playwright.config.ts` だけ）
-          backend の `tests/e2e/` は、`bootstrap.py`・`cli.py`・`serve.py` の差し替えの引数だけを使う（本体に、E2E のための分岐を足さない）
+          backend の `tests/e2e/` は、`bootstrap.py`・`cli.py`・`serve.py` の差し替えの引数と、公開された型・定数（`pipeline.ports`・`domain`・`process.py` など）だけを使う（adapters を import しない。本体に、E2E のための分岐を足さない）
 ```
 
 ### ハーネス
