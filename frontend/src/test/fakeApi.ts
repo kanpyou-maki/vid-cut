@@ -1,6 +1,8 @@
 import type { Api } from "../api/client";
 import type {
   EditState,
+  ExportFile,
+  Exports,
   FsListing,
   ImportResult,
   Job,
@@ -156,6 +158,32 @@ export function recordingDetail(
   };
 }
 
+const EXPORT_DIRECTORY = "/Users/me/VidCut/exports/s05-12sample";
+
+/** まだ書き出していない形式。 */
+export function exportFile(
+  suffix: "xml" | "mp4",
+  overrides: Partial<ExportFile> = {},
+): ExportFile {
+  return {
+    path: `${EXPORT_DIRECTORY}/s05-12sample.${suffix}`,
+    exported_at: null,
+    job: null,
+    ...overrides,
+  };
+}
+
+/** 書き出しの状態。どちらの形式も、まだ書き出していない。 */
+export function exportsState(overrides: Partial<Exports> = {}): Exports {
+  return {
+    directory: EXPORT_DIRECTORY,
+    shared_with_other_lectures: false,
+    premiere_xml: exportFile("xml"),
+    mp4: exportFile("mp4"),
+    ...overrides,
+  };
+}
+
 export function lectureDetail(
   overrides: Partial<LectureDetail> = {},
 ): LectureDetail {
@@ -170,6 +198,7 @@ export function lectureDetail(
     dropped_restored_ids: [],
     keep_padding: { before_ms: 150, after_ms: 250 },
     edit_state: editState(),
+    exports: exportsState(),
     ...overrides,
   };
 }

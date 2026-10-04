@@ -4,12 +4,15 @@ import hashlib
 import json
 import os
 import re
+import stat
 import tempfile
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TextIO
 
 from vidcut.domain.titles import strip_invisible
+from vidcut.pipeline.ports import ExportedFile
 
 _SAFE_NAME = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9_.-]*")
 _SAMPLE_BYTES = 1024 * 1024
@@ -65,22 +68,60 @@ class FileExportStore:
         self._root = root
 
     def path(self, title: str, suffix: str) -> Path:
-        if not _EXPORT_SUFFIX.fullmatch(suffix):
-            raise ValueError(f"使えない拡張子です: {suffix!r}")
-        name = _export_name(title)
-        exports = self._root / _EXPORTS_DIRECTORY
-        directory = exports / name
+        file = self._file(title, suffix)
         # シンボリックリンクをたどると、ワークスペースの外に書き出してしまう
-        for candidate in (exports, directory):
-            if candidate.is_symlink():
-                raise ValueError(f"書き出し先がシンボリックリンクです: {candidate}")
-        directory.mkdir(parents=True, exist_ok=True)
-        return directory / f"{name}{suffix}"
+        self._refuse_symlinks(title)
+        file.parent.mkdir(parents=True, exist_ok=True)
+        return file
 
     def write_text(self, title: str, suffix: str, text: str) -> Path:
         path = self.path(title, suffix)
         _write_atomically(path, lambda file: file.write(text))
         return path
+
+    def directory(self, title: str) -> Path:
+        return self._root / _EXPORTS_DIRECTORY / _export_name(title)
+
+    def locate(self, title: str, suffix: str) -> ExportedFile:
+        file = self._file(title, suffix)
+        linked = any(candidate.is_symlink() for candidate in self._directories(title))
+        return ExportedFile(path=file, exported_at=None if linked else _written_at(file))
+
+    def existing_directory(self, title: str) -> Path | None:
+        self._refuse_symlinks(title)
+        directory = self.directory(title)
+        if not directory.is_dir():
+            return None
+        # ワークスペースの手前にあるリンク（/var → /private/var など）は、ここでたどっておく
+        resolved = directory.resolve(strict=True)
+        if not resolved.is_relative_to(self._root.resolve(strict=True)):
+            raise ValueError(f"書き出し先がワークスペースの外です: {directory}")
+        return resolved
+
+    def _file(self, title: str, suffix: str) -> Path:
+        if not _EXPORT_SUFFIX.fullmatch(suffix):
+            raise ValueError(f"使えない拡張子です: {suffix!r}")
+        return self.directory(title) / f"{_export_name(title)}{suffix}"
+
+    def _directories(self, title: str) -> tuple[Path, Path]:
+        """exports と、その中のレクチャーのフォルダ。"""
+        return self._root / _EXPORTS_DIRECTORY, self.directory(title)
+
+    def _refuse_symlinks(self, title: str) -> None:
+        for candidate in self._directories(title):
+            if candidate.is_symlink():
+                raise ValueError(f"書き出し先がシンボリックリンクです: {candidate}")
+
+
+def _written_at(path: Path) -> datetime | None:
+    """通常のファイルの更新日時。まだない・リンク・フォルダなら None（リンクの先は調べない）。"""
+    try:
+        status = path.lstat()
+    except OSError:
+        return None
+    if not stat.S_ISREG(status.st_mode):
+        return None
+    return datetime.fromtimestamp(status.st_mtime, tz=UTC)
 
 
 def file_fingerprint(path: Path) -> str:

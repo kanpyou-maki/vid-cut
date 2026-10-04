@@ -1,5 +1,6 @@
-"""/api/lectures: 一覧・詳細・まとめる・並べ替え・解除・再解析・編集の保存・書き出しの依頼。
+"""/api/lectures: 一覧・詳細・まとめる・並べ替え・解除・再解析・編集の保存・書き出し。
 
+書き出しは、依頼・状態と保存先・Finder で開く。
 引き継げなかった「戻した候補」の通知を閉じるのも、ここで受ける。
 """
 
@@ -11,13 +12,16 @@ from vidcut.api.inputs import DismissDroppedIn, EditsIn, ExportIn, MergeIn, Orde
 from vidcut.api.outputs import (
     DroppedRestoredOut,
     EditStateOut,
+    ExportsOut,
     JobOut,
     LectureDetailOut,
     LectureRefOut,
     LectureSummaryOut,
+    RevealOut,
 )
 from vidcut.api.presenters import (
     to_edit_state,
+    to_exports,
     to_job,
     to_lecture_detail,
     to_lecture_ref,
@@ -42,7 +46,8 @@ def merge_lectures(body: MergeIn, services: Services) -> Envelope[LectureRefOut]
 @router.get("/api/lectures/{lecture_id}")
 def get_lecture(lecture_id: PathId, services: Services) -> Envelope[LectureDetailOut]:
     detail = services.lecture_views.detail(lecture_id)
-    return ok(to_lecture_detail(detail, services.export_settings))
+    exports = services.export_destinations.status(lecture_id)
+    return ok(to_lecture_detail(detail, services.export_settings, exports))
 
 
 @router.put("/api/lectures/{lecture_id}/order")
@@ -87,3 +92,19 @@ def dismiss_dropped_restorations(
 def request_export(lecture_id: PathId, body: ExportIn, services: Services) -> Envelope[JobOut]:
     """書き出しジョブを積む。同じ書き出しが待機中なら、そのジョブを返す。"""
     return ok(to_job(services.exports.request(lecture_id, body.job_kind())))
+
+
+@router.get("/api/lectures/{lecture_id}/exports")
+def get_exports(lecture_id: PathId, services: Services) -> Envelope[ExportsOut]:
+    """書き出しの状態と保存先。書き出しの間、画面が進捗を知るために読む（詳細より軽い）。"""
+    return ok(to_exports(services.export_destinations.status(lecture_id)))
+
+
+@router.post("/api/lectures/{lecture_id}/exports/reveal")
+def reveal_exports(lecture_id: PathId, services: Services) -> Envelope[RevealOut]:
+    """書き出したファイル（なければフォルダ）を Finder で選んで見せる。
+
+    見せる場所はレクチャーの id から求める。要求からパスは受け取らない（Design Doc 3-5-1）。
+    """
+    target = services.export_destinations.reveal(lecture_id)
+    return ok(RevealOut(target=target.value))

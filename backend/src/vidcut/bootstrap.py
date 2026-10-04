@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from vidcut.adapters.claude_cli import ClaudeCli
+from vidcut.adapters.finder import FinderRevealer, LoggingRevealer
 from vidcut.adapters.media.commands import MediaSettings
 from vidcut.adapters.media.tool import FfmpegMediaTool
 from vidcut.adapters.ml.aligner import WhisperxAligner
@@ -27,6 +28,7 @@ from vidcut.pipeline.export import ExportSettings
 from vidcut.pipeline.judge import JudgeSettings
 from vidcut.pipeline.ports import (
     Aligner,
+    FileRevealer,
     JobQueue,
     JudgementRepository,
     LanguageModel,
@@ -39,6 +41,7 @@ from vidcut.pipeline.ports import (
 from vidcut.services.analysis import AnalysisService
 from vidcut.services.edits import EditService
 from vidcut.services.export import ExportService
+from vidcut.services.export_destinations import ExportDestinations
 from vidcut.services.imports import ImportService
 from vidcut.services.job_control import JobControl
 from vidcut.services.judge import JudgeRequests, JudgeService
@@ -49,12 +52,28 @@ from vidcut.services.recording_artifacts import RecordingArtifacts
 
 DATABASE_FILE = "vidcut.sqlite3"
 JUDGE_DIRECTORY = "judge"
+REVEAL_ENV = "VIDCUT_REVEAL"
+REVEAL_OFF = "off"
 
 
 def workspace_from_env(env: Mapping[str, str] = os.environ) -> Path:
     """ワークスペースは既定で ~/VidCut/。環境変数 VIDCUT_WORKSPACE で変えられる（ADR-004）。"""
     configured = env.get("VIDCUT_WORKSPACE")
     return Path(configured).expanduser() if configured else Path.home() / "VidCut"
+
+
+def revealer_from_env(env: Mapping[str, str] = os.environ) -> FileRevealer:
+    """「Finder で開く」の実装。VIDCUT_REVEAL=off なら、Finder を開かずログに出すだけにする。
+
+    自動の確認と E2E 用（Design Doc 3-5-1）。止めることしかできない
+    （別のコマンドを指定する口にしない）ので、off 以外の値は受け付けない。
+    """
+    configured = env.get(REVEAL_ENV)
+    if configured is None:
+        return FinderRevealer()
+    if configured != REVEAL_OFF:
+        raise ValueError(f"{REVEAL_ENV} に指定できるのは {REVEAL_OFF} だけです: {configured!r}")
+    return LoggingRevealer()
 
 
 def media_settings_for(export_settings: ExportSettings) -> MediaSettings:
@@ -114,6 +133,7 @@ class ApiServices:
 
     ML のモデルと言語モデルは持たない（解析と判定は worker プロセスが行う）。
     exports は依頼（request）だけに使う。
+    export_destinations は、書き出しの状態と保存先、Finder で開く。
     export_settings は、書き出しが残す区間の余白を画面に伝えるために持つ
     （プレビューが、書き出しと同じ区間を残す）。
     """
@@ -125,13 +145,19 @@ class ApiServices:
     lecture_views: LectureQuery
     edits: EditService
     exports: ExportService
+    export_destinations: ExportDestinations
     jobs: JobControl
     artifacts: RecordingArtifacts
 
 
 def _api_services(
-    stores: _Stores, workspace: Path, media: MediaTool, export_settings: ExportSettings
+    stores: _Stores,
+    workspace: Path,
+    media: MediaTool,
+    export_settings: ExportSettings,
+    revealer: FileRevealer,
 ) -> ApiServices:
+    export_store = FileExportStore(workspace)
     judge_requests = JudgeRequests(lectures=stores.lectures, store=stores.store, queue=stores.queue)
     return ApiServices(
         conn=stores.conn,
@@ -177,8 +203,11 @@ def _api_services(
             edit_states=stores.edit_states,
             queue=stores.queue,
             media=media,
-            exports=FileExportStore(workspace),
+            exports=export_store,
             settings=export_settings,
+        ),
+        export_destinations=ExportDestinations(
+            lectures=stores.lectures, queue=stores.queue, exports=export_store, revealer=revealer
         ),
     )
 
@@ -190,6 +219,7 @@ class Api:
     workspace: Path
     media: MediaTool
     export_settings: ExportSettings
+    revealer: FileRevealer
 
     @contextmanager
     def services(self) -> Iterator[ApiServices]:
@@ -201,7 +231,11 @@ class Api:
         conn = connect_database(self.workspace / DATABASE_FILE, check_same_thread=False)
         try:
             yield _api_services(
-                _stores(conn, self.workspace), self.workspace, self.media, self.export_settings
+                _stores(conn, self.workspace),
+                self.workspace,
+                self.media,
+                self.export_settings,
+                self.revealer,
             )
         finally:
             conn.close()
@@ -212,14 +246,18 @@ def build_api(
     *,
     media: MediaTool | None = None,
     export_settings: ExportSettings | None = None,
+    revealer: FileRevealer | None = None,
 ) -> Api:
     """API サーバーの起動時に 1 回呼ぶ。スキーマの移行はここで済ませる。"""
+    # 設定の誤りは、ワークスペースに触れる前に見つける
+    resolved_revealer = revealer or revealer_from_env()
     open_database(workspace / DATABASE_FILE).close()
     resolved_export_settings = export_settings or ExportSettings()
     return Api(
         workspace=workspace,
         media=media or FfmpegMediaTool(settings=media_settings_for(resolved_export_settings)),
         export_settings=resolved_export_settings,
+        revealer=resolved_revealer,
     )
 
 
@@ -258,12 +296,16 @@ def build_app(
     settings: AnalysisSettings | None = None,
     judge_settings: JudgeSettings | None = None,
     export_settings: ExportSettings | None = None,
+    revealer: FileRevealer | None = None,
 ) -> App:
-    """media / ml / model はテストや E2E で偽の実装に差し替えるための引数。"""
+    """media / ml / model / revealer はテストや E2E で偽の実装に差し替えるための引数。"""
+    resolved_revealer = revealer or revealer_from_env()
     stores = _stores(open_database(workspace / DATABASE_FILE), workspace)
     resolved_export_settings = export_settings or ExportSettings()
     media_tool = media or FfmpegMediaTool(settings=media_settings_for(resolved_export_settings))
-    shared = _api_services(stores, workspace, media_tool, resolved_export_settings)
+    shared = _api_services(
+        stores, workspace, media_tool, resolved_export_settings, resolved_revealer
+    )
     analysis = _analysis_service(stores, media_tool, ml or default_ml_tools(), settings)
     judge, judge_eval = _judge_services(
         stores, model or ClaudeCli(judge_workdir(workspace)), judge_settings or JudgeSettings()

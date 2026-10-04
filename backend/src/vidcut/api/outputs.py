@@ -151,6 +151,37 @@ class DroppedRestoredOut(BaseModel):
     dropped_restored_ids: list[str]
 
 
+class ExportFileOut(BaseModel):
+    """1 つの形式の書き出し先。
+
+    exported_at は最後に書き出した日時（ファイルの更新日時）。まだなければ null。
+    job は、この形式の最新の書き出しジョブ。依頼したことがなければ null。
+    """
+
+    path: str
+    exported_at: datetime | None
+    job: JobOut | None
+
+
+class ExportsOut(BaseModel):
+    """書き出しの状態と保存先。directory と path は絶対パス（画面でエスケープして表示すること）。
+
+    shared_with_other_lectures が true なら、同じ場所に書き出すレクチャーがほかにある
+    （書き出すと上書きになり、exported_at もほかのレクチャーのものでありうる）。
+    """
+
+    directory: str
+    shared_with_other_lectures: bool
+    premiere_xml: ExportFileOut
+    mp4: ExportFileOut
+
+
+class RevealOut(BaseModel):
+    """Finder で選んで見せたもの（書き出したファイルか、ファイルがなければフォルダ）。"""
+
+    target: Literal["file", "directory"]
+
+
 class LectureDetailOut(BaseModel):
     """編集画面に必要なもの一式。
 
@@ -159,6 +190,7 @@ class LectureDetailOut(BaseModel):
     judged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。
     dropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。
     keep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。
+    exports は、開いたときの書き出しの状態と保存先（書き出しの間は、GET …/exports で読み直す）。
     """
 
     id: str
@@ -171,6 +203,7 @@ class LectureDetailOut(BaseModel):
     dropped_restored_ids: list[str]
     keep_padding: KeepPaddingOut
     edit_state: EditStateOut
+    exports: ExportsOut
 
 
 class PeaksOut(BaseModel):

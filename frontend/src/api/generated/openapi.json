@@ -206,6 +206,40 @@
         "title": "Envelope[EditStateOut]",
         "type": "object"
       },
+      "Envelope_ExportsOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[ExportsOut]",
+        "type": "object"
+      },
       "Envelope_FsListingOut_": {
         "properties": {
           "data": {
@@ -444,6 +478,40 @@
         "title": "Envelope[PeaksOut]",
         "type": "object"
       },
+      "Envelope_RevealOut_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevealOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ],
+        "title": "Envelope[RevealOut]",
+        "type": "object"
+      },
       "Envelope_list_JobListItemOut__": {
         "properties": {
           "data": {
@@ -637,6 +705,44 @@
         "title": "ErrorOut",
         "type": "object"
       },
+      "ExportFileOut": {
+        "description": "1 つの形式の書き出し先。\n\nexported_at は最後に書き出した日時（ファイルの更新日時）。まだなければ null。\njob は、この形式の最新の書き出しジョブ。依頼したことがなければ null。",
+        "properties": {
+          "exported_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exported At"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "exported_at",
+          "job"
+        ],
+        "title": "ExportFileOut",
+        "type": "object"
+      },
       "ExportIn": {
         "additionalProperties": false,
         "properties": {
@@ -653,6 +759,33 @@
           "format"
         ],
         "title": "ExportIn",
+        "type": "object"
+      },
+      "ExportsOut": {
+        "description": "書き出しの状態と保存先。directory と path は絶対パス（画面でエスケープして表示すること）。\n\nshared_with_other_lectures が true なら、同じ場所に書き出すレクチャーがほかにある\n（書き出すと上書きになり、exported_at もほかのレクチャーのものでありうる）。",
+        "properties": {
+          "directory": {
+            "title": "Directory",
+            "type": "string"
+          },
+          "mp4": {
+            "$ref": "#/components/schemas/ExportFileOut"
+          },
+          "premiere_xml": {
+            "$ref": "#/components/schemas/ExportFileOut"
+          },
+          "shared_with_other_lectures": {
+            "title": "Shared With Other Lectures",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "directory",
+          "shared_with_other_lectures",
+          "premiere_xml",
+          "mp4"
+        ],
+        "title": "ExportsOut",
         "type": "object"
       },
       "FsEntryOut": {
@@ -981,7 +1114,7 @@
         "type": "object"
       },
       "LectureDetailOut": {
-        "description": "編集画面に必要なもの一式。\n\n実際に削除される区間は、recordings[].suggestions と judged_suggestions から\n戻したものを除き、manual_cuts を足したもの。\njudged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。\ndropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。\nkeep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。",
+        "description": "編集画面に必要なもの一式。\n\n実際に削除される区間は、recordings[].suggestions と judged_suggestions から\n戻したものを除き、manual_cuts を足したもの。\njudged が false なら判定はまだ（または失敗）で、無音とフィラーの候補だけがある。\ndropped_restored_ids は、判定のやり直しで引き継げなかった「戻した候補」（画面の通知用）。\nkeep_padding は、残す区間の前後に付ける余白。プレビューは、これで書き出しと同じ区間を残す。\nexports は、開いたときの書き出しの状態と保存先（書き出しの間は、GET …/exports で読み直す）。",
         "properties": {
           "dropped_restored_ids": {
             "items": {
@@ -992,6 +1125,9 @@
           },
           "edit_state": {
             "$ref": "#/components/schemas/EditStateOut"
+          },
+          "exports": {
+            "$ref": "#/components/schemas/ExportsOut"
           },
           "id": {
             "title": "Id",
@@ -1043,7 +1179,8 @@
           "judged_suggestions",
           "dropped_restored_ids",
           "keep_padding",
-          "edit_state"
+          "edit_state",
+          "exports"
         ],
         "title": "LectureDetailOut",
         "type": "object"
@@ -1413,6 +1550,24 @@
           "recorded_at"
         ],
         "title": "RecordingOut",
+        "type": "object"
+      },
+      "RevealOut": {
+        "description": "Finder で選んで見せたもの（書き出したファイルか、ファイルがなければフォルダ）。",
+        "properties": {
+          "target": {
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "RevealOut",
         "type": "object"
       },
       "ReviewMarkKind": {
@@ -2299,6 +2454,85 @@
       }
     },
     "/api/lectures/{lecture_id}/exports": {
+      "get": {
+        "description": "書き出しの状態と保存先。書き出しの間、画面が進捗を知るために読む（詳細より軽い）。",
+        "operationId": "get_exports_api_lectures__lecture_id__exports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ExportsOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Get Exports"
+      },
       "post": {
         "description": "書き出しジョブを積む。同じ書き出しが待機中なら、そのジョブを返す。",
         "operationId": "request_export_api_lectures__lecture_id__exports_post",
@@ -2387,6 +2621,87 @@
           }
         },
         "summary": "Request Export"
+      }
+    },
+    "/api/lectures/{lecture_id}/exports/reveal": {
+      "post": {
+        "description": "書き出したファイル（なければフォルダ）を Finder で選んで見せる。\n\n見せる場所はレクチャーの id から求める。要求からパスは受け取らない（Design Doc 3-5-1）。",
+        "operationId": "reveal_exports_api_lectures__lecture_id__exports_reveal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lecture_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Lecture Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RevealOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "トークンが正しくない"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Host または Origin が受け付けられない"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "指定されたデータが見つからない"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "入力が正しくない"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "想定していない失敗（詳細はログ）"
+          }
+        },
+        "summary": "Reveal Exports"
       }
     },
     "/api/lectures/{lecture_id}/order": {

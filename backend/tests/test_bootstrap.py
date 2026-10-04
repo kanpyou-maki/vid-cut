@@ -7,6 +7,7 @@ import pytest
 
 from tests.pipeline.fakes import FakeAligner, FakeMediaTool, FakeTranscriber, FakeVad
 from tests.pipeline.judge_fakes import FakeModel
+from vidcut.adapters.finder import FinderRevealer, LoggingRevealer
 from vidcut.bootstrap import (
     DATABASE_FILE,
     MlTools,
@@ -14,6 +15,7 @@ from vidcut.bootstrap import (
     build_app,
     judge_workdir,
     media_settings_for,
+    revealer_from_env,
     workspace_from_env,
 )
 from vidcut.domain.intervals import Interval
@@ -32,6 +34,19 @@ def test_workspace_from_environment_variable(tmp_path: Path) -> None:
 
 def test_workspace_expands_home() -> None:
     assert workspace_from_env({"VIDCUT_WORKSPACE": "~/x"}) == Path.home() / "x"
+
+
+def test_reveal_opens_finder_unless_it_is_turned_off() -> None:
+    assert isinstance(revealer_from_env({}), FinderRevealer)
+    # 自動の確認と E2E では、Finder を開かずにログへ出すだけにする
+    assert isinstance(revealer_from_env({"VIDCUT_REVEAL": "off"}), LoggingRevealer)
+
+
+@pytest.mark.parametrize("value", ["", "on", "OFF", "/bin/sh", "0"])
+def test_reveal_setting_cannot_be_anything_but_off(value: str) -> None:
+    """止めることしかできない（別のコマンドに差し替える口にしない）。"""
+    with pytest.raises(ValueError, match="VIDCUT_REVEAL"):
+        revealer_from_env({"VIDCUT_REVEAL": value})
 
 
 def test_build_app_creates_database_and_worker(tmp_path: Path) -> None:
