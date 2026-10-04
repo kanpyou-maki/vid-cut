@@ -117,6 +117,42 @@ describe("buildTimeline", () => {
     expect(midSentence.segments[0]).toMatchObject({ startMs: 0, endMs: 1250 });
   });
 
+  it("文の終わりかどうかは、録画ファイルごとのトークンで決まる", () => {
+    // r1 は「。」、r2 は「、」で終わる。長い余白は r1 だけ
+    const silence = { start_ms: 1000, end_ms: 3000 };
+    const recording = (id: string, text: string) =>
+      recordingDetail({
+        id,
+        duration_ms: 10_000,
+        tokens: tokens(`${id}-c1`, text, 800),
+        silences: [silence],
+        suggestions: [
+          suggestion({
+            id: `${id}-s1`,
+            recording_id: id,
+            kind: "silence",
+            ...silence,
+          }),
+        ],
+      });
+
+    const timeline = buildTimeline(
+      lectureDetail({
+        recordings: [recording("r1", "す。"), recording("r2", "が、")],
+      }),
+      EMPTY,
+    );
+
+    expect(
+      timeline.segments.map((segment) => [segment.recordingId, segment.endMs]),
+    ).toEqual([
+      ["r1", 1500],
+      ["r1", 10_000],
+      ["r2", 1250],
+      ["r2", 10_000],
+    ]);
+  });
+
   it("残す区間がなければ、長さは 0", () => {
     const nothing = buildTimeline(
       lectureDetail({

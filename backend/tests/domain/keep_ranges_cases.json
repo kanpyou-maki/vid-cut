@@ -278,5 +278,30 @@
       [0, 1000],
       [1850, 5000]
     ]
+  },
+  {
+    "name": "文末の長い余白が、次の区間の前の余白に届けば、短い無音は残る（通常の余白なら残らない長さ）",
+    "duration_ms": 5000,
+    "cuts": [[1000, 1600]],
+    "silences": [[1000, 1600]],
+    "sentence_pauses": [[900, 1600]],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [[0, 5000]]
+  },
+  {
+    "name": "同じ長さの無音でも、文の途中なら通常の余白で、無音は削られる",
+    "duration_ms": 5000,
+    "cuts": [[1000, 1600]],
+    "silences": [[1000, 1600]],
+    "sentence_pauses": [],
+    "pad_before_ms": 150,
+    "pad_after_ms": 250,
+    "pad_after_sentence_ms": 500,
+    "expected": [
+      [0, 1250],
+      [1450, 5000]
+    ]
   }
 ]

@@ -63,7 +63,7 @@ describe("keepRanges（backend と同じ例）", () => {
   });
 
   it("例が読めている（空のまま通らない）", () => {
-    expect(sharedCases.length).toBeGreaterThanOrEqual(18);
+    expect(sharedCases.length).toBeGreaterThanOrEqual(20);
   });
 });
 
@@ -81,7 +81,7 @@ describe("sentencePauses（backend と同じ例）", () => {
   });
 
   it("例が読めている（空のまま通らない）", () => {
-    expect(pauseCases.length).toBeGreaterThanOrEqual(10);
+    expect(pauseCases.length).toBeGreaterThanOrEqual(13);
   });
 
   it("渡した配列を書き換えない", () => {

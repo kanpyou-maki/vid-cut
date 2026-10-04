@@ -43,15 +43,31 @@ const PAD_AFTER_MS = 250;
 const PAD_AFTER_SENTENCE_MS = 500;
 // 「えーと」の長さ（偽の位置合わせは、1 文字を 100ms で並べる）
 const FILLER_MS = 300;
-// カット後の長さ。4 行目は、フィラーを削除している間は、フィラーの直後から始まる（発話の途中なので、前の余白は付かない）
+// カット後の長さ。台本の行の間は 1 秒以上あるので、余白どうしはつながらない（行ごとに 1 つのクリップになる）
+// フィラーを戻したとき: 1・3・4 行目が、それぞれ前後の余白つきで残る
 const FILLER_RESTORED_MS = clipMs(0) + clipMs(2) + clipMs(3);
-const CUT_MS = FILLER_RESTORED_MS - PAD_BEFORE_MS - FILLER_MS;
-const RETAKE_RESTORED_MS = CUT_MS + clipMs(1);
+// 自動の削除のまま: 4 行目はフィラーの直後から始まる。発話の途中なので前の余白は付かず、フィラーのぶんも短い
+const AUTO_CUT_MS = FILLER_RESTORED_MS - PAD_BEFORE_MS - FILLER_MS;
+// 言い直し（2 行目）を戻したとき
+const RETAKE_RESTORED_MS = AUTO_CUT_MS + clipMs(1);
 const FPS = 60;
 const MS_PER_SECOND = 1000;
 const SECONDS_TOLERANCE = 0.3;
 // 無音の検出（実物の ffmpeg）の端は、音の切り替わりから少しずれる
 const FRAME_TOLERANCE = 3;
+
+/** 台本の line 行目の後ろに付く余白。文の終わり（。）で終わる行は長い。 */
+function padAfterMs(line: number): number {
+  return SCRIPT.lines[line].text.endsWith("。")
+    ? PAD_AFTER_SENTENCE_MS
+    : PAD_AFTER_MS;
+}
+
+/** 台本の line 行目を、前後の余白つきで残したときの長さ。 */
+function clipMs(line: number): number {
+  const { start_ms, end_ms } = SCRIPT.lines[line];
+  return PAD_BEFORE_MS + (end_ms - start_ms) + padAfterMs(line);
+}
 
 test.describe.configure({ mode: "serial" });
 
@@ -79,7 +95,7 @@ test("投入した録画ファイルが解析され、編集して、書き出�
     const wave = page.getByRole("region", { name: "波形" });
     await expect(wave.locator("canvas").first()).toBeVisible();
     const time = page.getByTestId("preview-time");
-    await expectLength(page, [CUT_MS]);
+    await expectLength(page, [AUTO_CUT_MS]);
     await page.getByRole("button", { name: "再生", exact: true }).click();
     await expect(time).toHaveText(/^0:0[1-9] \//);
     await page.getByRole("button", { name: "一時停止" }).click();
@@ -104,7 +120,7 @@ test("投入した録画ファイルが解析され、編集して、書き出�
     await expectLength(page, [RETAKE_RESTORED_MS]);
     await restored(page, RETAKE, "言い直し").click();
     await expect(cut(page, RETAKE, "言い直し")).toBeVisible();
-    await expectLength(page, [CUT_MS]);
+    await expectLength(page, [AUTO_CUT_MS]);
     // 言い直しの理由の表示が、下の行に重なっている。カーソルを外して閉じてから、次の行を押す
     await page.getByRole("heading", { name: FIRST }).hover();
     await expect(page.getByRole("tooltip")).toHaveCount(0);
@@ -176,7 +192,7 @@ test("2 本をまとめたレクチャーで、波形がつながり、動画が
   // どちらの録画ファイルの言い直しも、削除されている
   await expect(cut(page, RETAKE, "言い直し")).toHaveCount(2);
   // 1 つ目のシナリオが 1 本目のフィラーを戻していれば、そのぶん長い
-  await expectLength(page, [2 * CUT_MS, CUT_MS + FILLER_RESTORED_MS]);
+  await expectLength(page, [2 * AUTO_CUT_MS, AUTO_CUT_MS + FILLER_RESTORED_MS]);
   const wave = page.getByRole("region", { name: "波形" });
   await expect(wave.locator("canvas").first()).toBeVisible();
   await expect(wave).toContainText(SECOND_LESSON);
@@ -188,19 +204,6 @@ test("2 本をまとめたレクチャーで、波形がつながり、動画が
   await expect.poll(() => video.evaluate(sourcePath)).not.toBe(firstSource);
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
-
-/** 台本の line 行目の後ろに付く余白。文の終わり（。）で終わる行は長い。 */
-function padAfterMs(line: number): number {
-  return SCRIPT.lines[line].text.endsWith("。")
-    ? PAD_AFTER_SENTENCE_MS
-    : PAD_AFTER_MS;
-}
-
-/** 台本の line 行目を、前後の余白つきで残したときの長さ。 */
-function clipMs(line: number): number {
-  const { start_ms, end_ms } = SCRIPT.lines[line];
-  return PAD_BEFORE_MS + (end_ms - start_ms) + padAfterMs(line);
-}
 
 /** フォルダの中の、その拡張子のファイル（1 つだけのはず）。 */
 function exported(directory: string, suffix: string): string {

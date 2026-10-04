@@ -4,6 +4,7 @@ import { SCRIPT } from "./stage.ts";
 
 // 解析（中間素材の生成を含む）と判定、書き出しを待つ上限
 export const JOB_TIMEOUT_MS = 60_000;
+// 無音の検出（実物の ffmpeg）の端は、音の切り替わりから少しずれる。文末の余白の有無（250ms の差）は見分けられる幅にする
 const LENGTH_TOLERANCE_MS = 150;
 const LENGTH_TIMEOUT_MS = 5_000;
 

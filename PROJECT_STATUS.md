@@ -259,8 +259,8 @@ _なし_
   セキュリティの LOW（対応は任意。見送り）: Playwright の起動コマンドはシェル経由で、リポジトリのパスに `"` や `$` が入ると崩れる（パスは固定値）。E2E 用のフォルダの確認と削除の間の競合（手元のテスト用）
 - PR 2（`feat/m8-sentence-pause`。PR 1 の上に積む）: 間の調整の計算。backend は、domain の `sentence_pauses`（無音ごとに、その前の最後のトークンが文末の記号なら「文の終わりの間」= トークンの開始 〜 無音の終わり）と
   `keep_ranges` の `sentence_pauses`・`pad_after_sentence_ms`、`ExportSettings.pad_after_sentence_ms`（既定 500。仮の値）、`plan_export`、`keep_padding.after_sentence_ms`（API の型を作り直した）。
-  frontend は、`keepRanges.ts` の `sentencePauses` と `keepRanges` の 5 つ目の引数、`timeline.ts`。両側のテストが、同じ例（`keep_ranges_cases.json` に 8 件追加、`sentence_pauses_cases.json` 11 件）を読む。
-  テスト: backend 1,151 件 / 99%、frontend 666 件 / 98%、E2E 2 件
+  frontend は、`keepRanges.ts` の `sentencePauses` と `keepRanges` の 5 つ目の引数、`timeline.ts`。両側のテストが、同じ例（`keep_ranges_cases.json` に 10 件追加、`sentence_pauses_cases.json` 13 件）を読む。
+  テスト: backend 1,156 件 / 99%、frontend 671 件 / 98%、E2E 2 件
 - PR 2 で確かめたこと: E2E で、プレビューの長さ（frontend の計算）と Premiere XML の各クリップのフレーム（backend の計算）が、どちらも台本から求めた値と合う（両側の計算が一致している）。
   forTest01〜03（一時ワークスペース）では、文末の余白を 250 → 500ms にすると、カット後の長さが 50.0 → 52.2 秒・53.5 → 55.7 秒・45.3 → 47.1 秒になる
 - E2E の長さの比べ方を、表示の文字（秒の切り捨て）から、再生位置のバーの最大値（ミリ秒。許容 150ms）に変えた（文末の余白でカット後の長さがちょうど 7.0 秒になり、切り捨ての表示では境目に乗るため）。

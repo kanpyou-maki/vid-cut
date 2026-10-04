@@ -9,8 +9,8 @@ from vidcut.domain.models import Token
 
 DEFAULT_PAD_BEFORE_MS = 150
 DEFAULT_PAD_AFTER_MS = 250
+# 文の終わりのあとの余白。仮の値（ユーザーがプレビューで聞いて決める。M8）
 DEFAULT_PAD_AFTER_SENTENCE_MS = 500
-"""文の終わりのあとの余白。仮の値（ユーザーがプレビューで聞いて決める。M8）。"""
 SENTENCE_END_CHARS = frozenset("。？！?!")
 
 
@@ -72,7 +72,7 @@ def sentence_pauses(tokens: Iterable[Token], silences: Iterable[Interval]) -> tu
         if index == 0:
             continue
         last = ordered[index - 1]
-        if last.text[-1] in SENTENCE_END_CHARS:
+        if last.text[-1:] in SENTENCE_END_CHARS:
             pauses.append(Interval(last.span.start_ms, silence.end_ms))
     return tuple(pauses)
 

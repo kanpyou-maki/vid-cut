@@ -112,6 +112,25 @@ class TestPlanExport:
         )
         assert clips(plan.clips) == [("r1", 0, 255), ("r1", 291, 600)]
 
+    def test_sentence_padding_follows_the_tokens_of_each_recording(self) -> None:
+        # 1 本目は「。」、2 本目は「、」で終わる。長い余白は 1 本目だけ
+        silent = Interval(4_000, 5_000)
+        parts = [
+            analysis(
+                rid, [suggestion(rid, 4_000, 5_000)], [silent], [token(3_900, 3_920, text, rid)]
+            )
+            for rid, text in (("r1", "。"), ("r2", "、"))
+        ]
+        plan = plan_export(
+            [recording("r1"), recording("r2")], parts, (), NO_EDITS, ExportSettings()
+        )
+        assert clips(plan.clips) == [
+            ("r1", 0, 270),
+            ("r1", 291, 600),
+            ("r2", 0, 255),
+            ("r2", 291, 600),
+        ]
+
     def test_sentence_padding_is_configurable(self) -> None:
         silent = Interval(4_000, 5_000)
         cut = suggestion("r1", 4_000, 5_000)
