@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しを PR 4a（フィラー。`fix/m8-filler-span`）と PR 4b（残り）で進めている。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、PR 4a（フィラー。`fix/m8-filler-span`。PR #22）がユーザーの確認とマージ待ち。PR 4b（残り）は未着手。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -39,14 +39,14 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。残りは PR 4a（フィラー）と PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認・完了処理）
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（フィラー。PR #22）はマージ待ち。残りは PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認・完了処理）
 
 ## 次にやること
 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1〜3（E2E・間の調整の計算・間の設定）: PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)・[#20](https://github.com/kanpyou-maki/vid-cut/pull/20)・[#21](https://github.com/kanpyou-maki/vid-cut/pull/21)。マージ済み（2026-10-05）
   - [x] 受け入れチェック（forTest01〜03。判定はユーザー）: 3 本とも合格（誤削除 1・0・0 件、音ズレ 0 件）。記録と、見つかった点の原因は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)
-  - [x] PR 4a `fix/m8-filler-span`: フィラーの削除区間を広げる・続いたフィラーと読点で区切られたフィラーの検出・`vidcut reanalyze`。review-loop は全通過。ユーザーの確認とマージ待ち。
+  - [x] PR 4a `fix/m8-filler-span`: フィラーの削除区間を広げる・続いたフィラーと読点で区切られたフィラーの検出・`vidcut reanalyze`。review-loop は全通過。PR [#22](https://github.com/kanpyou-maki/vid-cut/pull/22)。ユーザーの確認とマージ待ち。
         マージのあと、`npm --prefix frontend run build` と `uv run --directory backend vidcut reanalyze --wait` を実行して、ユーザーが該当の箇所を聞き直す
   - [ ] PR 4b `fix/m8-acceptance`: 止めたままのシークで文字起こしを追従させる、`vidcut serve` の起動時にビルドが古ければ警告する、長いレクチャー（2 時間・300 チャンク超）と複数ファイルのレクチャーの確認、
         計画の完了処理
