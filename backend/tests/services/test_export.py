@@ -83,7 +83,7 @@ def env(tmp_path: Path) -> Iterator[Env]:
         queue=queue,
         media=media,
         exports=FileExportStore(tmp_path / "ws"),
-        settings=ExportSettings(),
+        settings=ExportSettings,
         new_id=lambda: next(ids),
     )
     yield Env(tmp_path, conn, store, media, lectures, edit_states, judgements, queue, service)
@@ -191,7 +191,7 @@ class TestExportPremiere:
         # worker は起動したままなので、画面で変えた余白は、次の書き出しから効く
         env.analyzed("r1", "r2")
         current = [ExportSettings()]
-        service = rebuild(env, current_settings=lambda: current[0])
+        service = rebuild(env, settings=lambda: current[0])
         before = video_clips(service.export_premiere("l1", ignore))
 
         current[0] = ExportSettings(fps=30)
@@ -202,7 +202,7 @@ class TestExportPremiere:
 
     def test_frame_rate_follows_the_settings(self, env: Env) -> None:
         env.analyzed("r1", "r2")
-        service = rebuild(env, settings=ExportSettings(fps=30))
+        service = rebuild(env, settings=lambda: ExportSettings(fps=30))
         path = service.export_premiere("l1", ignore)
         assert video_clips(path) == [("0", "30"), ("60", "300"), ("0", "30"), ("60", "300")]
 
@@ -311,9 +311,8 @@ class TestRequest:
 def rebuild(
     env: Env,
     *,
-    settings: ExportSettings | None = None,
+    settings: Callable[[], ExportSettings] = ExportSettings,
     recordings: RecordingRepository | None = None,
-    current_settings: Callable[[], ExportSettings] | None = None,
 ) -> ExportService:
     return ExportService(
         lectures=env.lectures,
@@ -324,6 +323,5 @@ def rebuild(
         queue=env.queue,
         media=env.media,
         exports=FileExportStore(env.root / "ws"),
-        settings=settings or ExportSettings(),
-        current_settings=current_settings,
+        settings=settings,
     )

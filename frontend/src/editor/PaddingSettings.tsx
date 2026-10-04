@@ -3,7 +3,7 @@ import type { KeepPadding } from "../api/types";
 import styles from "./PaddingSettings.module.css";
 import type { PaddingControl, PaddingSaveStatus } from "./usePadding";
 
-// backend が受け付ける範囲（Design Doc 3-5）
+// backend が受け付ける範囲（Design Doc 3-5。backend の MAX_PAD_MS と同じ値。API のスキーマと合っていることを、テストが確かめる）
 const MIN_PAD_MS = 0;
 const MAX_PAD_MS = 2000;
 const STEP_MS = 50;
@@ -37,14 +37,20 @@ export function PaddingSettings({ control }: { control: PaddingControl }) {
   );
   // 「既定に戻す」のたびに進める。入力欄を作り直して、入力の途中の文字を消す
   const [resets, setResets] = useState(0);
-  const mark = (key: keyof KeepPadding, isInvalid: boolean) => {
-    const next = new Set(invalid);
-    if (isInvalid) {
-      next.add(key);
-    } else {
-      next.delete(key);
-    }
-    setInvalid(next);
+  const mark = (key: keyof KeepPadding, isInvalid: boolean) =>
+    setInvalid((current) => {
+      const next = new Set(current);
+      if (isInvalid) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  const reset = () => {
+    setInvalid(new Set());
+    setResets((count) => count + 1);
+    control.reset();
   };
 
   return (
@@ -64,19 +70,11 @@ export function PaddingSettings({ control }: { control: PaddingControl }) {
               key={`${key}-${resets}`}
               label={label}
               value={padding[key]}
-              onChange={(value) => control.change({ ...padding, [key]: value })}
+              onChange={(value) => control.change({ [key]: value })}
               onValidity={(isInvalid) => mark(key, isInvalid)}
             />
           ))}
-          <button
-            type="button"
-            className={styles.reset}
-            onClick={() => {
-              setInvalid(new Set());
-              setResets(resets + 1);
-              control.reset();
-            }}
-          >
+          <button type="button" className={styles.reset} onClick={reset}>
             既定に戻す
           </button>
           {status.name !== "failed" && (
@@ -89,18 +87,33 @@ export function PaddingSettings({ control }: { control: PaddingControl }) {
             </span>
           )}
         </div>
-        {invalid.size > 0 && (
-          <p role="alert" className={styles.failure}>
-            {INVALID_NOTE}
-          </p>
-        )}
-        {status.name === "failed" && (
-          <p role="alert" className={styles.failure}>
-            間の設定を保存できませんでした: {status.message}
-          </p>
-        )}
+        <Problems invalid={invalid.size > 0} status={status} />
       </div>
     </details>
+  );
+}
+
+/** 使えない値の入力と、保存の失敗の知らせ。 */
+function Problems({
+  invalid,
+  status,
+}: {
+  invalid: boolean;
+  status: PaddingSaveStatus;
+}) {
+  return (
+    <>
+      {invalid && (
+        <p role="alert" className={styles.failure}>
+          {INVALID_NOTE}
+        </p>
+      )}
+      {status.name === "failed" && (
+        <p role="alert" className={styles.failure}>
+          間の設定を保存できませんでした: {status.message}
+        </p>
+      )}
+    </>
   );
 }
 

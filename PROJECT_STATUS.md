@@ -271,9 +271,9 @@ _なし_
   2 本の録画ファイルの例（`plan_export`・`buildTimeline`）、最後の 1 文字の取り方を空の文字でも落ちない形に、E2E の定数の名前と並びの整理、受け入れの記録に下調べの数値の求め方。
   PR 3 への申し送り: 余白の値を画面から受け取るときは、整数と 0 以上（上限 2000）を API の入力で検証する
 - PR 3（`feat/m8-pause-settings`。PR 2 の上に積む）: 間の設定。backend は、domain の `KeepPadding`（0〜2000 の整数）、`settings` 表（スキーマの移行を 1 つ足した）と `SqliteSettingsRepository`、
-  `SettingsService`（既定値は `ExportSettings`、保存した値があればそちら）、`ExportService` の `current_settings`（書き出しのたびに設定を読む）、`GET` / `PUT /api/settings`。
-  `ApiServices.export_settings` は `ApiServices.settings`（`SettingsService`）に替えた。frontend は、`Api.getSettings`・`saveKeepPadding`、`usePadding.ts`（値・0.5 秒遅れの保存・既定に戻す・書き出し前の保存）、
-  `PaddingSettings.tsx`（プレビューの下の折りたたみ）、`buildTimeline` と `useEditing` に余白を渡す引数。テスト: backend 1,209 件 / 99%、frontend 692 件 / 98%、E2E 2 件
+  `SettingsService`（既定値は `ExportSettings`、保存した値があればそちら）、`ExportService` の `settings`（設定を返す関数。書き出しのたびに呼んで読む）、`GET` / `PUT /api/settings`。
+  `ApiServices.export_settings` は `ApiServices.settings`（`SettingsService`）に替えた。frontend は、`Api.getSettings`・`saveKeepPadding`、`usePadding.ts`（値・0.5 秒遅れの保存・既定に戻す・書き出し前の保存。保存の順番は `usePaddingSaver`・`useSerial`、既定値は `useDefaultPadding`）、
+  `PaddingSettings.tsx`（プレビューの下の折りたたみ）、`buildTimeline` と `useEditing` に余白を渡す引数。テスト: backend 1,209 件 / 99%、frontend 698 件 / 98%、E2E 2 件
 - PR 3 で確かめたこと（E2E。実物の backend と Chrome）: 「文の終わりのあと」を 800 にすると、プレビューの長さがすぐ伸びる。保存を待たずに Premiere XML を頼んでも、XML の各クリップの終わりが 800ms の余白になる（頼む前に保存する）。
   「既定に戻す」で長さが戻り、次の書き出しは既定値になる。画面は、通常の幅と 800px で画像を撮って確かめた（プレビューのペインを縦に並べる形に変え、狭い幅では動画の高さを 8rem に決めた）
 - PR 3 で踏んだこと: テストで「保存の遅延の 1ms 手前まで待つ」と、実際の時間も進むので、負荷が高いときに保存が先に走って落ちる（遅延の半分まで待つ形にした。3 つ同時に走らせても通ることを確かめた）。

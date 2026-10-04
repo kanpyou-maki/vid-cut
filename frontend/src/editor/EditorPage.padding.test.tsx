@@ -1,7 +1,14 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/errors";
+import openapi from "../api/generated/openapi.json";
 import type { KeepPadding, LectureDetail, Settings } from "../api/types";
 import { advance, editorApi, renderEditor } from "../test/editorPage";
 import {
@@ -67,12 +74,12 @@ async function openEditor(overrides: Parameters<typeof editorApi>[1] = {}) {
     padding === null ? settings(DEFAULTS, false) : settings(padding, true),
   );
   const fake = editorApi(DETAIL, { saveKeepPadding, ...overrides });
-  renderEditor(fake.api);
+  const view = renderEditor(fake.api);
   await screen.findByText("あ");
   await advance(0);
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
   await user.click(screen.getByText("間の設定"));
-  return { ...fake, saveKeepPadding, user };
+  return { ...fake, ...view, saveKeepPadding, user };
 }
 
 function panel(): HTMLElement {
@@ -259,6 +266,119 @@ describe("間の設定", () => {
 
     // 画面の値と保存されている値は同じなので、書き出しを止めない
     await waitFor(() => expect(requestExport).toHaveBeenCalled());
+  });
+
+  it("保存している間に変えた値は、その保存のあとで保存する（同時には送らない）", async () => {
+    let finishFirst: () => void = () => {};
+    const { saveKeepPadding } = await openEditor();
+    saveKeepPadding.mockImplementationOnce(
+      (padding) =>
+        new Promise<Settings>((resolve) => {
+          finishFirst = () => resolve(settings(padding ?? DEFAULTS, true));
+        }),
+    );
+    type("文の終わりのあと", "800");
+    await advance(SAVE_DELAY_MS);
+    expect(screen.getByTestId("padding-status")).toHaveTextContent("保存中…");
+
+    type("文の終わりのあと", "700");
+    await advance(SAVE_DELAY_MS);
+    // 1 つ目が終わるまで、2 つ目は送らない
+    expect(saveKeepPadding).toHaveBeenCalledTimes(1);
+    finishFirst();
+    await advance(0);
+
+    expect(saveKeepPadding.mock.calls).toEqual([
+      [{ ...DEFAULTS, after_sentence_ms: 800 }],
+      [{ ...DEFAULTS, after_sentence_ms: 700 }],
+    ]);
+    expect(screen.getByTestId("padding-status")).toHaveTextContent("保存済み");
+  });
+
+  it("続けて別の項目を変えても、先に変えた項目を失わない", async () => {
+    const { saveKeepPadding } = await openEditor();
+
+    // 描き直しを挟まずに、2 つの項目を変える
+    act(() => {
+      type("前", "100");
+      type("後ろ", "300");
+    });
+    await advance(SAVE_DELAY_MS);
+
+    expect(values()).toEqual([100, 300, 500]);
+    expect(saveKeepPadding).toHaveBeenCalledExactlyOnceWith({
+      before_ms: 100,
+      after_ms: 300,
+      after_sentence_ms: 500,
+    });
+  });
+
+  it("画面を離れるときは、保存を待っている値を送る", async () => {
+    const { saveKeepPadding, unmount } = await openEditor();
+    type("文の終わりのあと", "800");
+
+    unmount();
+    // 保存は順番待ちを通るので、すぐあとに送られる
+    await advance(0);
+
+    expect(saveKeepPadding).toHaveBeenCalledExactlyOnceWith({
+      ...DEFAULTS,
+      after_sentence_ms: 800,
+    });
+  });
+
+  it("画面を離れるときに、待っている値がなければ何も送らない", async () => {
+    const { saveKeepPadding, unmount } = await openEditor();
+
+    unmount();
+    await advance(SAVE_DELAY_MS);
+
+    expect(saveKeepPadding).not.toHaveBeenCalled();
+  });
+
+  it("「既定に戻す」に失敗したあとで変えた値は、書き出しの前に保存する", async () => {
+    const order: string[] = [];
+    const requestExport = vi.fn(async () => {
+      order.push("export");
+      return exportJob();
+    });
+    const { saveKeepPadding, user } = await openEditor({
+      requestExport,
+      getExports: async () =>
+        exportsState({ premiere_xml: exportFile("xml", { job: exportJob() }) }),
+    });
+    saveKeepPadding.mockRejectedValueOnce(SAVE_FAILED);
+    await user.click(resetButton());
+    await within(panel()).findByRole("alert");
+    saveKeepPadding.mockImplementation(async (padding) => {
+      order.push("padding");
+      return settings(padding ?? DEFAULTS, true);
+    });
+    type("文の終わりのあと", "800");
+
+    await user.click(
+      screen.getByRole("button", { name: "Premiere XML を書き出す" }),
+    );
+
+    await waitFor(() => expect(order).toEqual(["padding", "export"]));
+    expect(saveKeepPadding).toHaveBeenLastCalledWith({
+      ...DEFAULTS,
+      after_sentence_ms: 800,
+    });
+  });
+
+  it("入力の上限は、API が受け付ける範囲と同じ", async () => {
+    await openEditor();
+    const accepted = openapi.components.schemas.KeepPaddingIn.properties;
+
+    for (const [name, key] of [
+      ["前", "before_ms"],
+      ["後ろ", "after_ms"],
+      ["文の終わりのあと", "after_sentence_ms"],
+    ] as const) {
+      expect(Number(field(name).min)).toBe(accepted[key].minimum);
+      expect(Number(field(name).max)).toBe(accepted[key].maximum);
+    }
   });
 
   it("保存できなければ知らせ、もう一度変えると保存し直す", async () => {

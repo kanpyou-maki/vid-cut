@@ -207,9 +207,8 @@ def _api_services(
             queue=stores.queue,
             media=media,
             exports=export_store,
-            settings=export_settings,
             # 余白は利用者が変えられるので、書き出しのたびに読む
-            current_settings=settings.export_settings,
+            settings=settings.export_settings,
         ),
         export_destinations=ExportDestinations(
             lectures=stores.lectures, queue=stores.queue, exports=export_store, revealer=revealer

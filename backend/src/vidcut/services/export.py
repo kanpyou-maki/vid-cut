@@ -57,14 +57,10 @@ class ExportService:
         queue: JobQueue,
         media: MediaTool,
         exports: ExportStore,
-        settings: ExportSettings,
-        current_settings: Callable[[], ExportSettings] | None = None,
+        settings: Callable[[], ExportSettings],
         new_id: Callable[[], str] = lambda: uuid.uuid4().hex,
     ) -> None:
-        """current_settings を渡すと、書き出しのたびにそれを呼んで設定を読む（利用者が変えた余白）。
-
-        渡さなければ、いつも settings を使う。
-        """
+        """settings は、書き出しのたびに呼んで、そのときの設定を読む（利用者が変えた余白）。"""
         self._lectures = lectures
         self._recordings = recordings
         self._store = store
@@ -73,7 +69,7 @@ class ExportService:
         self._queue = queue
         self._media = media
         self._exports = exports
-        self._current_settings = current_settings or (lambda: settings)
+        self._settings = settings
         self._new_id = new_id
 
     def request(self, lecture_id: str, kind: JobKind) -> Job:
@@ -147,7 +143,7 @@ class ExportService:
             analyses,
             judgement.suggestions if judgement else (),
             self._edit_states.get(lecture_id),
-            self._current_settings(),
+            self._settings(),
         )
         if not plan.clips:
             raise NothingToExportError(

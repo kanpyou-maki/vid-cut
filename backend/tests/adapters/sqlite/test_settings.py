@@ -49,6 +49,9 @@ class TestKeepPadding:
             "[]",
             '{"before_ms": 1}',
             '{"before_ms": -1, "after_ms": 0, "after_sentence_ms": 0}',
+            '{"before_ms": 2001, "after_ms": 0, "after_sentence_ms": 0}',
+            '{"before_ms": 1.5, "after_ms": 0, "after_sentence_ms": 0}',
+            '{"before_ms": 0, "after_ms": 0, "after_sentence_ms": 0, "extra": 1}',
         ):
             conn.execute("DELETE FROM settings")
             conn.execute("INSERT INTO settings (key, value) VALUES ('keep_padding', ?)", (stored,))
