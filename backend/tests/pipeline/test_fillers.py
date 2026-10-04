@@ -1,3 +1,5 @@
+import pytest
+
 from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, SpeechChunk, Token
 from vidcut.pipeline.fillers import detect_fillers
@@ -66,6 +68,47 @@ class TestDetectFillers:
     def test_no_tokens_no_fillers(self) -> None:
         chunk = SpeechChunk(id="r1-c0000", recording_id="r1", span=Interval(0, 1_000))
         assert detect_fillers([chunk], []) == ()
+
+
+class TestPauses:
+    """フィラーにするのは、前にも後ろにも 0.1 秒以上の間（またはチャンクの端）があるものだけ。"""
+
+    def test_pause_of_exactly_the_minimum_is_enough(self) -> None:
+        assert spans("えーそれでは", gaps={2: 100}) == [(Interval(0, 200), "フィラー「えー」")]
+
+    def test_pause_just_under_the_minimum_is_not_enough(self) -> None:
+        assert spans("えーそれでは", gaps={2: 99}) == []
+
+    def test_pause_only_before_is_not_enough(self) -> None:
+        assert spans("それではえー次に", gaps={4: 200}) == []
+
+    def test_pause_only_after_is_not_enough(self) -> None:
+        assert spans("それではえー次に", gaps={6: 200}) == []
+
+    def test_minimum_pause_can_be_changed(self) -> None:
+        chunk, tokens = chunk_with("えーそれでは", gaps={2: 50})
+        (suggestion,) = detect_fillers([chunk], tokens, min_gap_ms=50)
+        assert suggestion.span == Interval(0, 200)
+
+    def test_fillers_in_a_chunk_are_numbered(self) -> None:
+        chunk, tokens = chunk_with("えー、次に、あのー、最後に")
+        found = detect_fillers([chunk], tokens)
+        assert [(s.id, s.reason) for s in found] == [
+            ("r1-c0000-filler-0", "フィラー「えー」"),
+            ("r1-c0000-filler-1", "フィラー「あのー」"),
+        ]
+
+
+class TestWordsThatAreNotFillers:
+    """フィラーに似た語を、候補にしない（必要な声を削らない）。"""
+
+    @pytest.mark.parametrize("text", ["ええ", "そのまま", "あのね", "そうですね", "うん"])
+    def test_word_that_fills_the_chunk(self, text: str) -> None:
+        assert spans(text) == []
+
+    def test_word_set_apart_by_pauses(self) -> None:
+        # 「ええ」は返事。前後に間があっても残す
+        assert spans("はいええそうです", gaps={2: 200, 4: 200}) == []
 
 
 def tokens_at(*items: tuple[str, int, int]) -> tuple[Token, ...]:
