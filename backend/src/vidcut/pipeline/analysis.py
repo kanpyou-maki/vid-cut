@@ -8,7 +8,12 @@ from vidcut.domain.intervals import Interval
 from vidcut.domain.models import CutKind, CutSuggestion, Recording, Silence, SpeechChunk, Token
 from vidcut.pipeline import serialization as ser
 from vidcut.pipeline.analysis_result import Analysis, load_analysis, save_analysis
-from vidcut.pipeline.fillers import detect_fillers
+from vidcut.pipeline.fillers import (
+    DEFAULT_GUARD_MS,
+    DEFAULT_MAX_STRETCH_MS,
+    DEFAULT_MIN_GAP_MS,
+    detect_fillers,
+)
 from vidcut.pipeline.ports import (
     Aligner,
     ArtifactStore,
@@ -58,11 +63,11 @@ class AnalysisSettings:
     transcribe_hint: str = "えー、あのー、えーと、それでは説明していきます。"
     low_confidence_logprob: float = -0.5
     min_unrecognized_ms: int = 300
-    filler_min_gap_ms: int = 100
+    filler_min_gap_ms: int = DEFAULT_MIN_GAP_MS
     # フィラーを消すとき、前後の語の端から残す余裕（位置合わせの誤差で、語の端を削らないため）
-    filler_guard_ms: int = 50
+    filler_guard_ms: int = DEFAULT_GUARD_MS
     # フィラーの削除区間を、位置合わせの時刻から広げる上限（文字のない長い区間まで消さない）
-    filler_max_stretch_ms: int = 1_000
+    filler_max_stretch_ms: int = DEFAULT_MAX_STRETCH_MS
 
 
 @dataclass(frozen=True)

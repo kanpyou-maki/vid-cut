@@ -296,7 +296,7 @@ _なし_
 - PR 4a（`fix/m8-filler-span`）: フィラー。`pipeline/fillers.py` を書き直した: 辞書の一致をまとまり（続いた一致）にし、前後が区切れているもの（チャンクの端・句読点・0.1 秒以上の間）を候補にする。
   削除区間は、前の語の終わりの 50ms あと（なければチャンクの頭）から、次の語の頭の 50ms 手前（なければチャンクの終わり）まで。位置合わせの時刻から 1 秒を超えては広げない（`AnalysisSettings.filler_guard_ms`・`filler_max_stretch_ms`）。
   `vidcut reanalyze [--wait]`（`cli.py`。すべてのレクチャーの解析ジョブを積む）。解析し直したときは、戻していた無音・フィラーを区間で新しい候補へ引き継ぐ
-  （`domain/overrides.py` の `carry_over_analysis_restorations`、`AnalysisService.analyze`）。テスト: backend 1,256 件 / 99%、frontend 698 件、E2E 2 件
+  （`domain/overrides.py` の `carry_over_analysis_restorations`、`AnalysisService.analyze`）。テスト: backend 1,283 件 / 99%、frontend 698 件、E2E 2 件
 - PR 4a で、提案に足したもの 2 つ（どちらも PR に明記して、ユーザーの確認を受ける）:
   （1）チャンクの終わりまで続くフィラーは、前が区切れていなくても候補にする。報告のあった forTest03 1:20 の「あー」は、実データでは「次の三にはあー」と書き起こされていて、提案した規則（読点・続いたフィラー）では拾えなかったため。別のコミットにしてある。
   （2）広げる上限の 1 秒。チャンクが「えーと」だけで、あとに文字のない区間が長く続くとき、そこまで消さないため（誤削除より削除漏れを選ぶ）

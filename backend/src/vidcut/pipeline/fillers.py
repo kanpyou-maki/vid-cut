@@ -30,16 +30,24 @@ class _Match:
 
 
 @dataclass(frozen=True)
+class _CutLimits:
+    guard_ms: int  # 前後の語の端から残す余裕
+    max_stretch_ms: int  # 位置合わせの時刻から広げる上限
+
+
+@dataclass(frozen=True)
 class _Words:
-    """チャンクのトークンのうち、句読点を除いた文字と、その並びの中の区切れ。"""
+    """チャンクのトークンのうち、句読点を除いたもの（words）と、その並びの中の区切れ。"""
 
     tokens: Sequence[Token]  # チャンクのトークン（句読点を含む）
     positions: Sequence[int]  # words[i] の、tokens の中の位置
+    words: Sequence[Token]
     min_gap_ms: int
 
-    @property
-    def words(self) -> list[Token]:
-        return [self.tokens[position] for position in self.positions]
+    @classmethod
+    def of(cls, tokens: Sequence[Token], min_gap_ms: int) -> "_Words":
+        positions = [i for i, token in enumerate(tokens) if token.text not in _PUNCTUATION]
+        return cls(tokens, positions, [tokens[i] for i in positions], min_gap_ms)
 
     def breaks_before(self, index: int) -> bool:
         """words[index] の前が区切れているか: チャンクの頭、句読点が挟まる、間があく。"""
@@ -86,9 +94,7 @@ def detect_fillers(
         by_chunk.setdefault(token.chunk_id, []).append(token)
     suggestions: list[CutSuggestion] = []
     for chunk in chunks:
-        chunk_tokens = by_chunk.get(chunk.id, [])
-        positions = [i for i, t in enumerate(chunk_tokens) if t.text not in _PUNCTUATION]
-        words = _Words(chunk_tokens, positions, min_gap_ms)
+        words = _Words.of(by_chunk.get(chunk.id, []), min_gap_ms)
         for number, (start, end) in enumerate(_filler_ranges(words)):
             suggestions.append(
                 CutSuggestion(
@@ -106,14 +112,7 @@ def _filler_ranges(words: _Words) -> list[tuple[int, int]]:
     """フィラーに当たる words の添字の範囲 [start, end)。続いたものは 1 つの範囲にまとめる。"""
     spoken = words.words
     text = "".join(token.text for token in spoken)
-    # 文字の位置 → 語の添字。トークンは複数の文字を持つことがあるので、文字の位置をそのまま使わない
-    starts: dict[int, int] = {}
-    ends: dict[int, int] = {}
-    offset = 0
-    for index, token in enumerate(spoken):
-        starts[offset] = index
-        offset += len(token.text)
-        ends[offset] = index + 1
+    starts, ends = _word_boundaries(spoken)
     matches = [
         _Match(starts[m.start()], ends[m.end()], m.lastgroup == "ambiguous")
         for m in _PATTERN.finditer(text)
@@ -133,6 +132,21 @@ def _filler_ranges(words: _Words) -> list[tuple[int, int]]:
             ranges.append((run[0].start, run[-1].end))
         index = last + 1
     return ranges
+
+
+def _word_boundaries(words: Sequence[Token]) -> tuple[dict[int, int], dict[int, int]]:
+    """つなげた文字列の中の位置 → 語の添字（その位置で始まる語と、その位置で終わる語の次）。
+
+    トークンは複数の文字を持つことがあるので、文字の位置をそのまま語の添字には使えない。
+    """
+    starts: dict[int, int] = {}
+    ends: dict[int, int] = {}
+    offset = 0
+    for index, token in enumerate(words):
+        starts[offset] = index
+        offset += len(token.text)
+        ends[offset] = index + 1
+    return starts, ends
 
 
 def _run_end(matches: Sequence[_Match], first: int, words: _Words) -> int | None:
@@ -155,12 +169,6 @@ def _run_end(matches: Sequence[_Match], first: int, words: _Words) -> int | None
         if following == len(matches) or matches[following].start != matches[index].end:
             return last
         index = following
-
-
-@dataclass(frozen=True)
-class _CutLimits:
-    guard_ms: int  # 前後の語の端から残す余裕
-    max_stretch_ms: int  # 位置合わせの時刻から広げる上限
 
 
 def _cut_span(

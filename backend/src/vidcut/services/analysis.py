@@ -72,17 +72,24 @@ class AnalysisService:
         if lecture is None:
             return
         for _ in range(_SAVE_ATTEMPTS):
-            state = self._edit_states.get(lecture.id)
-            carried = carry_over_analysis_restorations(state, old, new)
-            if carried is state:
+            if self._try_carry_over(lecture.id, old, new):
                 return
-            try:
-                self._edit_states.save(carried)
-            except VersionConflictError:
-                continue
-            _logger.info("戻した無音・フィラーの候補を、解析し直した結果へ引き継ぎました")
-            return
         _logger.warning("編集状態の保存が重なり、戻した候補を引き継げませんでした: %s", lecture.id)
+
+    def _try_carry_over(
+        self, lecture_id: str, old: Sequence[CutSuggestion], new: Sequence[CutSuggestion]
+    ) -> bool:
+        """いまの編集状態に引き継ぎを当てる。画面の保存と重なったら False（読み直してやり直す）。"""
+        state = self._edit_states.get(lecture_id)
+        carried = carry_over_analysis_restorations(state, old, new)
+        if carried is state:
+            return True
+        try:
+            self._edit_states.save(carried)
+        except VersionConflictError:
+            return False
+        _logger.info("戻した無音・フィラーの候補を、解析し直した結果へ引き継ぎました")
+        return True
 
     def make_mezzanine(self, recording_id: str, report: ProgressReporter) -> Path:
         return make_mezzanine(self._get(recording_id), self._tools.media, self.store, report)

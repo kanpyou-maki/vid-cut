@@ -12,7 +12,7 @@ from tests.pipeline.judge_fakes import FakeModel, delete_output
 from vidcut.bootstrap import App, MlTools, build_app
 from vidcut.cli import main, openapi_text
 from vidcut.domain.models import Job, JobKind, JobStatus
-from vidcut.pipeline.ports import LoginRequiredError
+from vidcut.pipeline.ports import Judgement, LoginRequiredError
 from vidcut.serve import DEFAULT_PORT, ServeOptions
 
 KEEP_ALL = '{"delete": []}'
@@ -112,6 +112,15 @@ class TestAnalyze:
         assert "失敗: 2 件" in out
 
 
+def _judgement(workspace: Path) -> Judgement | None:
+    app = fake_build(workspace)()
+    try:
+        (lecture,) = app.lectures.list_all()
+        return app.judgements.get(lecture.id)
+    finally:
+        app.close()
+
+
 class TestReanalyze:
     """解析のしかた（フィラーの検出など）を変えたあとに、登録済みの録画に当て直す。"""
 
@@ -140,11 +149,14 @@ class TestReanalyze:
         analysis.write_text(analysis.read_text().replace("フィラー", "古い規則"))
         capsys.readouterr()
 
+        before = _judgement(tmp_path / "ws")
+
         code = main(["reanalyze", "--wait"], build=fake_build(tmp_path / "ws", []))
 
         out = capsys.readouterr().out
         assert code == 0
         assert "成功: 2 件 / 失敗: 0 件" in out  # 解析 → 判定（前の結果のまま）
+        assert _judgement(tmp_path / "ws") == before
         assert "古い規則" not in analysis.read_text()
         assert "フィラー" in analysis.read_text()
 
@@ -167,8 +179,10 @@ class TestReanalyze:
 
         code = main(["reanalyze", "--wait"], build=fake_build(tmp_path / "ws"))
 
+        out = capsys.readouterr().out
         assert code == 1
-        assert "失敗: 1 件" in capsys.readouterr().out
+        assert "失敗: 1 件" in out
+        assert "失敗 analyze_recording" in out
 
 
 class TestWorker:

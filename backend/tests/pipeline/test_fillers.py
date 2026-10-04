@@ -227,3 +227,111 @@ class TestFillerAtTheChunkEnd:
 
     def test_filler_in_the_middle_still_needs_breaks(self) -> None:
         assert spans("次はあーそれでは") == []
+
+
+class TestWordsThatOnlyLookLikeFillers:
+    """辞書に一致しても、語の一部や内容語は消さない（誤削除を、削除漏れより重く見る）。"""
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "ええ",
+            "そのまま",
+            "あのね",
+            "その方法は",
+            "うーんと",  # 「うーん」に「と」が続いている
+            "えーえーそれでは",  # まとまりの外側が区切れていない
+            "まあその話は",
+        ],
+    )
+    def test_is_not_a_candidate(self, text: str) -> None:
+        assert spans(text) == []
+
+    def test_ambiguous_word_before_a_chunk_final_filler_stays(self) -> None:
+        # 「まあ」は残し、チャンクの終わりのフィラーだけを消す
+        assert spans("次はまああー") == [(Interval(400, 600), "フィラー「あー」")]
+        assert spans("次はまあ、えー") == [(Interval(450, 700), "フィラー「えー」")]
+
+
+class TestBoundaries:
+    def test_gap_of_exactly_the_minimum_is_a_break(self) -> None:
+        assert spans("えーそれでは", gaps={2: 99}) == []
+        assert spans("えーそれでは", gaps={2: 100}) == [(Interval(0, 250), "フィラー「えー」")]
+
+    @pytest.mark.parametrize(
+        ("filler_start", "cut_start"),
+        [(149, 149), (150, 150), (151, 150), (400, 150)],
+    )
+    def test_guard_after_the_previous_word(self, filler_start: int, cut_start: int) -> None:
+        # 前の語の終わり（100）の 50ms あとから。フィラーの頭がそれより手前なら、フィラーの頭から
+        end = filler_start + 200
+        tokens = tokens_at(
+            ("は", 0, 100),
+            ("、", 100, 110),
+            ("え", filler_start, filler_start + 100),
+            ("ー", filler_start + 100, end),
+        )
+        (suggestion,) = detect_fillers([chunk_at(0, end)], tokens)
+        assert suggestion.span == Interval(cut_start, end)
+
+    @pytest.mark.parametrize(
+        ("next_start", "cut_end"),
+        [(349, 300), (350, 300), (351, 301), (900, 850)],
+    )
+    def test_guard_before_the_next_word(self, next_start: int, cut_end: int) -> None:
+        # 次の語の頭の 50ms 手前まで。フィラーの終わり（300）がそれより後ろなら、そこまで
+        tokens = tokens_at(
+            ("え", 100, 200),
+            ("ー", 200, 300),
+            ("、", 300, 310),
+            ("次", next_start, next_start + 100),
+        )
+        (suggestion,) = detect_fillers([chunk_at(100, next_start + 100)], tokens)
+        assert suggestion.span == Interval(100, cut_end)
+
+    @pytest.mark.parametrize(
+        ("chunk", "expected"),
+        [
+            ((2_000, 4_060), Interval(2_000, 4_060)),  # ちょうど 1 秒ずつ
+            ((1_999, 4_061), Interval(2_000, 4_060)),  # 1 秒を超えるぶんは広げない
+            ((2_500, 9_000), Interval(2_500, 4_060)),  # 後ろだけ上限にかかる
+            ((0, 3_500), Interval(2_000, 3_500)),  # 前だけ上限にかかる
+        ],
+    )
+    def test_stretch_limit_on_each_side(self, chunk: tuple[int, int], expected: Interval) -> None:
+        tokens = tokens_at(("え", 3_000, 3_020), ("ー", 3_020, 3_040), ("と", 3_040, 3_060))
+        (suggestion,) = detect_fillers([chunk_at(*chunk)], tokens)
+        assert suggestion.span == expected
+
+    def test_tokens_that_stick_out_of_the_chunk_are_covered(self) -> None:
+        # 位置合わせの時刻が、チャンクの範囲から少しはみ出すことがある
+        early = tokens_at(("え", 250, 350), ("ー", 350, 450), ("と", 450, 550))
+        late = tokens_at(("え", 600, 700), ("ー", 700, 800), ("と", 800, 950))
+        assert detect_fillers([chunk_at(300, 900)], early)[0].span == Interval(250, 900)
+        assert detect_fillers([chunk_at(300, 900)], late)[0].span == Interval(300, 950)
+
+
+class TestRealRecordings:
+    """受け入れチェック（forTest01〜03）で見つかった形。時刻は、実際の位置合わせの結果。"""
+
+    def test_filler_squeezed_to_41ms(self) -> None:
+        # forTest02 1:20「えー、ぜひやってみ…」。声は次の語の直前まで続いていた
+        tokens = tokens_at(
+            ("え", 79_534, 79_554), ("ー", 79_554, 79_575), ("、", 79_575, 79_595),
+            ("ぜ", 79_796, 79_900), ("ひ", 79_900, 80_000),
+        )  # fmt: skip
+        (suggestion,) = detect_fillers([chunk_at(79_514, 81_370)], tokens)
+        assert suggestion.span == Interval(79_514, 79_746)
+
+    def test_filler_that_ends_a_chunk_without_a_gap_before_it(self) -> None:
+        # forTest03 1:20「次の三にはあー」。読点も間もないが、後ろは無音
+        tokens = tokens_at(
+            ("次", 79_599, 79_881), ("の", 79_881, 80_423), ("三", 80_423, 80_865),
+            ("に", 80_865, 81_026), ("は", 81_026, 81_528), ("あ", 81_528, 81_688),
+            ("ー", 81_688, 81_708),
+        )  # fmt: skip
+        (suggestion,) = detect_fillers([chunk_at(79_519, 82_291)], tokens)
+        assert (suggestion.span, suggestion.reason) == (
+            Interval(81_528, 82_291),
+            "フィラー「あー」",
+        )

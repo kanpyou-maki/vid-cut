@@ -157,3 +157,18 @@ class TestCarryOverAnalysisRestorations:
         state = EditState("l1", 7, frozenset({old.id}), (manual,))
         carried = carry_over_analysis_restorations(state, [old], [new])
         assert (carried.version, carried.manual_cuts) == (7, (manual,))
+
+    def test_overlap_of_a_millisecond_is_enough(self) -> None:
+        old = cut("r1-c0003-filler-0", 1_000, 1_200, CutKind.FILLER)
+        new = cut("r1-c0003-filler-0", 1_199, 1_500, CutKind.FILLER)
+        state = carry_over_analysis_restorations(BASE.restore(old.id), [old], [new])
+        assert state.restored_suggestion_ids == frozenset({new.id})
+
+    def test_each_restoration_is_carried_on_its_own(self) -> None:
+        # 2 つ戻していて、新しい候補に重なるのは片方だけ
+        kept = cut("r1-c0001-filler-0", 1_000, 1_200, CutKind.FILLER)
+        gone = cut("r1-c0002-filler-0", 5_000, 5_200, CutKind.FILLER)
+        new = cut("r1-c0001-filler-0", 900, 1_300, CutKind.FILLER)
+        state = BASE.restore(kept.id).restore(gone.id)
+        carried = carry_over_analysis_restorations(state, [kept, gone], [new])
+        assert carried.restored_suggestion_ids == frozenset({new.id})

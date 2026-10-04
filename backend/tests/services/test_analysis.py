@@ -1,5 +1,5 @@
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -40,8 +40,10 @@ class CollidingEditStates:
         self._inner = inner
         self.remaining = 0
         self._conflicts = conflicts
+        self.on_conflict: Callable[[], None] = lambda: None
 
     def arm(self) -> None:
+        """ここから先の save を、conflicts 回だけ失敗させる。"""
         self.remaining = self._conflicts
 
     def get(self, lecture_id: str) -> EditState:
@@ -50,6 +52,7 @@ class CollidingEditStates:
     def save(self, state: EditState) -> EditState:
         if self.remaining > 0:
             self.remaining -= 1
+            self.on_conflict()
             raise VersionConflictError("画面の保存と重なった")
         return self._inner.save(state)
 
@@ -199,10 +202,29 @@ class TestReanalysis:
             {self._filler_id(analysis)}
         )
 
+    def test_retry_reads_what_the_editor_saved_in_between(self, tmp_path: Path) -> None:
+        busy = build_env(tmp_path, conflicts=1)
+        analysis = busy.service.analyze("r1", lambda s, p: None)
+        old = CutSuggestion("r1-c0000-filler-7", "r1", Interval(1_000, 1_300), CutKind.FILLER, "")
+        self._save_as_old(busy, analysis, [old])
+        busy.edit_states.save(EditState("l1", 0).restore(old.id))
+        # 画面が、その間に言い直しの候補を戻して保存した
+        busy.colliding.on_conflict = lambda: busy.edit_states.save(
+            busy.edit_states.get("l1").restore("r1-c0001-judged")
+        )
+        busy.colliding.arm()
+
+        busy.service.analyze("r1", lambda s, p: None)
+
+        assert busy.edit_states.get("l1").restored_suggestion_ids == frozenset(
+            {self._filler_id(analysis), "r1-c0001-judged"}
+        )
+
     def test_gives_up_with_a_warning_when_saving_keeps_colliding(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
-        busy = build_env(tmp_path, conflicts=100)
+        # やり直しは 3 回まで。3 回とも重なったら、諦める
+        busy = build_env(tmp_path, conflicts=3)
         analysis = busy.service.analyze("r1", lambda s, p: None)
         old = CutSuggestion("r1-c0000-filler-7", "r1", Interval(1_000, 1_300), CutKind.FILLER, "")
         self._save_as_old(busy, analysis, [old])
