@@ -22,7 +22,7 @@
 - [x] スパイク S-1〜S-4 を実施 — 2026-10-03
 - [x] ADR-002・ADR-003 の承認（中間素材は 60fps）
 - [x] 環境準備: uv の導入、`claude` CLI の再ログイン（`/login`）
-- [→] `backend/` と `frontend/` のスキャフォールド作成 → [PLAN-20261003-mvp-implementation](../active/PLAN-20261003-mvp-implementation.md) の M0 に移管
+- [→] `backend/` と `frontend/` のスキャフォールド作成 → [PLAN-20261003-mvp-implementation](./PLAN-20261003-mvp-implementation.md) の M0 に移管
 
 ## 完了条件
 
