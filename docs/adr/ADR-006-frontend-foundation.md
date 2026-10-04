@@ -66,3 +66,12 @@ backend の変更が要らないが、手順が 1 つ増え、忘れると理由
 - **CSP の `style-src 'unsafe-inline'` を外し、wavesurfer.js が Shadow DOM の中に差し込む `<style>` 1 つだけを、中身のハッシュで許可する**
   （`style-src 'self' 'sha256-…'`。nonce は使わない。応答ごとに乱数を作って HTML に埋め込む経路が増えるため）。
   ハッシュは版と波形の高さで変わるので、版を固定し、テストで確かめる。詳しくは [Design Doc](../design.md) 3-5-1 の「応答のヘッダー」と 3-6 の「編集画面の波形」
+
+## 追記（2026-10-04。M8 の `test/m8-e2e`。ユーザー承認）
+
+- **E2E 用に、開発時だけの依存 `@playwright/test` を 1 つ足す**（1.63.0 に固定。`^` を付けない。Apache-2.0）。画面に配る依存（`dependencies`）は増えない。
+  上の「足す依存は `openapi-fetch` と `wavesurfer.js` だけ」は、画面に配る依存を指す
+- **ブラウザは、入っている Google Chrome を使う**（`channel: "chrome"`）。Playwright 付属の Chromium は H.264 を再生できず、proxy 動画が映らない。
+  ブラウザのダウンロード（`npx playwright install`）は要らない。代わりに、Chrome の版は固定されない
+- **偽の実装の差し替えは、E2E 用の起動スクリプト（`backend/tests/e2e/`）が行う。** 本体には、差し替えのための環境変数を足さない（誤って有効になる経路を作らない）。
+  詳しくは [Design Doc](../design.md) 6 章
