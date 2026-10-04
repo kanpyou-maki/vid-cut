@@ -210,21 +210,25 @@ PR 1（`test/m8-e2e`。E2E）:
 - [x] review-loop（Stage 0〜2 すべて PASS。BLOCK なし。提案を受けて、Premiere XML の確認を各クリップの開始と終了のフレームに強めた）
 - [ ] PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19) → ユーザーがマージ
 
-PR 2（`feat/m8-sentence-pause`。間の調整の計算）:
+PR 2（`feat/m8-sentence-pause`。間の調整の計算。PR 1 の上に積む）:
 
-- [ ] 間の調整（M5 の手動確認で出た要望）: 文の終わりのあとの間を長くする。
-      いまは無音の削除で、残す区間の前に 150ms・後ろに 250ms を残す（つなぎ目の間は最大 400ms）。文の終わりかどうかは文字起こしの句点で分かるので、データの作り直しは要らない
-      （検証素材では、69 チャンクのうち 37 が「。」で終わり、句点はすべてチャンクの末尾にある）
-- [ ] 受け入れチェックの記録用のひな形
+- [x] Design Doc 3-4・3-5 に仕様を反映（文の終わりのあとの余白。M5 の手動確認で出た要望。文の終わりかどうかは文字起こしの句点で分かるので、データの作り直しは要らない。
+      検証素材では、69 チャンクのうち 37 が「。」で終わる）
+- [x] backend: domain（`sentence_pauses`、`keep_ranges` の文末用の余白）、`ExportSettings.pad_after_sentence_ms`（仮の値 500ms）、`plan_export`、API の `keep_padding.after_sentence_ms`
+- [x] frontend: `keepRanges.ts`（同じ計算）、`timeline.ts`。両側のテストが共有の例を読む（`keep_ranges_cases.json`・`sentence_pauses_cases.json`）
+- [x] E2E の期待値（各クリップの終わりのフレーム、カット後の長さ）
+- [x] 受け入れチェックの記録用のひな形（[docs/references/acceptance-m8.md](../../references/acceptance-m8.md)）、PRD 3-2 の作業時間を「記録のみ」に変更（ユーザー決定）
+- [ ] review-loop → PR
 
-PR 3（`feat/m8-pause-settings`。間の設定。詳細はユーザーの確認待ち）:
+PR 3（`feat/m8-pause-settings`。間の設定。ユーザー承認、2026-10-04）:
 
-- [ ] 間の値を、編集画面で変えられるようにする（保存・API・画面）。値は、編集画面のプレビュー（M7）で聞きながら、ユーザーが決める
+- [ ] 設定の保存（SQLite。ワークスペース全体で 1 組）と API（`GET` / `PUT /api/settings`）。worker は書き出しのジョブごとに読む
+- [ ] 編集画面の「間の設定」（前・後ろ・文末のあとの 3 項目。ms、0〜2000 の整数。「既定に戻す」。値を変えるとその場でプレビューに効く）
+- [ ] 値は、編集画面のプレビューで聞きながら、ユーザーが決める。決まった値を既定値にする
 
 PR 4（`fix/m8-acceptance`。受け入れ）:
 
-- [ ] 実際の撮影素材 3 本（`~/Desktop/forTest01.mov`〜`forTest03.mov`）で受け入れチェック（PRD 3-2）: 誤削除は 1 本あたり 2 件以下、作業時間は手作業の半分以下、書き出しの音ズレ 0 件
-      （作業時間の比較は、合格基準から外す案をユーザーに確認中）
+- [ ] 実際の撮影素材 3 本（`~/Desktop/forTest01.mov`〜`forTest03.mov`）で受け入れチェック（PRD 3-2）: 誤削除は 1 本あたり 2 件以下、書き出しの音ズレ 0 件（削除漏れと作業時間は記録のみ）。記録は [acceptance-m8.md](../../references/acceptance-m8.md)
 - [ ] フィラー検出の検証（Design Doc D-5。forTest の素材にフィラーがある）
 - [ ] 複数の録画ファイルのレクチャー（実素材）、300 チャンク超の窓分割と長いレクチャーの重さ（人工データ。ユーザー決定）
 - [ ] 受け入れで見つかった直し
