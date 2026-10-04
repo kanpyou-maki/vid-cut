@@ -47,16 +47,13 @@ _なし_
 
 進行中の計画はない。次に何かを始めるときは、新しい実行プランを作る（Discussion → Document → TDD）。残っている任意の項目（どれも、着手はユーザーの判断）:
 
-- [ ] 長いレクチャー（約 2 時間）で、波形を「全体」に切り替えるときに約 3 秒固まる。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（報告のあと、ユーザーから追加の指摘なし。直していない。Design Doc 3-6）
+- [ ] 長いレクチャー（約 2 時間）で、波形を「全体」に切り替えるときに約 3 秒固まる。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（直していない。報告のあと、ユーザーから追加の指摘なし。固まることは Design Doc 3-6 に記録済み。直し方の案は、まだ設計書にない）
 - [ ] フィラーの残る制限（Design Doc 3-2 の「既知の限界」・D-5）: フィラーと判定されても声が残る箇所は、画面では削れない（Premiere で削る）。続いたフィラーは候補にならない（文字を選んで削る）。
       位置合わせの時刻を頼りに削除区間を広げる方法は、取らない（決定事項 46）
 - [ ] 判定の制限（決定事項 43）: チャンクの一部だけの言い直しは消せない。「終了します」のような独り言に似た発話を、雑音として消すことがある
 - [ ] ハーネス: self-reviewer のチェックリストに足した 2 項目（FRIC-005）を、`sync-upstream` スキルで master へ還元する（未）
-- [x] M8（E2E と受け入れ）: PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)〜[#23](https://github.com/kanpyou-maki/vid-cut/pull/23)。すべてマージ済み（2026-10-05）。受け入れチェックの記録は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)。
-      PR のあとは、`npm --prefix frontend run build` と `uv run --directory backend vidcut reanalyze --wait` を実行し、`vidcut serve` を起動し直す（登録済みの録画のフィラーの候補が、元の検出に戻る）
-- [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
-      インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
-- [x] 間の調整: 計算は M8 の PR 2、値を変える画面は PR 3 で入れた。既定値は 500ms のままにし、変えたいときは「間の設定」で変える（決定事項 45）
+- [ ] ユーザーの環境で、PR #22・#23 のマージのあとの手順を実行する（実行済みかどうかは、未確認）: `npm --prefix frontend run build`、`uv run --directory backend vidcut reanalyze --wait`、`vidcut serve` の起動し直し。
+      解析し直すまでは、登録済みの録画のフィラーの候補が、取りやめた版のまま残る（解析し直すと、元の検出に戻る）
 
 ## 決定事項
 
@@ -119,6 +116,8 @@ _なし_
 
 - 開発の流れ: main からマイルストーンごとにブランチ → review-loop（`.claude/skills/review-loop/SKILL.md`）→ PR → ユーザーがマージ。M6 は 3 本の PR を積み上げている（決定事項 16）
 - コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
+- 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
+  インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003）
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`。スパイクの素材と XML は `~/VidCut/spikes/s1/`
@@ -306,6 +305,7 @@ _なし_
   実データの写しで、フィラーの候補が前と同じ（forTest01 が 4 件、forTest02 が 2 件、forTest03 が 5 件。区間も同じ）ことを確かめた。
   残したもの: `vidcut reanalyze` と、戻した候補の区間での引き継ぎ。分かったこと: 位置合わせは、語の頭を実際より遅く置くことがある。位置合わせの時刻を頼りに削除区間を広げてはいけない。
   制限として残るもの（Design Doc 3-2 の「既知の限界」）: フィラーと判定されても声が残る箇所（画面では削れない。Premiere で削る）、続いたフィラー（文字を選んで削る）
+- 計画の完了処理（`chore/m8-plan-completion`。ドキュメントだけ）の review-loop: Stage 0〜2 とも PASS（指摘は LOW と任意だけ。件数の時点の表記、進捗メモの並び、「次にやること」の整理を直した）
 - 検出を戻したあとの review-loop: Stage 0（self）PASS（MEDIUM 2 件: この「M8 の現状」に、取りやめた仕様が事実のように残っていた点と、テスト件数 → 直した）、
   Stage 1（arch / style / test）PASS（test の提案で、間がちょうど 100ms / 99ms の境界、前だけ・後ろだけの間、「ええ」「そのまま」「あのね」などを消さないテストを足した）、Stage 2（security / docs）PASS
 - PR 4a（`fix/m8-filler-span`）で作って、取りやめたもの（決定事項 46。いまのコードにはない）: `pipeline/fillers.py` を書き直し、辞書の一致をまとまり（続いた一致）にして、前後が区切れているもの（チャンクの端・句読点・0.1 秒以上の間）を候補にしていた。
