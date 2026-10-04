@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、PR 4a（フィラー。`fix/m8-filler-span`。PR #22）がユーザーの確認とマージ待ち。PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認。`fix/m8-acceptance`）も、review-loop を通ってユーザーの確認とマージ待ち。計画の完了処理は未。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、PR 4a（フィラー。`fix/m8-filler-span`。PR #22）がユーザーの確認とマージ待ち。PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認。`fix/m8-acceptance`。PR #23）も、review-loop を通ってユーザーの確認とマージ待ち。計画の完了処理は未。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -39,7 +39,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（フィラー。PR #22）はマージ待ち。PR 4b もマージ待ち。残りは、ユーザーの聞き直しと判断（フィラーに足した 2 つの規則、波形の「全体」の重さ）、計画の完了処理
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（フィラー。PR #22）はマージ待ち。PR 4b（PR #23）もマージ待ち。残りは、ユーザーの聞き直しと判断（フィラーに足した 2 つの規則、波形の「全体」の重さ）、計画の完了処理
 
 ## 次にやること
 
@@ -48,7 +48,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
   - [x] 受け入れチェック（forTest01〜03。判定はユーザー）: 3 本とも合格（誤削除 1・0・0 件、音ズレ 0 件）。記録と、見つかった点の原因は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)
   - [x] PR 4a `fix/m8-filler-span`: フィラーの削除区間を広げる・続いたフィラーと読点で区切られたフィラーの検出・`vidcut reanalyze`。review-loop は全通過。PR [#22](https://github.com/kanpyou-maki/vid-cut/pull/22)。ユーザーの確認とマージ待ち。
         マージのあと、`npm --prefix frontend run build` と `uv run --directory backend vidcut reanalyze --wait` を実行して、ユーザーが該当の箇所を聞き直す
-  - [x] PR 4b `fix/m8-acceptance`（PR 4a の上に積む。review-loop は全通過。ユーザーの確認とマージ待ち）: 止めたままのシークで文字起こしを追従させる（実装済み）、`vidcut serve` の起動時にビルドが古ければ警告する（実装済み）、長いレクチャー（2 時間・300 チャンク超）と複数ファイルのレクチャーの確認（済み。結果は acceptance-m8.md の「追加の確認」）、
+  - [x] PR 4b `fix/m8-acceptance`（PR 4a の上に積む。review-loop は全通過。PR [#23](https://github.com/kanpyou-maki/vid-cut/pull/23)。ベースは `fix/m8-filler-span`。#22 をマージしてから、ベースを main に変えてマージする。ユーザーの確認とマージ待ち）: 止めたままのシークで文字起こしを追従させる（実装済み）、`vidcut serve` の起動時にビルドが古ければ警告する（実装済み）、長いレクチャー（2 時間・300 チャンク超）と複数ファイルのレクチャーの確認（済み。結果は acceptance-m8.md の「追加の確認」）、
         計画の完了処理は、PR #22 のマージとユーザーの聞き直しのあと（未）
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）

@@ -254,7 +254,7 @@ PR 4b（`fix/m8-acceptance`。残り）:
 - [x] 複数の録画ファイルのレクチャー（実素材）、300 チャンク超の窓分割と長いレクチャーの重さ（人工データ。ユーザー決定）。結果は [acceptance-m8.md](../../references/acceptance-m8.md) の「追加の確認」。
       重いのは、2 時間のレクチャーで波形を「全体」に切り替えるときだけ（約 3 秒）。直すかどうかは、ユーザーの判断
 - [x] review-loop（Stage 0 は 1 回 BLOCK のあと PASS。Stage 1・2 は PASS）
-- [ ] PR → ユーザーがマージ
+- [ ] PR [#23](https://github.com/kanpyou-maki/vid-cut/pull/23)（ベースは `fix/m8-filler-span`）→ ユーザーがマージ
 - [ ] 計画の完了処理（PR #22 のマージと、ユーザーの聞き直しのあと）
 
 ## 完了条件
