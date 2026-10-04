@@ -189,3 +189,27 @@ class TestFillerRuns:
     def test_filler_that_runs_into_the_next_word_does_not_break_a_run(self) -> None:
         # 2 つ目の「えー」は語につながっている。区切れている 1 つ目だけを消す
         assert spans("えー、えーそれでは") == [(Interval(0, 250), "フィラー「えー」")]
+
+
+class TestFillerAtTheChunkEnd:
+    """チャンクの終わり（後ろは無音）のフィラーは、前が区切れていなくても候補にする。
+
+    位置合わせは、フィラーの前の間を詰めてしまうことがある（実素材の「次の三にはあー」）。
+    """
+
+    def test_filler_that_ends_the_chunk_is_a_candidate(self) -> None:
+        assert spans("次はあー") == [(Interval(200, 400), "フィラー「あー」")]
+
+    def test_run_that_ends_the_chunk_is_a_candidate(self) -> None:
+        assert spans("次はあーえーと") == [(Interval(200, 700), "フィラー「あーえーと」")]
+
+    def test_ambiguous_word_that_ends_the_chunk_stays(self) -> None:
+        assert spans("次はその") == []
+        assert spans("次はまあその") == []
+
+    def test_filler_at_the_chunk_head_still_needs_a_break_after_it(self) -> None:
+        # 語の頭かもしれない（後ろが無音ではない）
+        assert spans("えーそれでは") == []
+
+    def test_filler_in_the_middle_still_needs_breaks(self) -> None:
+        assert spans("次はあーそれでは") == []

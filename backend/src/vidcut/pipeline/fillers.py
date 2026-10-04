@@ -127,13 +127,17 @@ def _run_end(matches: Sequence[_Match], first: int, words: _Words) -> int | None
     """matches[first] から続く一致のうち、前後が区切れているまとまりの、最後の添字。なければ None。
 
     まとまりの内側（一致どうしが隣り合うところ）は、区切れていなくてよい。
+    前が区切れていなくても、チャンクの終わりまで続くフィラーは候補にする（後ろは無音。
+    位置合わせは、フィラーの前の間を詰めてしまうことがある）。内容語にもなる語から始まるものは除く。
     """
-    if not words.breaks_before(matches[first].start):
+    opens = words.breaks_before(matches[first].start)
+    if not opens and matches[first].ambiguous:
         return None
+    total = len(words.positions)
     last: int | None = None
     index = first
     while True:
-        if words.breaks_after(matches[index].end):
+        if matches[index].end == total or (opens and words.breaks_after(matches[index].end)):
             last = index
         following = index + 1
         if following == len(matches) or matches[following].start != matches[index].end:
