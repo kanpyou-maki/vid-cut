@@ -36,6 +36,8 @@ export function fakeApi(overrides: Partial<Api> = {}): Api {
     requestExport: () => pending(),
     getExports: () => pending(),
     revealExports: () => pending(),
+    getSettings: () => pending(),
+    saveKeepPadding: () => pending(),
     ...overrides,
   };
 }

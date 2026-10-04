@@ -7,7 +7,7 @@ import {
   useRef,
 } from "react";
 import { useApi } from "../api/ApiContext";
-import type { LectureDetail } from "../api/types";
+import type { KeepPadding, LectureDetail } from "../api/types";
 import type { SaveStatus } from "./autosaver";
 import { createEditorReducer, type EditorAction } from "./editorReducer";
 import {
@@ -108,8 +108,12 @@ function newSeed(): string {
  * 編集画面の状態と操作（Design Doc 3-6）: 編集状態と履歴（useReducer）、1 秒遅延の自動保存、キー操作。
  *
  * detail は読み込んだときのまま変えないこと（読み込み直すときは、使う部品ごと作り直す）。
+ * keepPadding は、残す発話の前後の余白（「間の設定」で変えている値。省くと、詳細を読んだときの値）。
  */
-export function useEditing(detail: LectureDetail): Editing {
+export function useEditing(
+  detail: LectureDetail,
+  keepPadding: KeepPadding = detail.keep_padding,
+): Editing {
   const api = useApi();
   const transcript = useMemo(() => buildTranscript(detail), [detail]);
   const initial = useMemo(() => draftOf(detail.edit_state), [detail]);
@@ -143,7 +147,10 @@ export function useEditing(detail: LectureDetail): Editing {
   const hasSelection = useHasTokenSelection(transcriptRoot);
   const actions = useEditActions(dispatch, transcriptRoot);
 
-  const timeline = useMemo(() => buildTimeline(detail, draft), [detail, draft]);
+  const timeline = useMemo(
+    () => buildTimeline(detail, draft, keepPadding),
+    [detail, draft, keepPadding],
+  );
   const player = usePlayer(timeline, api.proxyUrl);
   const { seek } = player;
   useTranscriptSeek(transcriptRoot, transcript, seek);

@@ -57,9 +57,10 @@ class ExportService:
         queue: JobQueue,
         media: MediaTool,
         exports: ExportStore,
-        settings: ExportSettings,
+        settings: Callable[[], ExportSettings],
         new_id: Callable[[], str] = lambda: uuid.uuid4().hex,
     ) -> None:
+        """settings は、書き出しのたびに呼んで、そのときの設定を読む（利用者が変えた余白）。"""
         self._lectures = lectures
         self._recordings = recordings
         self._store = store
@@ -142,7 +143,7 @@ class ExportService:
             analyses,
             judgement.suggestions if judgement else (),
             self._edit_states.get(lecture_id),
-            self._settings,
+            self._settings(),
         )
         if not plan.clips:
             raise NothingToExportError(

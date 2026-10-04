@@ -311,6 +311,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Settings */
+        get: operations["get_settings_api_settings_get"];
+        /**
+         * Put Settings
+         * @description 余白を保存する。null なら既定値に戻す。次の書き出しと、開き直したプレビューから効く。
+         */
+        put: operations["put_settings_api_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -446,6 +467,14 @@ export interface components {
         /** Envelope[RevealOut] */
         Envelope_RevealOut_: {
             data?: components["schemas"]["RevealOut"] | null;
+            /** Error */
+            error?: string | null;
+            /** Success */
+            success: boolean;
+        };
+        /** Envelope[SettingsOut] */
+        Envelope_SettingsOut_: {
+            data?: components["schemas"]["SettingsOut"] | null;
             /** Error */
             error?: string | null;
             /** Success */
@@ -646,6 +675,18 @@ export interface components {
          */
         JobStatus: "queued" | "running" | "succeeded" | "failed";
         /**
+         * KeepPaddingIn
+         * @description 残す発話の前後の余白（ミリ秒）。
+         */
+        KeepPaddingIn: {
+            /** After Ms */
+            after_ms: number;
+            /** After Sentence Ms */
+            after_sentence_ms: number;
+            /** Before Ms */
+            before_ms: number;
+        };
+        /**
          * KeepPaddingOut
          * @description 書き出しが、残す発話の前後に付ける余白（隣の無音の中にだけ伸ばす。Design Doc 3-4）。
          */
@@ -836,6 +877,23 @@ export interface components {
             kind: components["schemas"]["ReviewMarkKind"];
             /** Start Ms */
             start_ms: number;
+        };
+        /**
+         * SettingsIn
+         * @description keep_padding が null なら、保存した値を消して既定値に戻す。
+         */
+        SettingsIn: {
+            keep_padding: components["schemas"]["KeepPaddingIn"] | null;
+        };
+        /**
+         * SettingsOut
+         * @description ワークスペース全体の設定。customized は、利用者が保存した値を使っているかどうか。
+         */
+        SettingsOut: {
+            /** Customized */
+            customized: boolean;
+            default_keep_padding: components["schemas"]["KeepPaddingOut"];
+            keep_padding: components["schemas"]["KeepPaddingOut"];
         };
         /** SpanOut */
         SpanOut: {
@@ -2013,6 +2071,140 @@ export interface operations {
                 };
                 content: {
                     "video/mp4": unknown;
+                };
+            };
+            /** @description トークンが正しくない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Host または Origin が受け付けられない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 指定されたデータが見つからない */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 入力が正しくない */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 想定していない失敗（詳細はログ） */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    get_settings_api_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SettingsOut_"];
+                };
+            };
+            /** @description トークンが正しくない */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description Host または Origin が受け付けられない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 指定されたデータが見つからない */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 入力が正しくない */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+            /** @description 想定していない失敗（詳細はログ） */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorOut"];
+                };
+            };
+        };
+    };
+    put_settings_api_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SettingsOut_"];
                 };
             };
             /** @description トークンが正しくない */

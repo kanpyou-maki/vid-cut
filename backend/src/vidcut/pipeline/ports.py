@@ -17,7 +17,7 @@ from vidcut.domain.models import (
     MediaInfo,
     Recording,
 )
-from vidcut.domain.timeline import FrameRange
+from vidcut.domain.timeline import FrameRange, KeepPadding
 
 
 class ExternalToolError(RuntimeError):
@@ -294,6 +294,20 @@ class EditStateRepository(Protocol):
 
     def save(self, state: EditState) -> EditState:
         """state.version が保存済みの版と一致すれば保存し、version を 1 進めた状態を返す。"""
+        ...
+
+
+class SettingsRepository(Protocol):
+    """ワークスペース全体の設定。いまは、残す発話の前後の余白だけ。"""
+
+    def keep_padding(self) -> KeepPadding | None:
+        """利用者が保存した余白。保存していなければ（または読めなければ）None。"""
+        ...
+
+    def save_keep_padding(self, padding: KeepPadding) -> None: ...
+
+    def clear_keep_padding(self) -> None:
+        """保存した余白を消す（既定値に戻る）。"""
         ...
 
 

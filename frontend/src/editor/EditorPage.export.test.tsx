@@ -204,11 +204,14 @@ describe("EditorPage: 書き出しの依頼と進捗", () => {
 
     await user.click(xmlButton());
 
-    expect(requestExport).toHaveBeenCalledExactlyOnceWith(
-      "lec1",
-      "premiere_xml",
+    // 頼む前に、編集状態と間の設定の保存を待つ（待つものがなくても、すぐあとになる）
+    await waitFor(() =>
+      expect(requestExport).toHaveBeenCalledExactlyOnceWith(
+        "lec1",
+        "premiere_xml",
+      ),
     );
-    expect(xmlStatus()).toHaveTextContent("待機中");
+    await waitFor(() => expect(xmlStatus()).toHaveTextContent("待機中"));
     expect(xmlButton()).toBeDisabled();
     expect(mp4Button()).toBeEnabled();
   });
@@ -301,7 +304,7 @@ describe("EditorPage: 書き出しの依頼と進捗", () => {
     await user.click(xmlButton());
 
     // 保存が終わるまでは、頼まない（ボタンは止めておく）
-    expect(order).toEqual(["save"]);
+    await waitFor(() => expect(order).toEqual(["save"]));
     expect(xmlButton()).toBeDisabled();
     finishSave({ version: 4, restored_suggestion_ids: [], manual_cuts: [] });
     await waitFor(() => expect(order).toEqual(["save", "export"]));
@@ -338,8 +341,8 @@ describe("EditorPage: 書き出しの依頼と進捗", () => {
 
     await user.click(mp4Button());
 
+    await waitFor(() => expect(mp4Status()).toHaveTextContent("待機中"));
     expect(within(bar()).queryByRole("alert")).not.toBeInTheDocument();
-    expect(mp4Status()).toHaveTextContent("待機中");
   });
 
   it("書き出しが失敗したら、定型文を出す。同じボタンで、もう一度頼める", async () => {
@@ -365,8 +368,8 @@ describe("EditorPage: 書き出しの依頼と進捗", () => {
 
     await user.click(mp4Button());
 
+    await waitFor(() => expect(mp4Status()).toHaveTextContent("待機中"));
     expect(requestExport).toHaveBeenCalledExactlyOnceWith("lec1", "mp4");
-    expect(mp4Status()).toHaveTextContent("待機中");
     expect(within(bar()).queryByRole("alert")).not.toBeInTheDocument();
   });
 

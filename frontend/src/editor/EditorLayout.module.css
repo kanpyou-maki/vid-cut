@@ -44,8 +44,13 @@
   border-radius: 0.375rem;
 }
 
+/* プレビュー（残りの高さを使う）の下に、間の設定を置く */
 .preview {
+  display: flex;
+  flex-direction: column;
   grid-area: preview;
+  gap: 0.5rem;
+  min-height: 0;
 }
 
 .transcript {
@@ -85,7 +90,7 @@
 @media (max-width: 900px) {
   .panes {
     grid-template:
-      "preview" 12rem
+      "preview" minmax(12rem, auto)
       "transcript" auto
       "waveform" 9.5rem
       / minmax(0, 1fr);

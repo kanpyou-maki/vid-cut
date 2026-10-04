@@ -10,10 +10,12 @@ import type {
   ImportResult,
   Job,
   JobListItem,
+  KeepPadding,
   LectureDetail,
   LectureRef,
   LectureSummary,
   Peaks,
+  Settings,
 } from "./types";
 
 const TOKEN_HEADER = "X-VidCut-Token";
@@ -85,6 +87,13 @@ export interface Api {
    * 見せる場所は、サーバーがレクチャーの id から求める（画面からパスを送らない）
    */
   revealExports(lectureId: string): Promise<void>;
+  /** ワークスペース全体の設定（残す発話の前後の余白と、その既定値） */
+  getSettings(signal?: AbortSignal): Promise<Settings>;
+  /**
+   * 余白を保存する。null なら、保存した値を消して既定値に戻す。
+   * すべてのレクチャーの、次の書き出しと、開き直したプレビューから効く
+   */
+  saveKeepPadding(padding: KeepPadding | null): Promise<Settings>;
 }
 
 export interface ApiOptions {
@@ -196,6 +205,9 @@ export function createApi(options: ApiOptions): Api {
         }),
       );
     },
+    getSettings: (signal) => unwrap(client.GET("/api/settings", { signal })),
+    saveKeepPadding: (padding) =>
+      unwrap(client.PUT("/api/settings", { body: { keep_padding: padding } })),
   };
 }
 

@@ -74,6 +74,14 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE jobs ADD COLUMN error_code TEXT;
     """,
+    # ワークスペース全体の設定（残す発話の前後の余白。Design Doc 3-4）。名前ごとに 1 行の JSON
+    f"""
+    CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT ({NOW})
+    );
+    """,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

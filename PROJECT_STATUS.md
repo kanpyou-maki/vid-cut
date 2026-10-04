@@ -12,7 +12,7 @@
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）と PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）がユーザーの確認とマージ待ち。次は PR 3（間の設定の画面）。GitHub: kanpyou-maki/vid-cut（private）。
+PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1（E2E。`test/m8-e2e`。PR #19）・PR 2（間の調整の計算。`feat/m8-sentence-pause`。PR #20）・PR 3（間の設定。`feat/m8-pause-settings`。PR #21）がユーザーの確認とマージ待ち（3 本を積み上げている）。次は、ユーザーが間の値を決めることと、PR 4（受け入れ）。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -39,19 +39,20 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1（E2E。PR #19）と PR 2（間の調整の計算）を実装済み
+- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1（E2E。PR #19）・PR 2（間の調整の計算。PR #20）・PR 3（間の設定。PR #21）を実装済み。残りは、間の値の決定と PR 4（受け入れ）
 
 ## 次にやること
 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1 `test/m8-e2e`: Playwright の E2E（投入 → 解析 → 編集 → 書き出し、2 本をまとめたレクチャー）。review-loop は全通過。PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)。ユーザーの確認とマージ待ち
   - [x] PR 2 `feat/m8-sentence-pause`（PR 1 の上に積む）: 間の調整の計算（文の終わりのあとの余白を長くする。仮の値 500ms）、受け入れの記録用のひな形、PRD 3-2 の作業時間の変更。review-loop は全通過。PR [#20](https://github.com/kanpyou-maki/vid-cut/pull/20)（ベースは `test/m8-e2e`。#19 をマージしてから、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち
-  - [ ] PR 3 `feat/m8-pause-settings`: 間の値を編集画面で変えられるようにする（決定事項 40）。値は、ユーザーがプレビューで聞いて決め、決まった値を既定値にする
+  - [x] PR 3 `feat/m8-pause-settings`（PR 2 の上に積む）: 間の値を編集画面で変えられるようにした（決定事項 40）。review-loop は全通過（docs は 2 回 BLOCK のあと PASS）。PR [#21](https://github.com/kanpyou-maki/vid-cut/pull/21)（ベースは `feat/m8-sentence-pause`。#19 → #20 → #21 の順に、ベースを main に変えてマージする）。ユーザーの確認とマージ待ち。
+        そのあと、ユーザーがプレビューで聞いて値を決め（手順は `frontend/README.md` の「手で確かめる（M8 の PR 3: 間の設定）」）、決まった値を既定値にする
   - [ ] PR 4 `fix/m8-acceptance`: 受け入れチェック（forTest01〜03。判定はユーザー。記録は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)）で見つかった直し、フィラー検出の検証（D-5）、
         複数ファイルのレクチャー・300 チャンク超・長いレクチャーの重さの確認（人工データ）、計画の完了処理
 - [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
       インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
-- [ ] 間の調整: 計算は M8 の PR 2 で入れた（文の終わりのあとの余白。仮の値 500ms）。残りは、PR 3 の設定の画面と、ユーザーがプレビューで聞いて値を決めること（ユーザー決定、2026-10-03）
+- [ ] 間の調整: 計算は M8 の PR 2、値を変える画面は PR 3 で入れた（文の終わりのあとの余白。仮の値 500ms）。残りは、ユーザーがプレビューで聞いて値を決め、決まった値を既定値にすること（ユーザー決定、2026-10-03）
 
 ## 決定事項
 
@@ -179,7 +180,7 @@ _なし_
 - PR 5（`feat/m7-preview`。PR 4 の上に積む）: プレビュー。画面の構成は推奨案で実装し、ユーザーが確認してマージした（PR #16、2026-10-04。Design Doc 3-6 の「プレビュー」）。
   backend は、レクチャーの詳細に `keep_padding`（書き出しの設定の余白）を足した。frontend は、`Api.proxyUrl`、残す区間の計算（`keepRanges.ts`。backend の `keep_ranges` と同じ計算。両側のテストが、同じ例 `backend/tests/domain/keep_ranges_cases.json` を読む）、
   カット後のタイムライン（`timeline.ts`）、再生（`usePlayer.ts`。1 つの `video` を切り替え、フレームごとに確かめて飛ぶ）、表示と操作（`PreviewPane.tsx`）、文字起こしとの同期（`usePlaybackSync.ts`）。
-  余白の値（M8 の「間の調整」で変える）は backend から受け取るので、画面には持たない。ただし、残す区間の計算そのものを変えたら、`keepRanges.ts` も合わせる
+  余白の値は、PR 5 の時点では backend から受け取るだけだった（M8 の PR 3 から、開いたあとは画面の `usePadding` が持つ）。残す区間の計算そのものを変えたら、`keepRanges.ts` も合わせる
 - PR 5 で確認済み（一時ワークスペースに proxy 動画も写した。ヘッドレスの Chrome で実際に再生）: 最初の残す区間の頭（8.1 秒）が出る、文字のクリックで移る、再生中に言い直しの区間を飛ばす
   （フレームごとの記録で、削除区間の中のフレームが 1 つ以下）、再生位置の文字の印、Space での一時停止、「削除した部分も再生する」で削除区間も再生、段落の時刻のクリック、バーの中央のクリック。
   PR 3・PR 4 の項目と合わせて 52 項目 OK。frontend のテスト 500 件 / カバレッジ 98%（分岐 94%）、backend 1,043 件
@@ -269,6 +270,26 @@ _なし_
   提案を受けて、共有の例を足した（文末の長い余白が次の区間の前の余白に届いて短い無音が残る場合、文末のトークンが無音にまたがる場合、無音の開始と同時に始まるトークン）、
   2 本の録画ファイルの例（`plan_export`・`buildTimeline`）、最後の 1 文字の取り方を空の文字でも落ちない形に、E2E の定数の名前と並びの整理、受け入れの記録に下調べの数値の求め方。
   PR 3 への申し送り: 余白の値を画面から受け取るときは、整数と 0 以上（上限 2000）を API の入力で検証する
+- PR 3（`feat/m8-pause-settings`。PR 2 の上に積む）: 間の設定。backend は、domain の `KeepPadding`（0〜2000 の整数）、`settings` 表（スキーマの移行を 1 つ足した）と `SqliteSettingsRepository`、
+  `SettingsService`（既定値は `ExportSettings`、保存した値があればそちら）、`ExportService` の `settings`（設定を返す関数。書き出しのたびに呼んで読む）、`GET` / `PUT /api/settings`。
+  `ApiServices.export_settings` は `ApiServices.settings`（`SettingsService`）に替えた。frontend は、`Api.getSettings`・`saveKeepPadding`、`usePadding.ts`（値・0.5 秒遅れの保存・既定に戻す・書き出し前の保存。保存の順番は `usePaddingSaver`・`useSerial`、既定値は `useDefaultPadding`）、
+  `PaddingSettings.tsx`（プレビューの下の折りたたみ）、`buildTimeline` と `useEditing` に余白を渡す引数。テスト: backend 1,210 件 / 99%、frontend 698 件 / 98%、E2E 2 件
+- PR 3 で確かめたこと（E2E。実物の backend と Chrome）: 「文の終わりのあと」を 800 にすると、プレビューの長さがすぐ伸びる。保存を待たずに Premiere XML を頼んでも、XML の各クリップの終わりが 800ms の余白になる（頼む前に保存する）。
+  「既定に戻す」で長さが戻り、次の書き出しは既定値になる。画面は、通常の幅と 800px で画像を撮って確かめた（プレビューのペインを縦に並べる形に変え、狭い幅では動画の高さを 8rem に決めた）
+- PR 3 で踏んだこと: テストで「保存の遅延の 1ms 手前まで待つ」と、実際の時間も進むので、負荷が高いときに保存が先に走って落ちる（遅延の半分まで待つ形にした。3 つ同時に走らせても通ることを確かめた）。
+  書き出しの 2 回目からは、状態の文（最後の書き出しの日時。分まで）が前と同じになりうるので、E2E はファイルの更新時刻で書き直しを待つ（`exportFresh`）
+- PR 3 の review-loop: Stage 0（self）PASS、Stage 1（arch / style / test）PASS、Stage 2 は security PASS・docs は 2 回 BLOCK のあと PASS。
+  Stage 1 の提案を受けて、`usePadding` を小さなフックに分ける・変えた項目だけを最新の値に重ねる・書き出しの service の引数を「設定を返す関数」1 つにする・
+  競合のテスト（保存中に変える、離れるときの保存、「既定に戻す」の失敗のあとに変えて書き出す）と、入力の上限が API のスキーマと同じことのテストを足した
+- PR 3 の Stage 0（self）で直したこと: 「既定に戻す」の途中で変えた値が、戻し終わったときに既定値で上書きされて消えていた（戻す前の値と比べて、変わっていなければだけ書き換える）。
+  「既定に戻す」に失敗すると、変えていなくても書き出しを頼めなくなっていた（送るものがなければ、前の失敗を引きずらない）。フォーカスを外さずに「既定に戻す」を押すと、入力の途中の使えない文字が残っていた（入力欄を作り直す）
+- PR 3 で踏んだこと（続き）: 書き出しを頼む前に間の設定の保存も待つようにしたので、依頼が数マイクロタスク遅れる。既存の書き出しのテストのうち、ボタンを押した直後に結果を決め打ちしていた 4 か所が、負荷が高いときだけ落ちた
+  （単独では通る。2 つ同時に走らせると落ちる）。`waitFor` で待つ形に直し、2 つ同時の実行を 4 回（計 8 回）通した。テストとコミットを `;` でつないで失敗を見落とした（`set -o pipefail` と `&&` でつなぐこと）
+- PR 3 の Stage 2: security は PASS（LOW: 極端に深い入れ子の JSON を保存値に書かれると読み取りで落ちる → `RecursionError` も「読めない値」として扱うようにした）。
+  docs は 2 回 BLOCK。2 回目は、この「次にやること」の「残りは、PR 3 の設定の画面と…」が、PR 3 を実装したあとも残っていた（直した）。1 回目: 「余白の値を画面に持たせない」という前の仕様の記述が、Design Doc 3-5 と PROJECT_STATUS.md の PR 5 の記述（と `keepRanges.ts` のコメント）に残っていた → 直した。
+  FRIC-005 の再発（PR 6・PR 7・M8 の PR 1・PR 2 は 0 回）。変えた文言や機能名では検索したが、「値をどこが持つか」という責務の記述（「持たない」「受け取るだけ」）を探していなかった。
+  摩擦ログに再発を記録し、self-reviewer のチェックリストと `frontend/README.md` の決まりに「責務を移したら、否定や限定の記述も探す」を足した
+- 間の設定の制限: 値はワークスペース全体で 1 組（レクチャーごとには持たない）。ほかのタブで変えた値は、開き直すまで反映されない。版による排他はない（後から保存したほうが残る）
 - 文の終わりの判定の制限: 文末の記号のあとに閉じかっこ（」など）が続くと、文の終わりとして扱わない。文字起こしが句点を付けなかった文も同じ（検証素材では 69 チャンク中 37 が「。」で終わる）。
   残す区間の数 × 文の終わりの間の数だけ比べるので、長いレクチャーで重ければ見直す（PR 4 の人工データで確かめる）
 
