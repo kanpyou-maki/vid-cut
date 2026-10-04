@@ -46,7 +46,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 - [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
   - [x] PR 1〜3（E2E・間の調整の計算・間の設定）: PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)・[#20](https://github.com/kanpyou-maki/vid-cut/pull/20)・[#21](https://github.com/kanpyou-maki/vid-cut/pull/21)。マージ済み（2026-10-05）
   - [x] 受け入れチェック（forTest01〜03。判定はユーザー）: 3 本とも合格（誤削除 1・0・0 件、音ズレ 0 件）。記録と、見つかった点の原因は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)
-  - [ ] PR 4a `fix/m8-filler-span`: フィラーの削除区間を広げる・続いたフィラーと読点で区切られたフィラーの検出・`vidcut reanalyze`。実装は済み、review-loop の途中（PR は未作成）。
+  - [x] PR 4a `fix/m8-filler-span`: フィラーの削除区間を広げる・続いたフィラーと読点で区切られたフィラーの検出・`vidcut reanalyze`。review-loop は全通過。ユーザーの確認とマージ待ち。
         マージのあと、`npm --prefix frontend run build` と `uv run --directory backend vidcut reanalyze --wait` を実行して、ユーザーが該当の箇所を聞き直す
   - [ ] PR 4b `fix/m8-acceptance`: 止めたままのシークで文字起こしを追従させる、`vidcut serve` の起動時にビルドが古ければ警告する、長いレクチャー（2 時間・300 チャンク超）と複数ファイルのレクチャーの確認、
         計画の完了処理
@@ -74,7 +74,7 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 | 15  | 文字起こしは mlx-whisper large-v3-turbo + WhisperX の位置合わせ                                                                                                                                                                                                                                                                                                                         | S-2・S-3 の結果                                                | ADR-003                    |
 | 16  | M6 は 3 本の PR に分け、ブランチを積み上げる（下ごしらえ → FastAPI → serve と型生成）                                                                                                                                                                                                                                                                                                   | ユーザー承認（2026-10-03）                                     | —                          |
 | 17  | proxy 動画だけ、トークンを `?token=` のクエリで受ける（`<video>` はヘッダーを付けられない）。アクセスログは出さない                                                                                                                                                                                                                                                                     | ユーザー決定（2026-10-03）                                     | ADR-005・Design Doc 3-5-1  |
-| 18  | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ                                                                                                                                                                 | ユーザー承認（2026-10-03）                                     | ADR-005・Design Doc 3-5-2  |
+| 18  | M6 の設計判断: SQLite の接続はリクエストごと、失敗は種別（`error_code`）で返す、再解析は API のみ（M6 の時点。M8 で `vidcut reanalyze` を足した。決定事項 44）、レクチャー名は NFC + 見えない文字の除去、判定結果と編集状態は 1 トランザクション、まとめる・解除で編集状態を引き継ぐ                                                                                                    | ユーザー承認（2026-10-03）                                     | ADR-005・Design Doc 3-5-2  |
 | 19  | テスト用の依存は `httpx2` を使う（当初は `httpx`。Starlette が `httpx2` を推奨するため）                                                                                                                                                                                                                                                                                                | ユーザー決定（2026-10-03）                                     | —                          |
 | 20  | `openapi-typescript` 7 には、`overrides` でプロジェクトの TypeScript 6 を使わせる                                                                                                                                                                                                                                                                                                       | ユーザー承認（2026-10-03）                                     | —                          |
 | 21  | ADR-005（API の接続・まとめて確定する保存・トークン）を承認                                                                                                                                                                                                                                                                                                                             | ユーザー承認（2026-10-03）                                     | ADR-005                    |
@@ -305,6 +305,9 @@ _なし_
 - PR 4a の Stage 0（self）は BLOCK（HIGH 1 件）: 解析し直すと、フィラーの id（何番目か）がずれて、ユーザーが戻したフィラーが通知なしにまた削除されうる（同じ id が別のフィラーを指す）。
   まとめ方を変えたので起きやすくなった（仕組みとしては前からあった。実データには、戻したフィラーはない）→ 区間で対応づける引き継ぎを足した。
   ほかに、複数の文字を持つトークンがあると文字の位置と語の位置がずれて、解析が落ちる（`IndexError`）ことをテストで再現して直した。既知の限界（指示語の「その」、語尾の伸ばし）は Design Doc 3-2 に書いた
+- PR 4a の review-loop: Stage 0（self）は 1 回 BLOCK のあと PASS、Stage 1（arch / style / test）PASS、Stage 2 は security PASS・docs は 1 回 BLOCK のあと PASS
+  （「フィラー検出の精度は未検証」が現在形で残っていた。FRIC-005 と同じ種類。提案に足した 2 つが、承認済みのように読めた点も直した）。
+  Stage 1 の提案で、誤削除の側の例（「ええ」「そのまま」「あのね」「うーんと」など）・余裕と上限と間の境界値・実素材の形そのもの（実際の位置合わせの時刻）・引き継ぎの境界のテストを足した
 - PR 4a の Stage 2: security は PASS（LOW: フィラーの文字の時刻が、文字の順と大きく前後すると、削除区間が逆転して解析が落ちる → いちばん早い開始といちばん遅い終了を基準にして直した。テストで再現済み）
 - 受け入れチェックで分かったこと: `frontend/dist` をビルドし直さないと、`vidcut serve` は古い画面を配信する（PR #20・#21 の画面がなく、プレビューは古い余白の計算だった）。マージのあとは `npm --prefix frontend run build` が要る。
   位置合わせ（WhisperX）は、伸ばした声（「えー」）にごく短い時刻（41ms など）しか付けないことがある。フィラーの前の間も詰める。文字起こしは実行ごとに少し違う（同じ箇所が「次の3には、あー、えーと。」と「次の三にはあー」）
