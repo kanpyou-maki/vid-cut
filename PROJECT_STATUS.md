@@ -51,9 +51,7 @@ _なし_
 - [ ] フィラーの残る制限（Design Doc 3-2 の「既知の限界」・D-5）: フィラーと判定されても声が残る箇所は、画面では削れない（Premiere で削る）。続いたフィラーは候補にならない（文字を選んで削る）。
       位置合わせの時刻を頼りに削除区間を広げる方法は、取らない（決定事項 46）
 - [ ] 判定の制限（決定事項 43）: チャンクの一部だけの言い直しは消せない。「終了します」のような独り言に似た発話を、雑音として消すことがある
-- [ ] ハーネス: self-reviewer のチェックリストに足した 2 項目（FRIC-005）を、`sync-upstream` スキルで master へ還元する（未）
-- [ ] ユーザーの環境で、PR #22・#23 のマージのあとの手順を実行する（実行済みかどうかは、未確認）: `npm --prefix frontend run build`、`uv run --directory backend vidcut reanalyze --wait`、`vidcut serve` の起動し直し。
-      解析し直すまでは、登録済みの録画のフィラーの候補が、取りやめた版のまま残る（解析し直すと、元の検出に戻る）
+- [ ] ハーネス: self-reviewer のチェックリストに足した 2 項目（FRIC-005）を master へ還元する PR（[claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。2026-10-05 に作成）を、ユーザーがレビューしてマージする
 
 ## 決定事項
 
@@ -121,7 +119,7 @@ _なし_
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003）
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`。スパイクの素材と XML は `~/VidCut/spikes/s1/`
-- ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）は master に反映済み。
+- ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）・self-reviewer のドキュメントの追従のチェック（FRIC-005。master の PR #5）は master に反映済み。FRIC-005 の再発への対応は、master の PR #6 で還元した（2026-10-05）。
   セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化
 
 ### M6（API）で作ったもの（M7 が使う）
