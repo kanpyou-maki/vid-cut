@@ -7,12 +7,12 @@
 
 <!-- 選択肢: 議論中 | ドキュメント作成中 | 実装中 | レビュー中 | メンテナンス中 | 完了 -->
 
-実装中
+完了
 
 ## 概要
 
 vid-cut: Udemy 用の録画（mov）から無音・フィラー・言い直しを自動検出してカットし、Premiere XML で書き出すローカルアプリ。
-PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 と FRIC-004 の解消は main にマージ済み（PR #1〜#18）。M7（frontend）は、最後の PR 7（書き出し。PR #18）までマージ済み（2026-10-04）。いまは M8（E2E と受け入れ）で、PR 1〜3（E2E・間の調整の計算・間の設定。PR #19〜#21）は main にマージ済み（2026-10-05）。受け入れチェックは 3 本とも合格（2026-10-05）。チェックで見つかった直しのうち、フィラーの直しは、ユーザーが聞いた結果、取りやめて元の検出に戻した（決定事項 46）。PR 4a（`fix/m8-filler-span`。PR #22）は、`vidcut reanalyze` と戻した候補の引き継ぎだけを残して、マージ待ち。PR 4b（シークの追従・古いビルドの警告・長いレクチャーと複数ファイルの確認。`fix/m8-acceptance`。PR #23）も、review-loop を通ってマージ待ち。計画の完了処理は未。GitHub: kanpyou-maki/vid-cut（private）。
+MVP の実装計画（M0〜M8）は完了した（2026-10-05。PR #1〜#23 は、すべて main にマージ済み）。実際の撮影素材 3 本の受け入れチェックに合格（誤削除 1・0・0 件、書き出しの音ズレ 0 件）。受け入れチェックのあとに試したフィラーの直しは、フィラーでない声を巻き込むので取りやめ、元の検出のまま（決定事項 46）。進行中の計画はない。残っている任意の項目は「次にやること」。GitHub: kanpyou-maki/vid-cut（private）。
 
 ## 完了済み
 
@@ -36,23 +36,22 @@ PRD・Design Doc が承認済み。実装計画（M0〜M8）を承認。M0〜M7 
 - [x] M7: frontend（7 本の PR: 土台・素材一覧・編集状態と文字起こし・要確認と判定理由と通知・プレビュー・波形・書き出し。PR #12〜#18。テスト: frontend 644 件 / カバレッジ 98%、backend 1,103 件 / 99%。
       PR ごとに、実物の backend とヘッドレスの Chrome での確認と、ユーザーの手動確認を行った）— 2026-10-04
 - [x] M6: API（services と保存まわり・FastAPI とローカル API の防御・`vidcut serve`・frontend の配信・OpenAPI からの型生成。テスト 1,015 件 / カバレッジ 99%。review-loop 全通過。PR #9〜#11）。`~/VidCut/` の写しで手動確認し、問題なし（ユーザー確認）— 2026-10-04
+- [x] M8: E2E と受け入れ（5 本の PR: E2E・間の調整の計算・間の設定・`vidcut reanalyze`・受け入れチェックの直し。PR #19〜#23。テスト: backend 1,266 件 / 99%、frontend 704 件 / 98%、E2E 2 件）。実素材 3 本の受け入れチェックに合格（ユーザー判定）。フィラーの直しは取りやめ（決定事項 46）— 2026-10-05
+- [x] [PLAN-20261003-mvp-implementation](./docs/exec-plans/completed/PLAN-20261003-mvp-implementation.md)（MVP の実装計画。M0〜M8）— 2026-10-05
 
 ## 進行中
 
-- [ ] [PLAN-20261003-mvp-implementation](./docs/exec-plans/active/PLAN-20261003-mvp-implementation.md)— M0〜M7 完了（M7 は PR #12〜#18）。M8 は PR 1〜3（PR #19〜#21）をマージ済み。受け入れチェックは合格。PR 4a（`vidcut reanalyze`。フィラーの直しは取りやめ。PR #22）はマージ待ち。PR 4b（PR #23）もマージ待ち。残りは、ユーザーの判断（波形の「全体」の重さを直すか）と、計画の完了処理
+_なし_
 
 ## 次にやること
 
-- [ ] M8（E2E と受け入れ。実装計画の M8）は、PR を分けて進める（決定事項 33）:
-  - [x] PR 1〜3（E2E・間の調整の計算・間の設定）: PR [#19](https://github.com/kanpyou-maki/vid-cut/pull/19)・[#20](https://github.com/kanpyou-maki/vid-cut/pull/20)・[#21](https://github.com/kanpyou-maki/vid-cut/pull/21)。マージ済み（2026-10-05）
-  - [x] 受け入れチェック（forTest01〜03。判定はユーザー）: 3 本とも合格（誤削除 1・0・0 件、音ズレ 0 件）。記録と、見つかった点の原因は [docs/references/acceptance-m8.md](./docs/references/acceptance-m8.md)
-  - [x] PR 4a `fix/m8-filler-span`: `vidcut reanalyze` と、解析し直したときの戻した候補の引き継ぎ。フィラーの直し（削除区間を広げる・続いたフィラー・読点で区切られたフィラー）は、ユーザーが聞いた結果、取りやめて元の検出に戻した（決定事項 46）。PR [#22](https://github.com/kanpyou-maki/vid-cut/pull/22)。マージ待ち。
-        マージのあと、`npm --prefix frontend run build` と `uv run --directory backend vidcut reanalyze --wait` を実行する（登録済みの録画のフィラーの候補が、元の検出に戻る）
-  - [x] PR 4b `fix/m8-acceptance`（PR 4a の上に積む。review-loop は全通過。PR [#23](https://github.com/kanpyou-maki/vid-cut/pull/23)。ベースは `fix/m8-filler-span`。#22 をマージしてから、ベースを main に変えてマージする。ユーザーの確認とマージ待ち）: 止めたままのシークで文字起こしを追従させる（実装済み）、`vidcut serve` の起動時にビルドが古ければ警告する（実装済み）、長いレクチャー（2 時間・300 チャンク超）と複数ファイルのレクチャーの確認（済み。結果は acceptance-m8.md の「追加の確認」）、
-        計画の完了処理は、PR #22・#23 のマージのあと（未）
-- [ ] 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
-      インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
-- [x] 間の調整: 計算は M8 の PR 2、値を変える画面は PR 3 で入れた。既定値は 500ms のままにし、変えたいときは「間の設定」で変える（決定事項 45）
+進行中の計画はない。次に何かを始めるときは、新しい実行プランを作る（Discussion → Document → TDD）。残っている任意の項目（どれも、着手はユーザーの判断）:
+
+- [ ] 長いレクチャー（約 2 時間）で、波形を「全体」に切り替えるときに約 3 秒固まる。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（直していない。報告のあと、ユーザーから追加の指摘なし。固まることは Design Doc 3-6 に記録済み。直し方の案は、まだ設計書にない）
+- [ ] フィラーの残る制限（Design Doc 3-2 の「既知の限界」・D-5）: フィラーと判定されても声が残る箇所は、画面では削れない（Premiere で削る）。続いたフィラーは候補にならない（文字を選んで削る）。
+      位置合わせの時刻を頼りに削除区間を広げる方法は、取らない（決定事項 46）
+- [ ] 判定の制限（決定事項 43）: チャンクの一部だけの言い直しは消せない。「終了します」のような独り言に似た発話を、雑音として消すことがある
+- [ ] ハーネス: self-reviewer のチェックリストに足した 2 項目（FRIC-005）を master へ還元する PR（[claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。2026-10-05 に作成）を、ユーザーがレビューしてマージする
 
 ## 決定事項
 
@@ -115,10 +114,12 @@ _なし_
 
 - 開発の流れ: main からマイルストーンごとにブランチ → review-loop（`.claude/skills/review-loop/SKILL.md`）→ PR → ユーザーがマージ。M6 は 3 本の PR を積み上げている（決定事項 16）
 - コマンドを `| tail` でつなぐと失敗が隠れる。テストとコミットを連結するときは `set -o pipefail` を付ける
+- 画面の実装で守ること: トークンは meta 要素から読んでヘッダーに付ける（`localStorage`・URL・ログに残さない）、`dangerouslySetInnerHTML` を使わない、外部の CDN・フォント・画像を使わない、
+  インラインのスタイル（`style` 要素・`style` 属性の文字列）を使わない（CSP が止める。PR 6 から）
 - quality-gate フックは `.md` の編集時にも prettier を走らせ、表を整形し直す。frontend のファイルは frontend/biome.json の Biome で整形する（FRIC-003）
 - ML の依存は `uv sync --extra ml` で導入済み（`uv run` では消えない）。実物のモデルのテストは `uv run pytest -m ml`
 - 要件の入力: [docs/references/kickoff.md](./docs/references/kickoff.md)。プロトタイプと正解データ: `docs/references/prototype/`。スパイクの素材と XML は `~/VidCut/spikes/s1/`
-- ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）は master に反映済み。
+- ハーネス: deny ルール（FRIC-001）・フックのサブディレクトリ対応（FRIC-003）・整形のルール（FRIC-004）・self-reviewer のドキュメントの追従のチェック（FRIC-005。master の PR #5）は master に反映済み。FRIC-005 の再発への対応は、master の PR #6 で還元した（2026-10-05）。
   セキュリティレビューの未対応: settings.json の `Read(~/.ssh/*)` 等の `**` 化（ユーザー判断）、フックの `npx --no-install` 化
 
 ### M6（API）で作ったもの（M7 が使う）
@@ -302,6 +303,7 @@ _なし_
   実データの写しで、フィラーの候補が前と同じ（forTest01 が 4 件、forTest02 が 2 件、forTest03 が 5 件。区間も同じ）ことを確かめた。
   残したもの: `vidcut reanalyze` と、戻した候補の区間での引き継ぎ。分かったこと: 位置合わせは、語の頭を実際より遅く置くことがある。位置合わせの時刻を頼りに削除区間を広げてはいけない。
   制限として残るもの（Design Doc 3-2 の「既知の限界」）: フィラーと判定されても声が残る箇所（画面では削れない。Premiere で削る）、続いたフィラー（文字を選んで削る）
+- 計画の完了処理（`chore/m8-plan-completion`。ドキュメントだけ）の review-loop: Stage 0〜2 とも PASS（指摘は LOW と任意だけ。件数の時点の表記、進捗メモの並び、「次にやること」の整理を直した）
 - 検出を戻したあとの review-loop: Stage 0（self）PASS（MEDIUM 2 件: この「M8 の現状」に、取りやめた仕様が事実のように残っていた点と、テスト件数 → 直した）、
   Stage 1（arch / style / test）PASS（test の提案で、間がちょうど 100ms / 99ms の境界、前だけ・後ろだけの間、「ええ」「そのまま」「あのね」などを消さないテストを足した）、Stage 2（security / docs）PASS
 - PR 4a（`fix/m8-filler-span`）で作って、取りやめたもの（決定事項 46。いまのコードにはない）: `pipeline/fillers.py` を書き直し、辞書の一致をまとまり（続いた一致）にして、前後が区切れているもの（チャンクの端・句読点・0.1 秒以上の間）を候補にしていた。
@@ -325,7 +327,7 @@ _なし_
   `vidcut serve` は、起動時にビルドがソースより古ければ知らせる（`serve.py` の `frontend_build_is_stale`。`frontend/dist/index.html` と `frontend/src` の更新時刻を比べる。テストは見ない。`--dev` では出さない）。
   テスト: backend 1,266 件（PR 4a でフィラーの検出を戻したあと。戻す前は 1,297 件）、frontend 704 件
 - PR 4b の追加の確認（2026-10-05。一時フォルダ。記録は acceptance-m8.md の「追加の確認」）: 人工の 2 時間のレクチャー（33,240 トークン・2,216 チャンク）で、開く 0.7 秒、編集・取り消し・候補の採否・間の設定は 65〜90ms、
-  再生とシークは 50ms を超える処理なし。重いのは、波形を「全体」に切り替えるとき（約 3 秒。1 回だけ）。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（いまは直していない。ユーザーの判断）。
+  再生とシークは 50ms を超える処理なし。重いのは、波形を「全体」に切り替えるとき（約 3 秒。1 回だけ）。直すなら、「全体」のときに 1px に満たない区間をまとめて描く（直していない。報告のあと、ユーザーから追加の指摘なし。「次にやること」の任意の項目）。
   確認の道具は使い捨て（`backend/tests/e2e/` の舞台と偽の位置合わせを使い、台本を繰り返す素材と、繰り返す偽の文字起こしを足したもの。コミットしていない）
 - PR 4b の review-loop: Stage 2（security / docs）まで PASS（セキュリティの LOW: 環境変数でビルドの場所を、隣に巨大な `src` がある場所へ向けると、起動時の確認が長引きうる。見送り）。Stage 0（self）は 1 回 BLOCK のあと PASS（状態のファイルの「概要」に「PR 4b は未着手」が残っていた。古いビルドの確認が、読めないファイルで起動を落としうる点も直した）。
   Stage 1（arch / style / test）は PASS。提案を受けて、シークの処理の重複をなくす（波形のクリックと同じ関数を使う）・警告に理由を添える・`ARCHITECTURE.md` に `serve.py` が frontend の配置を知ることを書く・

@@ -1,7 +1,7 @@
 # 受け入れチェックの記録（M8）
 
 [PRD](../prd.md) 3-2 の受け入れ基準を、実際の撮影素材 3 本で確かめた記録。判定するのは制作者本人。
-計画は [PLAN-20261003-mvp-implementation](../exec-plans/active/PLAN-20261003-mvp-implementation.md) の M8。
+計画は [PLAN-20261003-mvp-implementation](../exec-plans/completed/PLAN-20261003-mvp-implementation.md) の M8。
 
 - **素材**: `~/Desktop/forTest01.mov`・`forTest02.mov`・`forTest03.mov`（各約 2 分。無音・フィラー・言い直しあり）
 - **合格基準**: 誤削除は素材 1 本あたり 2 件以下、書き出しの音ズレ・フレーム欠けは 0 件。削除漏れと作業時間は記録のみ
