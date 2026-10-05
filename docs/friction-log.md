@@ -101,4 +101,4 @@
   設計の文書は検索で拾えるようになったが、状態のファイルは、作業が進むたびに「概要」「進行中」「次にやること」のそれぞれを直す必要があり、1 か所だけ直して残りを忘れる
 - **再発 2 への対応:** `.claude/agents/self-reviewer.md` のチェック項目に、「状態のファイルの『現在のフェーズ』『概要』『進行中』『次にやること』を、いまの状態と 1 行ずつ照らし合わせる」を足した。
   汎用的な改善なので、sync-upstream で master に還元した（[claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。2026-10-05。再発への対応と同じ PR）
-- **Status:** resolved（vid-cut: M7 の PR 5、再発への対応は M8 の PR 3。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み。再発と再発 2 への対応は [claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。2026-10-05 に作成、マージはユーザー）
+- **Status:** resolved（vid-cut: M7 の PR 5、再発への対応は M8 の PR 3。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み。再発と再発 2 への対応は [claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。マージ済み、2026-10-06）
