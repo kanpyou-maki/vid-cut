@@ -102,3 +102,14 @@
 - **再発 2 への対応:** `.claude/agents/self-reviewer.md` のチェック項目に、「状態のファイルの『現在のフェーズ』『概要』『進行中』『次にやること』を、いまの状態と 1 行ずつ照らし合わせる」を足した。
   汎用的な改善なので、sync-upstream で master に還元した（[claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。2026-10-05。再発への対応と同じ PR）
 - **Status:** resolved（vid-cut: M7 の PR 5、再発への対応は M8 の PR 3。master: [claude-config-master#5](https://github.com/kanpyou-maki/claude-config-master/pull/5)。マージ済み。再発と再発 2 への対応は [claude-config-master#6](https://github.com/kanpyou-maki/claude-config-master/pull/6)。マージ済み、2026-10-06）
+
+### FRIC-006: コマンドを `| tail` や `;` でつなぐと、テストの失敗を見落とす
+
+- **日付:** 2026-10-07（発生は 2026-10-03 と 2026-10-04）
+- **状況:** 出力を短くするためにテストを `| tail` につなぐと、終了コードが `tail` のものになり、失敗が隠れる（M3 のころに気づき、状態ファイルのメモに注意を書いた）。
+  M8 の PR 3 では、テストとコミットを `;` でつないで、テストの失敗を見落としたままコミットした。注意書きがあっても再発した
+- **根本原因の仮説:** ガードレール不足。注意が状態ファイルのメモの 1 行にしかなく、機械的に確かめる仕組みがない
+- **改善候補:** `.claude/hooks/` の Bash の前のフックで、`harness.json` のテスト・lint のコマンドが `pipefail` なしで `| tail`・`| head` につながれているとき、
+  またはテストと `git commit` が `;` でつながれているときに警告する。汎用的な改善なので、sync-upstream で master に還元する。
+  当面の回避策: `set -o pipefail` を付け、テストとコミットは `&&` でつなぐ
+- **Status:** open

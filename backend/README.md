@@ -10,6 +10,9 @@ uv run pytest -m ml     # ML を使うテストだけ実行
 uv run ruff check . && uv run ruff format --check .   # lint と整形の確認（直すときは ruff format .）
 ```
 
+- `uv add` / `uv remove` は、ML の追加依存（`--extra ml`）を外して環境を同期し直す。numpy も外れて backend の読み込みが失敗するので、依存を変えたあとは `uv sync --extra ml` を実行する
+- テスト用の HTTP クライアントは `httpx2`（Starlette のテストクライアントが推奨する。`httpx` だと非推奨の警告が出る）
+
 ## コマンドライン
 
 ```bash
@@ -25,6 +28,8 @@ uv run vidcut reanalyze --wait                      # 登録済みの録画を�
 
 解析が終わると、言い直しの判定（`claude -p`）が続けて実行される。`claude` にログインしていないと判定だけが失敗する
 （無音とフィラーの削除候補は使える）。ターミナルで `claude` を起動して `/login` を実行すること。
+
+コマンドラインの出力には、生のエラー文（ffmpeg の stderr や絶対パス）が出る（自分の端末なので許容している。API は定型文だけを返す）。
 
 ## 判定の精度評価
 
