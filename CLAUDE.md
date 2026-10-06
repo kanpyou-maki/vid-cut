@@ -28,7 +28,7 @@ Claude Code の作業指示。**常に日本語で応答すること。**
 | [docs/PLANS.md](./docs/PLANS.md)                                       | 実行プラン一覧                                               |
 | [docs/design-docs/core-beliefs.md](./docs/design-docs/core-beliefs.md) | コーディング原則・エージェントファースト設計思想             |
 | [docs/adr/](./docs/adr/)                                               | アーキテクチャ決定レコード                                   |
-| [PROJECT_STATUS.md](./PROJECT_STATUS.md)                               | 現在の進捗状態（毎回更新）                                   |
+| [PROJECT_STATUS.md](./PROJECT_STATUS.md)                               | 次のセッションへの引き継ぎメモ（6KB 以内。追記しない）       |
 | [docs/references/kickoff.md](./docs/references/kickoff.md)             | キックオフ資料（目的・ユーザー決定事項・プロトタイプの知見） |
 
 ## 開発ワークフロー
@@ -75,7 +75,7 @@ node -pe "require('./.claude/harness.json').commands.test"
 
 ### レビュアー（Ralph Wiggum ループ）
 
-PR 作成前に `.claude/skills/review-loop/SKILL.md` の手順で全員を通過させること。
+PR 作成前に `.claude/skills/review-loop/SKILL.md` の手順で全員を通過させること。PR のマージはユーザーが行う。
 
 | エージェント        | ステージ | 審査観点                                 |
 | ------------------- | -------- | ---------------------------------------- |
@@ -96,4 +96,5 @@ PR 作成前に `.claude/skills/review-loop/SKILL.md` の手順で全員を通�
 
 ## プロジェクト状態管理
 
-`PROJECT_STATUS.md` をタスク完了・フェーズ移行のたびに更新すること。
+`PROJECT_STATUS.md` は次のセッションへの引き継ぎメモ。PR を作る前とセッションを閉じる前に書き換える（追記しない。終わった項目は消す）。
+載せるのは「現在のフェーズ・進行中・次にやること・人間待ち」だけで、上限は 6KB（ARCH-007）。決定・知見・履歴の置き場所は同ファイルの冒頭に書いてある。
