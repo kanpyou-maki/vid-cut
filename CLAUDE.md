@@ -80,7 +80,7 @@ PR 作成前に `.claude/skills/review-loop/SKILL.md` の手順で全員を通�
 | エージェント        | ステージ | 審査観点                                 |
 | ------------------- | -------- | ---------------------------------------- |
 | `self-reviewer`     | Stage 0  | 実装の自己批判的評価                     |
-| `arch-reviewer`     | Stage 1  | アーキテクチャ規則（ARCH-001〜006）      |
+| `arch-reviewer`     | Stage 1  | アーキテクチャ規則（ARCH-NNN）           |
 | `style-reviewer`    | Stage 1  | コーディングスタイル・命名・debug コード |
 | `test-reviewer`     | Stage 1  | テストカバレッジ≥80%・独立性             |
 | `security-reviewer` | Stage 2  | OWASP Top 10・シークレット漏洩           |
