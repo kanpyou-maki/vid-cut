@@ -1,3 +1,8 @@
+---
+name: sync-upstream
+description: このプロジェクトで生まれた汎用的なハーネス改善（.claude/ 配下）を claude-config-master へ PR として反映する。「マスターに反映して」「上流へ同期して」と言われたとき、improve-harness の改善がプロジェクト固有でないときに使う。
+---
+
 # Skill: sync-upstream — プロジェクト改善をマスターに反映
 
 このプロジェクトで生まれた汎用的な改善を `claude-config-master` へ PR として反映する。

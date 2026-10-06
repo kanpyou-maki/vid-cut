@@ -23,10 +23,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/pre-bash-git-push-reminder.js"
+            "if": "Bash(git push*)",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-bash-git-push-reminder.js"
           }
         ],
-        "description": "git push 前に確認メッセージを表示"
+        "description": "git push 前に review-loop の確認をモデルに渡す"
       }
     ],
     "PostToolUse": [
@@ -35,32 +36,32 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/quality-gate.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/quality-gate.js",
             "async": true,
             "timeout": 30
           }
         ],
-        "description": "ファイル編集後にフォーマット・Lint を自動実行（TypeScript: Biome/Prettier、Python: ruff）"
+        "description": "ファイル編集後に、プロジェクトに設定のある整形ツールを実行（TypeScript/JS: Biome、なければ Prettier。Python: ruff）"
       },
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/arch-lint.js"
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/arch-lint.js"
           }
         ],
-        "description": "ファイル編集後にアーキテクチャ規則違反を検出（ARCH-001〜005）"
+        "description": "ファイル編集後にアーキテクチャ規則違反を検出してモデルに伝える（ARCH-NNN）"
       },
       {
         "matcher": "Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/post-edit-typecheck.js"
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-typecheck.js"
           }
         ],
-        "description": ".ts/.tsx 編集後に TypeScript 型チェックを実行"
+        "description": ".ts/.tsx 編集後に TypeScript 型チェックを実行し、エラーをモデルに伝える"
       }
     ]
   }

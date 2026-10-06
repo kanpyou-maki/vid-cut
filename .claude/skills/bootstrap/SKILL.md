@@ -1,3 +1,8 @@
+---
+name: bootstrap
+description: install.sh でハーネスを展開した直後のプロジェクトを初期化する。テンプレートのままの CLAUDE.md・ARCHITECTURE.md・harness.json をプロジェクトの実態に合わせて書き換え、足りないものを検出して埋める。「ハーネスを入れたので初期設定して」「bootstrap して」と言われたときに使う。
+---
+
 # bootstrap スキル — 新規プロジェクトの自律的初期化
 
 `install.sh` によるスキャフォールド展開後、Claude が自律的にギャップを検出・修正・カスタマイズするスキル。
@@ -79,18 +84,22 @@ find . -maxdepth 2 -type d | grep -v node_modules | grep -v .git | sort
 
 ### 2-3. PROJECT_STATUS.md の初期化
 
-プロジェクト開始時点の状態を記録する:
+プロジェクト開始時点の状態を記録する。このファイルは次のセッションへの引き継ぎメモで、節は下の 4 つだけにする
+（上限 6KB・ARCH-007。プロジェクトの説明は CLAUDE.md に、決定や知見は `docs/` に書く）:
 
 ```markdown
 ## 現在のフェーズ
 議論中
 
-## 概要
-[プロジェクト名]: [目的を1〜2文で]
+## 進行中
+_なし_
 
 ## 次にやること
 - [ ] 初回の議論・要件整理
 - [ ] PRD 作成 (docs/prd.md)
+
+## 人間待ち
+_なし_
 ```
 
 ### 2-4. harness.json の調整
@@ -109,10 +118,11 @@ cat .claude/harness.json
 ### 2-5. settings.json のフックパス検証
 
 ```bash
-node .claude/hooks/arch-lint.js 2>&1
+echo '{}' | node .claude/hooks/arch-lint.js 2>&1
 ```
 
-ARCH-004 違反（存在しないフックへの参照）があれば修正する。
+ARCH-004 違反（存在しないフックへの参照、または相対パスの起動コマンド）があれば修正する。
+起動コマンドは `node "$CLAUDE_PROJECT_DIR"/.claude/hooks/<name>.js` の形で書く（相対パスは、作業ディレクトリがサブディレクトリのとき起動に失敗する）。
 
 ### 2-6. docs/ スケルトンの補完
 

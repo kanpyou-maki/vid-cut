@@ -2,8 +2,11 @@
 /**
  * Git Push Reminder Hook (PreToolUse: Bash)
  *
- * Displays a reminder message before `git push` commands.
+ * Hands the model a reminder before `git push` commands.
  * Does not block the push — informational only.
+ *
+ * The reminder is returned as `additionalContext` JSON on stdout: on exit 0, plain stdout/stderr
+ * never reaches the model (ADR-005). settings.json limits this hook to `git push` with the `if` field.
  *
  * No external dependencies — copy to .claude/hooks/ and reference from settings.json.
  */
@@ -11,6 +14,7 @@
 'use strict';
 
 const MAX_STDIN = 1024 * 1024;
+const REMINDER = 'git push の前に: review-loop（.claude/skills/review-loop/SKILL.md）を未実行なら、先に通過させてください。';
 let raw = '';
 
 process.stdin.setEncoding('utf8');
@@ -26,12 +30,11 @@ process.stdin.on('end', () => {
     const cmd = String(input.tool_input?.command || '');
 
     if (/\bgit\s+push\b/.test(cmd)) {
-      console.error('[Hook] git push を実行します。変更内容を確認しましたか？');
-      console.error('[Hook] verification-loop を未実行の場合は .claude/skills/verification-loop/SKILL.md を参照してください。');
+      process.stdout.write(JSON.stringify({
+        hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: REMINDER },
+      }));
     }
   } catch {
-    // Ignore parse errors — pass through
+    // Ignore parse errors — nothing to remind
   }
-
-  process.stdout.write(raw);
 });

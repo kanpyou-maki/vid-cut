@@ -1,3 +1,8 @@
+---
+name: sync-downstream
+description: claude-config-master の更新をこのプロジェクトの .claude/ へ取り込む。「マスターの更新を取り込んで」「マスターと同期して」と言われたとき、install.sh update が CHANGED (skipped) を報告したときに使う。
+---
+
 # Skill: sync-downstream — マスターの更新をプロジェクトへ反映
 
 `claude-config-master` の最新改善をこのプロジェクトの `.claude/` へ取り込む。
