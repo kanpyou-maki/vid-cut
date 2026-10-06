@@ -11,15 +11,24 @@
  *   ARCH-001 エージェント定義は .claude/agents/ にのみ配置する
  *   ARCH-002 フック実装 (.js) は .claude/ 配下では .claude/hooks/ にのみ配置する
  *   ARCH-003 .claude/rules/ のファイルは {lang}/{category}.md 形式に従う
- *   ARCH-004 .claude/settings.json が参照するフックファイルが実在する
+ *   ARCH-004 .claude/settings.json のフックコマンドは $CLAUDE_PROJECT_DIR 起点で、参照先が実在する
  *   ARCH-005 CLAUDE.md は 100行以内
  *   ARCH-006 .md ファイル内の相対リンクが実在する
+ *   ARCH-007 PROJECT_STATUS.md は 6KB 以内（引き継ぎメモに絞る。ADR-006）
+ *
+ * 違反は stderr に書き、終了コード 2 で終わる。PostToolUse の stderr がモデルに渡るのは
+ * 終了コード 2 のときだけなので、0 で終わると違反が誰にも届かない（ADR-005）。
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const CLAUDE_DIR = '.claude';
+const PROJECT_DIR_PREFIX = /^\$(?:CLAUDE_PROJECT_DIR|\{CLAUDE_PROJECT_DIR\})\//;
+const EXIT_REPORT_TO_MODEL = 2;
+const MAX_FIELD_LENGTH = 300;
+const STATUS_FILE = 'PROJECT_STATUS.md';
+const STATUS_FILE_MAX_BYTES = 6 * 1024;
 
 /** filePath が root/.claude/ 配下にあるか */
 function inClaudeDir(filePath, root) {
@@ -111,8 +120,21 @@ function checkArch003(filePath, root = process.cwd()) {
 }
 
 /**
- * ARCH-004: .claude/settings.json が参照するフックファイルが実在する
- * フックコマンドはプロジェクトルートからの相対パスとして解決する。
+ * フックコマンドから node スクリプトのパスを取り出す
+ * @param {string} command
+ * @returns {{ script: string, anchored: boolean } | null}
+ *   script は $CLAUDE_PROJECT_DIR を除いたパス、anchored は $CLAUDE_PROJECT_DIR 起点かどうか
+ */
+function parseHookCommand(command) {
+  const match = command.match(/node\s+(\S+\.js)/);
+  if (!match) return null;
+  const token = match[1].replace(/"/g, '');
+  return { script: token.replace(PROJECT_DIR_PREFIX, ''), anchored: PROJECT_DIR_PREFIX.test(token) };
+}
+
+/**
+ * ARCH-004: .claude/settings.json のフックコマンドは $CLAUDE_PROJECT_DIR 起点で、参照先が実在する
+ * 相対パスのコマンドは、作業ディレクトリがプロジェクト直下でないとき起動に失敗する。
  * @param {string} [root]
  * @returns {Array<{rule, file, message, fix}>}
  */
@@ -127,25 +149,33 @@ function checkArch004(root = process.cwd()) {
     return [];
   }
 
-  const violations = [];
-  const hookEvents = settings.hooks || {};
+  // 形の崩れた定義（配列でない・要素が null など）は読み飛ばす。ここで例外を出すと、ほかの規則の検査まで止まる
+  const handlers = Object.values((settings && settings.hooks) || {})
+    .filter(Array.isArray)
+    .flat()
+    .flatMap(entry => (entry && Array.isArray(entry.hooks) ? entry.hooks : []))
+    .filter(Boolean);
 
-  for (const hookList of Object.values(hookEvents)) {
-    for (const entry of hookList) {
-      for (const hook of entry.hooks || []) {
-        const cmd = String(hook.command || '');
-        const match = cmd.match(/node\s+(\S+\.js)/);
-        if (!match) continue;
-        const hookFile = path.join(root, match[1]);
-        if (!fs.existsSync(hookFile)) {
-          violations.push({
-            rule: 'ARCH-004',
-            file: '.claude/settings.json',
-            message: `settings.json が存在しないフックを参照しています: ${match[1]}`,
-            fix: `${match[1]} を作成するか、settings.json から該当エントリを削除してください`,
-          });
-        }
-      }
+  const violations = [];
+  for (const hook of handlers) {
+    const parsed = parseHookCommand(String(hook.command || ''));
+    if (!parsed) continue;
+    const { script, anchored } = parsed;
+    if (!fs.existsSync(path.resolve(root, script))) {
+      violations.push({
+        rule: 'ARCH-004',
+        file: '.claude/settings.json',
+        message: `settings.json が存在しないフックを参照しています: ${script}`,
+        fix: `${script} を作成するか、settings.json から該当エントリを削除してください`,
+      });
+    }
+    if (!anchored && !path.isAbsolute(script)) {
+      violations.push({
+        rule: 'ARCH-004',
+        file: '.claude/settings.json',
+        message: `フックのコマンドが相対パスです（作業ディレクトリがプロジェクト直下でないと起動に失敗します）: ${script}`,
+        fix: `settings.json の command を次の形に書き換えてください: node "$CLAUDE_PROJECT_DIR"/${script}`,
+      });
     }
   }
 
@@ -192,7 +222,8 @@ function checkArch006(filePath, root = process.cwd()) {
   const violations = [];
   // コードブロック内のリンクは検査対象外
   const stripped = content.replace(/```[\s\S]*?```/g, '');
-  const linkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
+  // リンクのテキストから「[」を除き、参照先の長さを制限する（角括弧が大量に並ぶ入力で検査時間が二乗に増えないように）
+  const linkRegex = /\[([^[\]]*)\]\(([^)]{1,2000})\)/g;
   const dir = path.dirname(filePath);
   let match;
 
@@ -220,16 +251,60 @@ function checkArch006(filePath, root = process.cwd()) {
   return violations;
 }
 
+/**
+ * ARCH-007: 状態ファイルは 6KB 以内
+ * 毎セッション最初に読むファイルなので、いまの状態ではないもの（履歴・決定・知見）が溜まると
+ * コンテキストを圧迫する。行数ではなくバイト数で測る（行数は 1 行を長くすれば通ってしまう）。
+ * @param {string} [root]
+ */
+function checkArch007(root = process.cwd()) {
+  let bytes;
+  try {
+    bytes = fs.statSync(path.join(root, STATUS_FILE)).size;
+  } catch {
+    // 状態ファイルがない・大きさを調べられない場合は検査の対象外
+    return null;
+  }
+  if (bytes <= STATUS_FILE_MAX_BYTES) return null;
+
+  const format = n => n.toLocaleString('en-US');
+  return {
+    rule: 'ARCH-007',
+    file: STATUS_FILE,
+    message: `${STATUS_FILE} が上限を超えています（現在 ${format(bytes)} バイト、上限 ${format(STATUS_FILE_MAX_BYTES)} バイト）`,
+    fix: '載せるのは「現在のフェーズ・進行中・次にやること・人間待ち」だけです。終わった項目は消し、'
+      + '決定は docs/adr/ か設計書へ、知見は docs/ の該当文書へ、繰り返すハマりどころは docs/friction-log.md へ、'
+      + 'タスク分解は docs/exec-plans/ へ移してください',
+  };
+}
+
 // ─── 出力フォーマット ────────────────────────────────────────────────────────
 
+/**
+ * 違反メッセージはモデルに渡る。ファイルパスやリンク先など入力由来の文字列を含むので、
+ * 制御文字（改行を含む）を空白に置き換え、長さを制限して 1 行に収める
+ */
+function toSingleLine(text) {
+  // 文字（コードポイント）単位で数える。UTF-16 の単位で切ると絵文字などが途中で割れる
+  const chars = Array.from(String(text).replace(/\s*[\u0000-\u001f\u007f]+\s*/g, ' '));
+  return chars.length > MAX_FIELD_LENGTH ? `${chars.slice(0, MAX_FIELD_LENGTH).join('')}…` : chars.join('');
+}
+
 function formatViolation(v) {
-  return `[arch-lint] ${v.rule} 違反: ${v.message}\n  ファイル: ${v.file}\n  修復手順: ${v.fix}`;
+  return `[arch-lint] ${v.rule} 違反: ${toSingleLine(v.message)}\n  ファイル: ${toSingleLine(v.file)}\n  修復手順: ${toSingleLine(v.fix)}`;
 }
 
 // ─── 全チェック実行 ──────────────────────────────────────────────────────────
 
+/**
+ * filePath があれば、そのファイルに関係する規則だけを検査する（編集のたびに無関係な違反を繰り返し報告しない）。
+ * filePath が空なら、リポジトリ全体の規則（ARCH-004・005・007）を検査する。
+ */
 function runChecks(filePath, root = process.cwd()) {
   const violations = [];
+  let checkSettings = true;
+  let checkClaudeMd = true;
+  let checkStatusFile = true;
 
   if (filePath) {
     const abs = path.isAbsolute(filePath) ? filePath : path.join(root, filePath);
@@ -238,11 +313,18 @@ function runChecks(filePath, root = process.cwd()) {
       if (v) violations.push(v);
     }
     violations.push(...checkArch006(abs, root));
+
+    const hooksDir = path.join(root, CLAUDE_DIR, 'hooks') + path.sep;
+    checkSettings = abs === path.join(root, CLAUDE_DIR, 'settings.json') || abs.startsWith(hooksDir);
+    checkClaudeMd = abs === path.join(root, 'CLAUDE.md');
+    checkStatusFile = abs === path.join(root, STATUS_FILE);
   }
 
-  violations.push(...checkArch004(root));
-  const v5 = checkArch005(root);
+  if (checkSettings) violations.push(...checkArch004(root));
+  const v5 = checkClaudeMd ? checkArch005(root) : null;
   if (v5) violations.push(v5);
+  const v7 = checkStatusFile ? checkArch007(root) : null;
+  if (v7) violations.push(v7);
 
   return violations;
 }
@@ -256,6 +338,7 @@ module.exports = {
   checkArch004,
   checkArch005,
   checkArch006,
+  checkArch007,
   runChecks,
   formatViolation,
 };
@@ -280,11 +363,10 @@ if (require.main === module) {
       // stdin が空または JSON 以外の場合は無視
     }
 
-    const violations = runChecks(filePath);
-    if (violations.length > 0) {
-      violations.forEach(v => process.stderr.write(formatViolation(v) + '\n'));
-    }
+    const violations = runChecks(filePath, process.env.CLAUDE_PROJECT_DIR || process.cwd());
+    if (violations.length === 0) return;
 
-    process.stdout.write(raw);
+    violations.forEach(v => process.stderr.write(formatViolation(v) + '\n'));
+    process.exitCode = EXIT_REPORT_TO_MODEL;
   });
 }

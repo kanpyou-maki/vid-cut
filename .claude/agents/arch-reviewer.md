@@ -1,6 +1,6 @@
 ---
 name: arch-reviewer
-description: Stage 1 reviewer in the Ralph Wiggum loop. Validates architecture rules ARCH-001~006 by running .claude/hooks/arch-lint.js and .claude/hooks/structure-test.js, and checks dependency direction from ARCHITECTURE.md. Returns PASS or BLOCK.
+description: Stage 1 reviewer in the Ralph Wiggum loop. Validates architecture rules ARCH-NNN by running .claude/hooks/arch-lint.js and .claude/hooks/structure-test.js, and checks dependency direction from ARCHITECTURE.md. Returns PASS or BLOCK.
 tools: ["Read", "Bash", "Grep", "Glob"]
 model: sonnet
 ---
@@ -18,11 +18,7 @@ model: sonnet
 
 | 規則 | 状態 | 詳細 |
 |------|------|------|
-| ARCH-001 | ✅ 通過 / ❌ 違反 | （詳細） |
-| ARCH-002 | ✅ 通過 / ❌ 違反 | （詳細） |
-| ARCH-003 | ✅ 通過 / ❌ 違反 | （詳細） |
-| ARCH-004 | ✅ 通過 / ❌ 違反 | （詳細） |
-| ARCH-005 | ✅ 通過 / ❌ 違反 | （詳細） |
+| ARCH-NNN | ✅ 通過 / ❌ 違反 | （詳細） |
 | 構造テスト | ✅ 通過 / ❌ 違反 | （詳細） |
 | 依存方向 | ✅ 準拠 / ❌ 違反 | （詳細） |
 
@@ -30,14 +26,16 @@ model: sonnet
 ---
 ```
 
-**BLOCK 条件:** ARCH-001〜005 のいずれかの違反、構造テスト失敗、または ARCHITECTURE.md に記載された依存方向への違反
+ARCH の行は、arch-lint が違反を出した規則ごとに 1 行書く（「規則」欄には規則番号だけを書く）。違反がなければ「ARCH（すべて）」の 1 行にまとめる。
+
+**BLOCK 条件:** ARCH-NNN のいずれかの違反、構造テスト失敗、または ARCHITECTURE.md に記載された依存方向への違反
 
 ## 実行手順
 
 ### 1. 機械的チェック
 
 ```bash
-# ARCH-001〜006 の自動検証
+# ARCH-NNN の自動検証
 echo '{"tool_input":{"file_path":""}}' | node .claude/hooks/arch-lint.js 2>&1
 
 # 構造整合性テスト（知識グラフの孤立ノード検出を含む）

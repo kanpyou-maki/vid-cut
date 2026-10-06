@@ -5,6 +5,8 @@
  * Runs tsc --noEmit after editing .ts/.tsx files and reports errors
  * related to the edited file only.
  *
+ * Errors go to stderr with exit code 2: PostToolUse stderr reaches the model only on exit 2 (ADR-005).
+ *
  * A "solution style" tsconfig.json (files: [] + references, e.g. the Vite template) checks nothing
  * by itself, so each referenced project is checked with `tsc --noEmit -p <ref>` instead.
  *
@@ -20,6 +22,7 @@ const path = require('path');
 const MAX_STDIN = 1024 * 1024;
 const MAX_DEPTH = 20;
 const TSC_FLAGS = ['--noEmit', '--pretty', 'false'];
+const EXIT_REPORT_TO_MODEL = 2;
 
 /**
  * ファイルの位置から上位へ辿り、tsconfig.json のあるディレクトリを返す
@@ -107,14 +110,12 @@ if (require.main === module) {
           if (relevantLines.length > 0) {
             console.error(`[Hook] TypeScript errors in ${path.basename(filePath)}:`);
             relevantLines.forEach(line => console.error(line));
+            process.exitCode = EXIT_REPORT_TO_MODEL;
           }
         }
       }
     } catch {
-      // Invalid input — pass through
+      // Invalid input — nothing to check
     }
-
-    process.stdout.write(data);
-    process.exit(0);
   });
 }

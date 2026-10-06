@@ -1,3 +1,8 @@
+---
+name: improve-harness
+description: 繰り返す摩擦（同じ BLOCK・同じ手戻り・ツールや文書の不足）を .claude/ 配下の hooks / agents / skills / rules の改善に変える。「ハーネスを改善して」「摩擦ログを処理して」と言われたとき、review-loop で同じステージの BLOCK が 3 回続いたとき、docs/friction-log.md に open のエントリが溜まったときに使う。
+---
+
 # Skill: improve-harness — ハーネス自己改善ループ
 
 エージェント設定（`.claude/` 配下の agents / hooks / rules / skills）を**エージェント自身が改善する**ための手順。

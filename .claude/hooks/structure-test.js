@@ -9,6 +9,7 @@
  *   - docs/adr/ に ADR ファイルが存在する
  *   - .claude/settings.json が有効な JSON である
  *   - .claude/hooks/ 内の全 .js ファイルに構文エラーがない
+ *   - .claude/skills/ の各 SKILL.md が frontmatter に description を持つ
  *   - ドキュメントの相対リンクが実在する（docs/ + ルート .md + .claude/ 配下の .md）
  *
  * 警告（exit 0、stderr に出力）:
@@ -39,7 +40,8 @@ function collectMdFiles(dir) {
 function extractRelativeLinks(filePath) {
   const raw = fs.readFileSync(filePath, 'utf8');
   const content = raw.replace(/```[\s\S]*?```/g, '');
-  const linkRegex = /\[([^\]]*)\]\(([^)]+)\)/g;
+  // arch-lint.js の ARCH-006 と同じ形。角括弧が大量に並ぶ入力で検査時間が二乗に増えないようにしている
+  const linkRegex = /\[([^[\]]*)\]\(([^)]{1,2000})\)/g;
   const dir = path.dirname(filePath);
   const links = [];
   let match;
@@ -145,6 +147,36 @@ function checkHookSyntax(root = process.cwd()) {
   return violations;
 }
 
+/** SKILL.md の frontmatter に空でない description があるか */
+function hasSkillDescription(content) {
+  if (!content.startsWith('---')) return false;
+  const end = content.indexOf('\n---', 3);
+  return end !== -1 && /^description:[ \t]*\S/m.test(content.slice(0, end));
+}
+
+/**
+ * .claude/skills/<name>/SKILL.md が frontmatter に description を持つか検証する
+ * スキル一覧に出るのは description だけなので、欠けていると「いつ使うか」が伝わらず呼び出されない。
+ * @param {string} [root]
+ * @returns {Array<{ message: string, fix: string }>}
+ */
+function checkSkillFrontmatter(root = process.cwd()) {
+  const skillsDir = path.join(root, CLAUDE_DIR, 'skills');
+  if (!fs.existsSync(skillsDir)) return [];
+
+  return fs.readdirSync(skillsDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => path.join(skillsDir, entry.name, 'SKILL.md'))
+    .filter(file => fs.existsSync(file) && !hasSkillDescription(fs.readFileSync(file, 'utf8')))
+    .map(file => {
+      const rel = path.relative(root, file);
+      return {
+        message: `${rel} の frontmatter に description がありません`,
+        fix: `${rel} の先頭に「---」で囲んだ frontmatter を置き、name と description（何をするか・いつ使うか）を書いてください`,
+      };
+    });
+}
+
 /**
  * ドキュメントの相対リンク整合性を検証する
  * 対象: docs/ 配下・ルート直下・.claude/ 配下のすべての .md
@@ -231,6 +263,10 @@ function runAll(root = process.cwd()) {
   );
 
   violations.push(
+    ...checkSkillFrontmatter(root).map(v => ({ check: 'skill-frontmatter', ...v }))
+  );
+
+  violations.push(
     ...checkDocLinks(root).map(v => ({ check: 'doc-links', ...v }))
   );
 
@@ -243,6 +279,7 @@ module.exports = {
   checkAdrExists,
   checkSettingsJson,
   checkHookSyntax,
+  checkSkillFrontmatter,
   checkDocLinks,
   checkDocGraph,
   runAll,

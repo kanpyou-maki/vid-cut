@@ -13,6 +13,7 @@ master・配布先プロジェクトの両方に適用される（レイアウ�
 | G-03 | `docs/adr/` に記録のないアーキテクチャ変更をコミットしない | 構造テスト |
 | G-04 | `.claude/agents/` 以外にエージェント定義を置かない | ARCH-001 (arch-lint.js) |
 | G-05 | `.claude/` 配下では `.claude/hooks/` 以外にフック実装を置かない | ARCH-002 (arch-lint.js) |
+| G-17 | `PROJECT_STATUS.md` は 6KB 以内で、現在のフェーズ・進行中・次にやること・人間待ちだけを載せる | ARCH-007 (arch-lint.js) / self-reviewer |
 
 ## 品質ルール
 
