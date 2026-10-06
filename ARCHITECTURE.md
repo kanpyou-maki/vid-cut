@@ -42,7 +42,7 @@
 | ----------------------- | ---------------------------------------------- | ---------------- |
 | `CLAUDE.md`             | エージェントへのナビゲーション地図（≤100行）   | 人間 / Claude    |
 | `ARCHITECTURE.md`       | このファイル。構造マップ                       | 人間 / Claude    |
-| `PROJECT_STATUS.md`     | 現在の進捗状態                                 | Claude / 人間    |
+| `PROJECT_STATUS.md`     | 次のセッションへの引き継ぎメモ（6KB 以内）     | Claude / 人間    |
 | `.claude/agents/`       | サブエージェント定義 (`.md`、frontmatter 必須) | improve-harness  |
 | `.claude/hooks/`        | Claude Code フック実装 (`.js`)                 | master から配布  |
 | `.claude/rules/`        | コーディングルール (`{lang}/{category}.md`)    | master から配布  |
