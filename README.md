@@ -8,6 +8,7 @@ Premiere Pro で続きを編集できる形（Premiere XML）で書き出す、�
 - 言い直しの判定には `claude -p` を使う。それ以外（文字起こし・無音検出）は、すべて手元の Mac で動く
 
 要件は [PRD](./docs/prd.md)、設計は [Design Doc](./docs/design.md)。
+![スクリーンショット](docs/images/vidcut.png)
 
 ## 動作環境
 
